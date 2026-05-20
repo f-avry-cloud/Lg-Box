@@ -264,4 +264,328 @@ function renderLocataires(){
     return `<tr onclick="expandTenant(${l.id})" style="cursor:pointer"><td style="font-weight:500">${l.nom} ${l.prenom||''}</td><td>${bdg('blue',l.box_numero||'—')}</td><td style="font-size:12px;color:#666">${l.email}</td><td style="font-family:monospace">€${l.loyer_mensuel||'—'}</td><td>${bdg(sc,sl)}</td><td>${l.statut_paiement==="late"?`<button class="btn btn-danger" onclick="event.stopPropagation();toast('Relance envoyée à ${l.nom}')">Relancer</button>`:''}</td></tr>
     ${exp?`<tr><td colspan="6" style="padding:0"><div style="background:#1a1a1a;padding:14px 16px"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px"><div style="background:#161616;border:1px solid #222;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#555;text-transform:uppercase;margin-bottom:3px">Téléphone</div><div style="font-size:12px">${l.telephone||'—'}</div></div><div style="background:#161616;border:1px solid #222;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#555;text-transform:uppercase;margin-bottom:3px">Depuis</div><div style="font-size:12px">${l.date_entree||'—'}</div></div><div style="background:#161616;border:1px solid #222;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#555;text-transform:uppercase;margin-bottom:3px">Box</div><div style="font-weight:500">${l.box_numero||'—'}</div></div></div><div style="display:flex;gap:8px"><button class="btn" onclick="toast('Contrat PDF généré')">Contrat PDF</button><button class="btn" onclick="toast('Mandat SEPA PDF généré')">Mandat SEPA PDF</button><button class="btn btn-danger" onclick="deleteLocataire(${l.id})">Supprimer</button></div></div></td></tr>`:''}`;
   }).join('')||'<tr><td colspan="6" style="color:#555;text-align:center;padding:20px">Aucun locataire</td></tr>';
-  return `<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn btn-primary" onclick="openAddLocataire()">+ Nouveau locataire</button></div><div class="card"><div class="card-head">
+  return `<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn btn-primary" onclick="openAddLocataire()">+ Nouveau locataire</button></div><div class="card"><div class="card-head">Locataires — cliquer pour détails</div><table><thead><tr><th>Nom</th><th>Box</th><th>Email</th><th>Loyer</th><th>Statut</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+// ── PAIEMENTS ─────────────────────────────────────────────────
+function renderPaiements(){
+  const rows=locataires.map(l=>{const s=l.statut_paiement;return `<tr><td style="font-weight:500">${l.nom} ${l.prenom||''}</td><td>${bdg('blue',l.box_numero||'—')}</td><td style="font-family:monospace">€${l.loyer_mensuel||'—'}</td><td>${bdg(s==="ok"?"green":"red",s==="ok"?"✓ À jour":"⚠ Impayé")}</td><td>${s==="late"?`<button class="btn btn-danger" onclick="marquerImpaye(${l.id},'ok')">Marquer payé</button>`:`<button class="btn btn-danger" onclick="marquerImpaye(${l.id},'late')">Marquer impayé</button>`}</td></tr>`;}).join('')||'<tr><td colspan="5" style="color:#555;text-align:center;padding:20px">Aucun locataire</td></tr>';
+  const totalRev=locataires.filter(l=>l.statut_paiement==="ok").reduce((s,l)=>s+(l.loyer_mensuel||0),0);
+  const totalImp=locataires.filter(l=>l.statut_paiement==="late").reduce((s,l)=>s+(l.loyer_mensuel||0),0);
+  return `
+    <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi"><div class="kpi-label">Encaissé</div><div class="kpi-val" style="color:#4ade80">€${totalRev.toLocaleString()}</div><div class="kpi-sub">${locataires.filter(l=>l.statut_paiement==="ok").length} locataires</div></div>
+      <div class="kpi"><div class="kpi-label">Impayés</div><div class="kpi-val" style="color:#f87171">€${totalImp.toLocaleString()}</div><div class="kpi-sub">${locataires.filter(l=>l.statut_paiement==="late").length} locataires</div></div>
+      <div class="kpi"><div class="kpi-label">Total locataires</div><div class="kpi-val">${locataires.length}</div><div class="kpi-sub">actifs</div></div>
+    </div>
+    <div class="card"><div class="card-head">Suivi paiements manuel<span style="font-size:11px;color:#555;font-weight:400">ou utilisez le Rapprochement bancaire →</span></div><table><thead><tr><th>Locataire</th><th>Box</th><th>Loyer</th><th>Statut</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+// ── RAPPROCHEMENT BANCAIRE ────────────────────────────────────
+function renderRapprochement(){
+  if(reconcileResults.length===0){
+    return `
+      <div class="info-banner">
+        💡 <strong>Comment ça marche :</strong><br>
+        1. Exportez votre relevé bancaire depuis votre banque en ligne (format CSV)<br>
+        2. Déposez le fichier ici — l'app identifie automatiquement vos locataires<br>
+        3. Les paiements trouvés sont mis à jour en un clic
+      </div>
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('csv-input').click()">
+        <div class="drop-zone-icon">📂</div>
+        <div class="drop-zone-text">Cliquez ou déposez votre relevé bancaire ici</div>
+        <div class="drop-zone-sub">Formats acceptés : CSV (export de votre banque en ligne)</div>
+      </div>
+      <div class="card">
+        <div class="card-head">Format attendu du fichier CSV</div>
+        <div style="padding:14px 16px;font-size:12px;color:#666;line-height:2;font-family:monospace">
+          Date;Libellé;Montant<br>
+          01/05/2026;VIR DUPONT JEAN;140<br>
+          02/05/2026;VIR LEROY SARAH;95<br>
+          03/05/2026;PRLV EDF;-120<br>
+        </div>
+        <div style="padding:10px 16px;border-top:1px solid #222;font-size:12px;color:#555">
+          La plupart des banques françaises (Crédit Agricole, BNP, CIC, Société Générale) exportent dans ce format. Cherchez "Exporter" ou "Télécharger" dans votre espace relevés.
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:16px">
+        <button class="btn" onclick="loadDemoCSV()">📋 Tester avec des données exemple</button>
+      </div>`;
+  }
+
+  const matched=reconcileResults.filter(r=>r.locataire);
+  const unmatched=reconcileResults.filter(r=>!r.locataire&&r.montant>0);
+  const autres=reconcileResults.filter(r=>!r.locataire&&r.montant<=0);
+
+  const rows=reconcileResults.map(r=>{
+    const isMatch=!!r.locataire;
+    const isPositif=r.montant>0;
+    const rowClass=isMatch?'matched':isPositif?'unmatched':'';
+    const dotColor=isMatch?'#4ade80':isPositif?'#fbbf24':'#555';
+    return `
+      <div class="reconcile-row ${rowClass}">
+        <div class="match-indicator" style="background:${dotColor}"></div>
+        <div style="width:90px;font-size:12px;color:#666;flex-shrink:0">${r.date||'—'}</div>
+        <div style="flex:1;font-size:13px;font-family:monospace;color:#ccc">${r.libelle}</div>
+        <div style="width:90px;text-align:right;font-family:monospace;font-weight:600;color:${r.montant>0?'#4ade80':'#f87171'}">€${Math.abs(r.montant)}</div>
+        <div style="width:160px;text-align:right">
+          ${isMatch
+            ? `${bdg('green','✓ '+r.locataire.nom)}`
+            : isPositif
+              ? `<select onchange="assignManuel(${reconcileResults.indexOf(r)},this.value)" style="background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:3px 6px;color:#f0ece4;font-size:11px;outline:none"><option value="">Assigner...</option>${locataires.map(l=>`<option value="${l.id}">${l.nom} ${l.prenom||''}</option>`).join('')}</select>`
+              : bdg('gray','Autre')
+          }
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi"><div class="kpi-label">Virements identifiés</div><div class="kpi-val" style="color:#4ade80">${matched.length}</div><div class="kpi-sub">sur ${reconcileResults.filter(r=>r.montant>0).length} entrées</div></div>
+      <div class="kpi"><div class="kpi-label">Non identifiés</div><div class="kpi-val" style="color:#fbbf24">${unmatched.length}</div><div class="kpi-sub">à assigner manuellement</div></div>
+      <div class="kpi"><div class="kpi-label">Total encaissé</div><div class="kpi-val" style="color:#4ade80">€${reconcileResults.filter(r=>r.montant>0).reduce((s,r)=>s+r.montant,0).toLocaleString()}</div><div class="kpi-sub">ce mois</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        Résultats du rapprochement
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="reconcileResults=[];renderPage()">← Nouveau fichier</button>
+          <button class="btn btn-primary" onclick="appliquerRapprochement()">✓ Appliquer les mises à jour</button>
+        </div>
+      </div>
+      <div style="padding:8px 14px;background:#1a1a1a;border-bottom:1px solid #222;display:flex;gap:16px;font-size:11px;color:#555">
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4ade80;margin-right:4px"></span>Identifié automatiquement</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fbbf24;margin-right:4px"></span>À assigner manuellement</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#555;margin-right:4px"></span>Débit / autre</span>
+      </div>
+      ${rows}
+    </div>`;
+}
+
+// ── PARAMÈTRES ────────────────────────────────────────────────
+function renderParametres(){
+  const rows=boxes.map(b=>`<tr><td>${bdg('blue',b.numero)}</td><td>${b.surface} m²</td><td><input type="number" value="${b.loyer}" id="loyer-${b.id}" style="width:80px;background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:4px 8px;color:#f0ece4;font-size:13px;outline:none"></td><td>${bdg(b.status==="occ"?"blue":b.status==="late"?"red":b.status==="free"?"gray":"warn",(CFG[b.status]||CFG.free).label)}</td><td><select id="status-${b.id}" style="background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:4px 8px;color:#f0ece4;font-size:12px;outline:none">${Object.entries(CFG).map(([k,v])=>`<option value="${k}" ${b.status===k?'selected':''}>${v.label}</option>`).join('')}</select></td><td><button class="btn" style="font-size:11px;padding:3px 8px" onclick="saveBox(${b.id})">Sauver</button></td></tr>`).join('');
+  return `<div class="card"><div class="card-head">Configuration des ${boxes.length} box</div><table><thead><tr><th>Box</th><th>Surface</th><th>Loyer HT</th><th>Statut actuel</th><th>Modifier statut</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+// ── LOGIQUE RAPPROCHEMENT ─────────────────────────────────────
+function initDropZone(){
+  const dz=document.getElementById('drop-zone');
+  if(!dz)return;
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)readCSV(f);});
+  document.getElementById('csv-input').onchange=e=>{if(e.target.files[0])readCSV(e.target.files[0]);};
+}
+
+function readCSV(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const text=e.target.result;
+    parseAndReconcile(text);
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
+function parseAndReconcile(text){
+  const lines=text.split('\n').filter(l=>l.trim());
+  const results=[];
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i];
+    const sep=line.includes(';')?';':line.includes('\t')?'\t':',';
+    const cols=line.split(sep).map(c=>c.trim().replace(/"/g,''));
+    if(cols.length<2)continue;
+    let date='',libelle='',montant=0;
+    if(cols.length>=3){
+      date=cols[0];
+      libelle=cols[1];
+      const raw=cols[2].replace(/\s/g,'').replace(',','.');
+      montant=parseFloat(raw)||0;
+      if(cols.length>=4&&montant===0){
+        const debit=parseFloat(cols[2].replace(/\s/g,'').replace(',','.'))||0;
+        const credit=parseFloat(cols[3].replace(/\s/g,'').replace(',','.'))||0;
+        montant=credit-debit;
+      }
+    }
+    if(isNaN(montant)||libelle.toLowerCase().includes('libel')||libelle.toLowerCase().includes('label'))continue;
+    const libUpper=libelle.toUpperCase();
+    const locFound=locataires.find(l=>{
+      const nom=(l.nom||'').toUpperCase();
+      const prenom=(l.prenom||'').toUpperCase();
+      return libUpper.includes(nom)||(prenom&&libUpper.includes(prenom));
+    });
+    results.push({date,libelle,montant,locataire:locFound||null});
+  }
+  if(results.length===0){toast('Fichier non reconnu — vérifiez le format CSV');return;}
+  reconcileResults=results;
+  renderPage();
+}
+
+function loadDemoCSV(){
+  let demo='Date;Libellé;Montant\n';
+  const mois=['01','02','03','04','05'];
+  locataires.slice(0,5).forEach((l,i)=>{
+    demo+=`0${i+1}/05/2026;VIR ${(l.nom||'').toUpperCase()} ${(l.prenom||'').toUpperCase()};${l.loyer_mensuel||100}\n`;
+  });
+  demo+=`06/05/2026;VIR VIREMENT DIVERS REF 84521;215\n`;
+  demo+=`07/05/2026;PRLV EDF ELECTRICITE;-180\n`;
+  demo+=`08/05/2026;PRLV ASSURANCE LOCAUX;-320\n`;
+  parseAndReconcile(demo);
+}
+
+function assignManuel(index,locataireId){
+  if(!locataireId)return;
+  const loc=locataires.find(l=>l.id===parseInt(locataireId));
+  if(loc)reconcileResults[index].locataire=loc;
+  renderPage();
+}
+
+async function appliquerRapprochement(){
+  const matched=reconcileResults.filter(r=>r.locataire&&r.montant>0);
+  if(matched.length===0){toast('Aucun paiement à appliquer');return;}
+  for(const r of matched){
+    await sb.from('locataires').update({statut_paiement:'ok'}).eq('id',r.locataire.id);
+  }
+  toast(`${matched.length} paiements appliqués ✓`);
+  reconcileResults=[];
+  await renderPage();
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────
+function expandTenant(id){expandedTenant=expandedTenant===id?null:id;renderPage();}
+
+async function marquerImpaye(id,statut){
+  await sb.from('locataires').update({statut_paiement:statut}).eq('id',id);
+  toast(statut==='ok'?'Marqué comme payé ✓':'Marqué comme impayé');
+  await renderPage();
+}
+
+async function saveBox(id){
+  const loyer=parseInt(document.getElementById('loyer-'+id)?.value);
+  const status=document.getElementById('status-'+id)?.value;
+  await sb.from('boxes').update({loyer,status}).eq('id',id);
+  toast('Box mis à jour ✓');
+  await renderPage();
+}
+
+async function deleteLocataire(id){
+  if(!confirm('Supprimer ce locataire ?'))return;
+  await sb.from('locataires').delete().eq('id',id);
+  toast('Locataire supprimé');
+  await renderPage();
+}
+
+function openAddLocataire(){
+  const freeBoxes=boxes.filter(b=>b.status==="free");
+  const overlay=document.createElement('div');
+  overlay.className='overlay';
+  overlay.innerHTML=`<div class="modal"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px"><span style="font-size:16px;font-weight:600;color:#d4a843">Nouveau locataire</span><button onclick="this.closest('.overlay').remove()" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer">×</button></div><div class="field"><label>Nom</label><input id="f-nom" type="text" placeholder="Nom de famille"></div><div class="field"><label>Prénom</label><input id="f-prenom" type="text" placeholder="Prénom"></div><div class="field"><label>Email</label><input id="f-email" type="email" placeholder="email@exemple.fr"></div><div class="field"><label>Téléphone</label><input id="f-tel" type="tel" placeholder="06 xx xx xx xx"></div><div class="field"><label>Box attribué</label><select id="f-box"><option value="">Choisir un box libre...</option>${freeBoxes.map(b=>`<option value="${b.id}" data-num="${b.numero}" data-loyer="${b.loyer}">${b.numero} — ${b.surface}m² — €${b.loyer}/mois</option>`).join('')}</select></div><div class="field"><label>Date d'entrée</label><input id="f-date" type="date"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px"><button class="btn" onclick="this.closest('.overlay').remove()">Annuler</button><button class="btn btn-primary" onclick="saveLocataire()">Créer</button></div></div>`;
+  overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
+  document.body.appendChild(overlay);
+}
+
+async function saveLocataire(){
+  const nom=document.getElementById('f-nom')?.value;
+  const prenom=document.getElementById('f-prenom')?.value;
+  const email=document.getElementById('f-email')?.value;
+  const tel=document.getElementById('f-tel')?.value;
+  const boxSel=document.getElementById('f-box');
+  const boxId=boxSel?.value;
+  const boxNum=boxSel?.selectedOptions[0]?.dataset?.num;
+  const loyer=parseInt(boxSel?.selectedOptions[0]?.dataset?.loyer)||0;
+  const date=document.getElementById('f-date')?.value;
+  if(!nom||!email||!boxId){toast('Nom, email et box sont obligatoires');return;}
+  await sb.from('locataires').insert({nom,prenom,email,telephone:tel,box_id:parseInt(boxId),box_numero:boxNum,loyer_mensuel:loyer,date_entree:date,statut_paiement:'ok'});
+  await sb.from('boxes').update({status:'occ'}).eq('id',parseInt(boxId));
+  document.querySelector('.overlay')?.remove();
+  toast('Locataire créé ✓');
+  await renderPage();
+}
+
+function openBox(id){
+  const box=boxes.find(b=>b.id===id);
+  if(!box)return;
+  const cfg=CFG[box.status]||CFG.free;
+  const tenant=locataires.find(l=>l.box_id===id);
+  const overlay=document.createElement('div');
+  overlay.className='overlay';
+  overlay.innerHTML=`<div class="modal"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><span style="font-size:16px;font-weight:600">${box.numero}</span><button onclick="this.closest('.overlay').remove()" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer">×</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px"><div style="background:#1a1a1a;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#555;text-transform:uppercase;margin-bottom:3px">Surface</div><div style="font-weight:500">${box.surface} m²</div></div><div style="background:#1a1a1a;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#555;text-transform:uppercase;margin-bottom:3px">Loyer</div><div style="font-weight:500">€${box.loyer}/mois</div></div><div style="background:#1a1a1a;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#555;text-transform:uppercase;margin-bottom:3px">Statut</div><div>${bdg(box.status==="occ"?"blue":box.status==="late"?"red":box.status==="free"?"gray":"warn",cfg.label)}</div></div><div style="background:#1a1a1a;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#555;text-transform:uppercase;margin-bottom:3px">Code accès</div><div style="font-family:monospace;filter:blur(4px)" id="modal-code">${box.code_entree||'Non défini'}</div></div></div>${tenant?`<div style="background:#1a1a1a;border-radius:5px;padding:12px 14px;margin-bottom:14px"><div style="font-size:10px;color:#555;text-transform:uppercase;margin-bottom:8px">Locataire</div><div style="font-weight:500;margin-bottom:3px">${tenant.nom} ${tenant.prenom||''}</div><div style="font-size:12px;color:#666">${tenant.email}</div></div>`:`<div style="background:#1a1a1a;border-radius:5px;padding:12px;margin-bottom:14px;color:#666;font-size:13px">Box disponible</div>`}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="document.getElementById('modal-code').style.filter='none'">Voir code</button>${box.status==="free"?`<button class="btn btn-primary" onclick="this.closest('.overlay').remove();openAddLocataire()">Attribuer</button>`:''}${tenant&&tenant.statut_paiement==="late"?`<button class="btn btn-danger" onclick="toast('Relance envoyée');this.closest('.overlay').remove()">Relancer</button>`:''}</div></div>`;
+  overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
+  document.body.appendChild(overlay);
+}
+
+// ── LOGIQUE DRAG & DROP ───────────────────────────────────────
+let draggedBoxId = null;
+let startX, startY, initialBoxX, initialBoxY;
+
+window.initDrag = function(e, id) {
+  if (e.button !== 0) return; 
+  
+  draggedBoxId = id;
+  startX = e.clientX;
+  startY = e.clientY;
+  
+  const el = document.getElementById('box-drag-' + id);
+  initialBoxX = parseInt(el.style.left, 10) || 0;
+  initialBoxY = parseInt(el.style.top, 10) || 0;
+
+  document.addEventListener('mousemove', onDrag);
+  document.addEventListener('mouseup', stopDrag);
+};
+
+function onDrag(e) {
+  if (!draggedBoxId) return;
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
+  
+  const el = document.getElementById('box-drag-' + draggedBoxId);
+  
+  const newX = Math.round((initialBoxX + dx) / 10) * 10;
+  const newY = Math.round((initialBoxY + dy) / 10) * 10;
+  
+  el.style.left = Math.max(0, newX) + 'px';
+  el.style.top = Math.max(0, newY) + 'px';
+}
+
+async function stopDrag() {
+  if (!draggedBoxId) return;
+  
+  const el = document.getElementById('box-drag-' + draggedBoxId);
+  const finalX = parseInt(el.style.left, 10);
+  const finalY = parseInt(el.style.top, 10);
+
+  const box = boxes.find(b => b.id === draggedBoxId);
+  if(box) {
+    box.pos_x = finalX;
+    box.pos_y = finalY;
+  }
+
+  // TODO : Décommentez cette ligne quand vous aurez ajouté pos_x et pos_y dans Supabase
+  // await sb.from('boxes').update({ pos_x: finalX, pos_y: finalY }).eq('id', draggedBoxId);
+  
+  toast('Position mémorisée');
+
+  document.removeEventListener('mousemove', onDrag);
+  document.removeEventListener('mouseup', stopDrag);
+  draggedBoxId = null;
+}
+
+window.organiserAuto = async function() {
+  if(!confirm('Réorganiser tous les box automatiquement ?')) return;
+  
+  boxes.forEach((b, index) => {
+    b.pos_x = (index % 10) * 80 + 20; 
+    b.pos_y = Math.floor(index / 10) * 80 + 20;
+    
+    // Décommentez pour sauvegarder dans Supabase
+    // sb.from('boxes').update({ pos_x: b.pos_x, pos_y: b.pos_y }).eq('id', b.id);
+  });
+  
+  renderPage();
+  toast('Box réorganisés');
+};
+
+go('dashboard');
+</script>
+</body>
+</html>
