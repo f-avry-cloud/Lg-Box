@@ -6,89 +6,100 @@
 <title>LG BOX — Back-office</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{
+  --ink:#f1f2f4; --surface:#ffffff; --surface-hi:#f5f6f8; --hairline:#e1e4e8;
+  --text:#1a1d21; --muted:#6b7280; --muted-2:#9aa0a6;
+  --signal:#0b8fa3; --signal-dim:#e4f4f6; --signal-hover:#0a7788;
+  --green:#1f9d55; --green-dim:#e6f6ed; --green-border:#b8e3c8;
+  --red:#dc3b34; --red-dim:#fcebea; --red-border:#f3b9b5;
+  --amber:#b8791f; --amber-dim:#fbf1e0; --amber-border:#e9cf9e;
+  --blue:#2f6fb0; --blue-dim:#e8f1fa; --blue-border:#bcd9f0;
+  --gray-dim:#eef0f2; --gray-border:#d8dbde;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,sans-serif;font-size:14px;background:#0c0c0c;color:#f0ece4}
+body{font-family:'Inter',system-ui,sans-serif;font-size:14px;background:var(--ink);color:var(--text)}
 .app{display:flex;height:100vh}
-.sidebar{width:190px;background:#161616;border-right:1px solid #222;display:flex;flex-direction:column;flex-shrink:0}
-.logo{padding:16px;border-bottom:1px solid #222}
-.logo-title{font-size:15px;font-weight:600;color:#d4a843}
-.logo-sub{font-size:10px;color:#444;margin-top:2px}
+.sidebar{width:190px;background:var(--surface);border-right:1px solid var(--hairline);display:flex;flex-direction:column;flex-shrink:0}
+.logo{padding:16px;border-bottom:1px solid var(--hairline)}
+.logo-title{font-family:'Space Grotesk';font-size:15px;font-weight:600;color:var(--signal)}
+.logo-sub{font-size:10px;color:var(--muted-2);margin-top:2px}
 .nav{flex:1;padding:8px 6px;overflow-y:auto}
-.nav-section{font-size:10px;color:#444;text-transform:uppercase;letter-spacing:1px;padding:10px 10px 4px}
-.nav-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:5px;cursor:pointer;font-size:13px;color:#888;margin-bottom:1px}
-.nav-item:hover{background:#1f1f1f;color:#f0ece4}
-.nav-item.active{background:#1f1f1f;color:#f0ece4;font-weight:500;border:1px solid #333}
-.occ-bar{padding:12px 14px;border-top:1px solid #222;font-size:12px;color:#555}
-.bar-track{height:3px;background:#222;border-radius:99px;margin-top:6px}
-.bar-fill{height:100%;border-radius:99px;background:#d4a843}
+.nav-section{font-size:10px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1px;padding:10px 10px 4px}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;cursor:pointer;font-size:13px;color:var(--muted);margin-bottom:1px}
+.nav-item:hover{background:var(--surface-hi);color:var(--text)}
+.nav-item.active{background:var(--signal-dim);color:var(--signal);font-weight:500;border:1px solid transparent}
+.occ-bar{padding:12px 14px;border-top:1px solid var(--hairline);font-size:12px;color:var(--muted)}
+.bar-track{height:3px;background:var(--hairline);border-radius:99px;margin-top:6px}
+.bar-fill{height:100%;border-radius:99px;background:var(--signal)}
 .main{flex:1;display:flex;flex-direction:column;min-width:0}
-.topbar{height:48px;border-bottom:1px solid #222;display:flex;align-items:center;padding:0 20px;background:#161616;flex-shrink:0}
-.topbar-title{font-size:16px;font-weight:600;flex:1}
+.topbar{height:48px;border-bottom:1px solid var(--hairline);display:flex;align-items:center;padding:0 20px;background:var(--surface);flex-shrink:0}
+.topbar-title{font-family:'Space Grotesk';font-size:17px;font-weight:600;flex:1}
 .content{flex:1;overflow-y:auto;padding:20px}
 .kpis{display:grid;gap:10px;margin-bottom:18px}
-.kpi{background:#161616;border:1px solid #222;border-radius:7px;padding:14px}
-.kpi-label{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
-.kpi-val{font-size:22px;font-weight:600;line-height:1}
-.kpi-sub{font-size:11px;color:#666;margin-top:4px}
+.kpi{background:var(--surface);border:1px solid var(--hairline);border-radius:12px;padding:14px;box-shadow:0 1px 2px rgba(20,20,20,.03)}
+.kpi-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi-val{font-family:'Space Grotesk';font-size:23px;font-weight:700;line-height:1}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:4px}
 .legend{display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap}
-.legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#666}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
 .dot{width:7px;height:7px;border-radius:50%}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:5px;margin-bottom:18px}
-.box-cell{border-radius:5px;border:1px solid;padding:7px 4px;cursor:pointer;text-align:center}
+.box-cell{border-radius:7px;border:1px solid;padding:7px 4px;cursor:pointer;text-align:center}
 .box-cell:hover{opacity:.7}
-.box-num{font-family:monospace;font-size:10px;font-weight:600}
-.box-sz{font-family:monospace;font-size:9px;color:#555;margin-top:1px}
-.card{background:#161616;border:1px solid #222;border-radius:7px;overflow:hidden;margin-bottom:14px}
-.card-head{padding:12px 16px;border-bottom:1px solid #222;font-weight:500;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.box-num{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600}
+.box-sz{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);margin-top:1px}
+.card{background:var(--surface);border:1px solid var(--hairline);border-radius:12px;overflow:hidden;margin-bottom:14px;box-shadow:0 1px 2px rgba(20,20,20,.03)}
+.card-head{padding:12px 16px;border-bottom:1px solid var(--hairline);font-weight:500;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 table{width:100%;border-collapse:collapse}
-th{padding:8px 14px;text-align:left;font-size:10px;color:#555;font-weight:400;border-bottom:1px solid #222;text-transform:uppercase;letter-spacing:.5px}
-td{padding:10px 14px;font-size:13px;border-bottom:1px solid #1a1a1a}
+th{padding:8px 14px;text-align:left;font-size:10px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--hairline);text-transform:uppercase;letter-spacing:.5px}
+td{padding:10px 14px;font-size:13px;border-bottom:1px solid var(--surface-hi)}
 tr:last-child td{border-bottom:none}
-tr:hover td{background:#1a1a1a}
-.bdg{display:inline-flex;padding:2px 7px;border-radius:4px;font-size:11px;font-family:monospace}
-.bdg-blue{background:#0a1628;color:#60a5fa;border:1px solid #1e3a6e}
-.bdg-green{background:#0a1a0a;color:#4ade80;border:1px solid #1a4a1a}
-.bdg-red{background:#1a0a0a;color:#f87171;border:1px solid #4a1a1a}
-.bdg-warn{background:#1a1500;color:#fbbf24;border:1px solid #4a3a00}
-.bdg-gray{background:#1a1a1a;color:#888;border:1px solid #333}
-.btn{padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;font-family:inherit;border:1px solid #333;background:transparent;color:#f0ece4}
-.btn:hover{background:#1f1f1f}
-.btn-primary{background:#d4a843;color:#000;border-color:#d4a843;font-weight:500}
-.btn-primary:hover{background:#c09030}
-.btn-success{background:transparent;color:#4ade80;border-color:#1a4a1a}
-.btn-danger{color:#f87171;border-color:#4a1a1a}
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:100}
-.modal{background:#161616;border:1px solid #333;border-radius:10px;width:560px;max-width:95vw;padding:24px;max-height:90vh;overflow-y:auto}
+tr:hover td{background:var(--surface-hi)}
+.bdg{display:inline-flex;padding:2px 7px;border-radius:5px;font-size:11px;font-family:'IBM Plex Mono',monospace}
+.bdg-blue{background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue-border)}
+.bdg-green{background:var(--green-dim);color:var(--green);border:1px solid var(--green-border)}
+.bdg-red{background:var(--red-dim);color:var(--red);border:1px solid var(--red-border)}
+.bdg-warn{background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber-border)}
+.bdg-gray{background:var(--gray-dim);color:var(--muted);border:1px solid var(--gray-border)}
+.btn{padding:5px 12px;border-radius:7px;font-size:12px;cursor:pointer;font-family:inherit;border:1px solid var(--gray-border);background:transparent;color:var(--text)}
+.btn:hover{background:var(--surface-hi)}
+.btn-primary{background:var(--signal);color:#fff;border-color:var(--signal);font-weight:500}
+.btn-primary:hover{background:var(--signal-hover)}
+.btn-success{background:transparent;color:var(--green);border-color:var(--green-border)}
+.btn-danger{color:var(--red);border-color:var(--red-border)}
+.overlay{position:fixed;inset:0;background:rgba(20,20,20,.4);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal{background:var(--surface);border:1px solid var(--hairline);border-radius:14px;width:560px;max-width:95vw;padding:24px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 40px -20px rgba(20,20,20,.25)}
 .field{margin-bottom:14px}
-.field label{display:block;font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
-.field input,.field select{width:100%;background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:8px 11px;color:#f0ece4;font-family:inherit;font-size:13px;outline:none}
-.field input:focus{border-color:#d4a843}
-.toast{position:fixed;bottom:20px;right:20px;background:#0a1a0a;border:1px solid #4ade80;border-radius:6px;padding:12px 18px;font-size:13px;color:#4ade80;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none}
+.field label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.field input,.field select{width:100%;background:var(--surface-hi);border:1px solid var(--gray-border);border-radius:7px;padding:8px 11px;color:var(--text);font-family:inherit;font-size:13px;outline:none}
+.field input:focus{border-color:var(--signal)}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--green-dim);border:1px solid var(--green);border-radius:8px;padding:12px 18px;font-size:13px;color:var(--green);z-index:200;opacity:0;transition:opacity .3s;pointer-events:none;box-shadow:0 8px 20px -8px rgba(20,20,20,.15)}
 .toast.show{opacity:1}
-.loading{text-align:center;padding:40px;color:#555}
-.drop-zone{border:2px dashed #333;border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:border .2s;margin-bottom:16px}
-.drop-zone:hover,.drop-zone.drag{border-color:#d4a843;background:#1a1500}
+.loading{text-align:center;padding:40px;color:var(--muted)}
+.drop-zone{border:2px dashed var(--gray-border);border-radius:10px;padding:32px;text-align:center;cursor:pointer;transition:border .2s;margin-bottom:16px}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--signal);background:var(--signal-dim)}
 .drop-zone-icon{font-size:32px;margin-bottom:10px}
-.drop-zone-text{font-size:14px;color:#888;margin-bottom:4px}
-.drop-zone-sub{font-size:12px;color:#555}
-.reconcile-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #1a1a1a;flex-wrap:wrap}
+.drop-zone-text{font-size:14px;color:var(--muted);margin-bottom:4px}
+.drop-zone-sub{font-size:12px;color:var(--muted)}
+.reconcile-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--surface-hi);flex-wrap:wrap}
 .reconcile-row:last-child{border-bottom:none}
-.reconcile-row.matched{background:#0a1a0a}
-.reconcile-row.unmatched{background:#1a0a00}
-.reconcile-row.unknown{background:#1a1a00}
+.reconcile-row.matched{background:var(--green-dim)}
+.reconcile-row.unmatched{background:var(--amber-dim)}
+.reconcile-row.unknown{background:var(--surface-hi)}
 .match-indicator{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.info-banner{background:#0a1628;border:1px solid #1e3a6e;border-radius:6px;padding:12px 16px;font-size:12px;color:#60a5fa;margin-bottom:14px;line-height:1.6}
+.info-banner{background:var(--blue-dim);border:1px solid var(--blue-border);border-radius:8px;padding:12px 16px;font-size:12px;color:var(--blue);margin-bottom:14px;line-height:1.6}
 
-/* --- NOUVEAUX STYLES POUR LE PLAN INTERACTIF --- */
+/* --- PLAN INTERACTIF --- */
 .plan-container {
   position: relative;
   width: 100%;
   height: calc(100vh - 120px);
-  background: #111;
-  border: 1px solid #222;
-  border-radius: 8px;
+  background: var(--surface-hi);
+  border: 1px dashed var(--gray-border);
+  border-radius: 10px;
   overflow: auto;
-  background-image: radial-gradient(#333 1px, transparent 1px);
+  background-image: radial-gradient(#dfe2e5 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
@@ -96,14 +107,15 @@ tr:hover td{background:#1a1a1a}
   position: absolute;
   width: 70px;
   height: 70px;
-  border-radius: 5px;
+  border-radius: 7px;
   border: 1px solid;
   padding: 8px 4px;
   text-align: center;
   cursor: grab;
   user-select: none;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 10px -4px rgba(20,20,20,.15);
   transition: transform 0.1s;
+  background: var(--surface);
 }
 
 .box-draggable:active {
@@ -142,15 +154,15 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const CFG={
-  occ:{label:"Loué",dot:"#378ADD",bg:"#060e1a",border:"#1e3a6e"},
-  late:{label:"Impayé",dot:"#E24B4A",bg:"#1a0606",border:"#6e1e1e"},
-  free:{label:"Libre",dot:"#888780",bg:"#111",border:"#333"},
-  rsv:{label:"Réservé",dot:"#BA7517",bg:"#1a1500",border:"#6e5000"},
-  mnt:{label:"Maintenance",dot:"#5F5E5A",bg:"#111",border:"#2a2a2a"},
+  occ:{label:"Loué",dot:"#2f6fb0",bg:"#e8f1fa",border:"#bcd9f0"},
+  late:{label:"Impayé",dot:"#dc3b34",bg:"#fcebea",border:"#f3b9b5"},
+  free:{label:"Libre",dot:"#8b9198780",bg:"#f5f6f8",border:"#d8dbde"},
+  rsv:{label:"Réservé",dot:"#b8791f",bg:"#fbf1e0",border:"#e9cf9e"},
+  mnt:{label:"Maintenance",dot:"#6b7280",bg:"#f5f6f8",border:"#d8dbde"},
 };
 
 let page="dashboard", boxes=[], locataires=[], expandedTenant=null;
-let bankLines=[], reconcileResults=[];
+let bankLines=[], reconcileResults=[], signatures=[];
 
 function toast(msg){const t=document.getElementById('toast');t.textContent='✓ '+msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 function bdg(cls,text){return `<span class="bdg bdg-${cls}">${text}</span>`;}
@@ -183,12 +195,14 @@ function renderNav(){
 async function go(p){page=p;expandedTenant=null;renderNav();await renderPage();}
 
 async function loadData(){
-  const[b,l]=await Promise.all([
+  const[b,l,s]=await Promise.all([
     sb.from('boxes').select('*').order('numero'),
     sb.from('locataires').select('*').order('nom'),
+    sb.from('signatures_bancaires').select('*'),
   ]);
   boxes=b.data||[];
   locataires=l.data||[];
+  signatures=s.data||[]; // table absente tant que la migration SQL n'a pas été exécutée — fallback silencieux
 }
 
 async function renderPage(){
@@ -206,13 +220,13 @@ function renderDashboard(){
   const late=boxes.filter(b=>b.status==="late").length;
   const rev=boxes.filter(b=>b.status==="occ").reduce((s,b)=>s+b.loyer,0);
   const grid=boxes.map(b=>{const c=CFG[b.status]||CFG.free;return `<div class="box-cell" style="background:${c.bg};border-color:${c.border}" onclick="openBox(${b.id})" title="${b.numero}"><div style="width:5px;height:5px;border-radius:50%;background:${c.dot};margin:0 auto 3px"></div><div class="box-num">${b.numero}</div><div class="box-sz">${b.surface}m²</div></div>`;}).join('');
-  const lateList=locataires.filter(l=>l.statut_paiement==="late").map(l=>`<tr><td style="font-weight:500">${l.nom} ${l.prenom||''}</td><td>${bdg('blue',l.box_numero||'—')}</td><td style="font-family:monospace">€${l.loyer_mensuel||'—'}</td><td><button class="btn btn-danger" onclick="toast('Relance envoyée à ${l.nom}')">Relancer</button></td></tr>`).join('')||'<tr><td colspan="4" style="color:#555;text-align:center;padding:20px">Aucun impayé 🎉</td></tr>';
+  const lateList=locataires.filter(l=>l.statut_paiement==="late").map(l=>`<tr><td style="font-weight:500">${l.nom} ${l.prenom||''}</td><td>${bdg('blue',l.box_numero||'—')}</td><td style="font-family:monospace">€${l.loyer_mensuel||'—'}</td><td><button class="btn btn-danger" onclick="toast('Relance envoyée à ${l.nom}')">Relancer</button></td></tr>`).join('')||'<tr><td colspan="4" style="color:#6b7280;text-align:center;padding:20px">Aucun impayé 🎉</td></tr>';
   return `
     <div class="kpis" style="grid-template-columns:repeat(4,1fr)">
       <div class="kpi"><div class="kpi-label">Occupation</div><div class="kpi-val">${Math.round(occ/(boxes.length||1)*100)}%</div><div class="kpi-sub">${occ}/${boxes.length} box</div></div>
-      <div class="kpi"><div class="kpi-label">Revenus/mois</div><div class="kpi-val" style="color:#4ade80">€${rev.toLocaleString()}</div><div class="kpi-sub">loyers actifs</div></div>
-      <div class="kpi"><div class="kpi-label">Box libres</div><div class="kpi-val" style="color:#60a5fa">${free}</div><div class="kpi-sub">disponibles</div></div>
-      <div class="kpi"><div class="kpi-label">Impayés</div><div class="kpi-val" style="color:#f87171">${late}</div><div class="kpi-sub">à relancer</div></div>
+      <div class="kpi"><div class="kpi-label">Revenus/mois</div><div class="kpi-val" style="color:#1f9d55">€${rev.toLocaleString()}</div><div class="kpi-sub">loyers actifs</div></div>
+      <div class="kpi"><div class="kpi-label">Box libres</div><div class="kpi-val" style="color:#2f6fb0">${free}</div><div class="kpi-sub">disponibles</div></div>
+      <div class="kpi"><div class="kpi-label">Impayés</div><div class="kpi-val" style="color:#dc3b34">${late}</div><div class="kpi-sub">à relancer</div></div>
     </div>
     <div class="legend">${Object.entries(CFG).map(([k,v])=>`<div class="legend-item"><div class="dot" style="background:${v.dot}"></div>${v.label} (${boxes.filter(b=>b.status===k).length})</div>`).join('')}</div>
     <div class="grid">${grid}</div>
@@ -246,7 +260,7 @@ function renderBoxes() {
 
   return `
     <div style="margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
-      <span style="font-size:12px; color:#888;">💡 Glissez-déposez pour organiser le plan. Double-cliquez sur un box pour les détails.</span>
+      <span style="font-size:12px; color:#8b9198;">💡 Glissez-déposez pour organiser le plan. Double-cliquez sur un box pour les détails.</span>
       <button class="btn" onclick="organiserAuto()">Réorganiser la grille</button>
     </div>
     <div class="plan-container" id="plan-bureau">
@@ -261,24 +275,24 @@ function renderLocataires(){
     const sc=l.statut_paiement==="ok"?"green":l.statut_paiement==="late"?"red":"warn";
     const sl=l.statut_paiement==="ok"?"À jour":l.statut_paiement==="late"?"Impayé":"Réservé";
     const exp=expandedTenant===l.id;
-    return `<tr onclick="expandTenant(${l.id})" style="cursor:pointer"><td style="font-weight:500">${l.nom} ${l.prenom||''}</td><td>${bdg('blue',l.box_numero||'—')}</td><td style="font-size:12px;color:#666">${l.email}</td><td style="font-family:monospace">€${l.loyer_mensuel||'—'}</td><td>${bdg(sc,sl)}</td><td>${l.statut_paiement==="late"?`<button class="btn btn-danger" onclick="event.stopPropagation();toast('Relance envoyée à ${l.nom}')">Relancer</button>`:''}</td></tr>
-    ${exp?`<tr><td colspan="6" style="padding:0"><div style="background:#1a1a1a;padding:14px 16px"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px"><div style="background:#161616;border:1px solid #222;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#555;text-transform:uppercase;margin-bottom:3px">Téléphone</div><div style="font-size:12px">${l.telephone||'—'}</div></div><div style="background:#161616;border:1px solid #222;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#555;text-transform:uppercase;margin-bottom:3px">Depuis</div><div style="font-size:12px">${l.date_entree||'—'}</div></div><div style="background:#161616;border:1px solid #222;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#555;text-transform:uppercase;margin-bottom:3px">Box</div><div style="font-weight:500">${l.box_numero||'—'}</div></div></div><div style="display:flex;gap:8px"><button class="btn" onclick="toast('Contrat PDF généré')">Contrat PDF</button><button class="btn" onclick="toast('Mandat SEPA PDF généré')">Mandat SEPA PDF</button><button class="btn btn-danger" onclick="deleteLocataire(${l.id})">Supprimer</button></div></div></td></tr>`:''}`;
-  }).join('')||'<tr><td colspan="6" style="color:#555;text-align:center;padding:20px">Aucun locataire</td></tr>';
+    return `<tr onclick="expandTenant(${l.id})" style="cursor:pointer"><td style="font-weight:500">${l.nom} ${l.prenom||''}</td><td>${bdg('blue',l.box_numero||'—')}</td><td style="font-size:12px;color:#6b7280">${l.email}</td><td style="font-family:monospace">€${l.loyer_mensuel||'—'}</td><td>${bdg(sc,sl)}</td><td>${l.statut_paiement==="late"?`<button class="btn btn-danger" onclick="event.stopPropagation();toast('Relance envoyée à ${l.nom}')">Relancer</button>`:''}</td></tr>
+    ${exp?`<tr><td colspan="6" style="padding:0"><div style="background:#f5f6f8;padding:14px 16px"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px"><div style="background:#ffffff;border:1px solid #e1e4e8;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Téléphone</div><div style="font-size:12px">${l.telephone||'—'}</div></div><div style="background:#ffffff;border:1px solid #e1e4e8;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Depuis</div><div style="font-size:12px">${l.date_entree||'—'}</div></div><div style="background:#ffffff;border:1px solid #e1e4e8;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Box</div><div style="font-weight:500">${l.box_numero||'—'}</div></div></div><div style="display:flex;gap:8px"><button class="btn" onclick="toast('Contrat PDF généré')">Contrat PDF</button><button class="btn" onclick="toast('Mandat SEPA PDF généré')">Mandat SEPA PDF</button><button class="btn btn-danger" onclick="deleteLocataire(${l.id})">Supprimer</button></div></div></td></tr>`:''}`;
+  }).join('')||'<tr><td colspan="6" style="color:#6b7280;text-align:center;padding:20px">Aucun locataire</td></tr>';
   return `<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn btn-primary" onclick="openAddLocataire()">+ Nouveau locataire</button></div><div class="card"><div class="card-head">Locataires — cliquer pour détails</div><table><thead><tr><th>Nom</th><th>Box</th><th>Email</th><th>Loyer</th><th>Statut</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 // ── PAIEMENTS ─────────────────────────────────────────────────
 function renderPaiements(){
-  const rows=locataires.map(l=>{const s=l.statut_paiement;return `<tr><td style="font-weight:500">${l.nom} ${l.prenom||''}</td><td>${bdg('blue',l.box_numero||'—')}</td><td style="font-family:monospace">€${l.loyer_mensuel||'—'}</td><td>${bdg(s==="ok"?"green":"red",s==="ok"?"✓ À jour":"⚠ Impayé")}</td><td>${s==="late"?`<button class="btn btn-danger" onclick="marquerImpaye(${l.id},'ok')">Marquer payé</button>`:`<button class="btn btn-danger" onclick="marquerImpaye(${l.id},'late')">Marquer impayé</button>`}</td></tr>`;}).join('')||'<tr><td colspan="5" style="color:#555;text-align:center;padding:20px">Aucun locataire</td></tr>';
+  const rows=locataires.map(l=>{const s=l.statut_paiement;return `<tr><td style="font-weight:500">${l.nom} ${l.prenom||''}</td><td>${bdg('blue',l.box_numero||'—')}</td><td style="font-family:monospace">€${l.loyer_mensuel||'—'}</td><td>${bdg(s==="ok"?"green":"red",s==="ok"?"✓ À jour":"⚠ Impayé")}</td><td>${s==="late"?`<button class="btn btn-danger" onclick="marquerImpaye(${l.id},'ok')">Marquer payé</button>`:`<button class="btn btn-danger" onclick="marquerImpaye(${l.id},'late')">Marquer impayé</button>`}</td></tr>`;}).join('')||'<tr><td colspan="5" style="color:#6b7280;text-align:center;padding:20px">Aucun locataire</td></tr>';
   const totalRev=locataires.filter(l=>l.statut_paiement==="ok").reduce((s,l)=>s+(l.loyer_mensuel||0),0);
   const totalImp=locataires.filter(l=>l.statut_paiement==="late").reduce((s,l)=>s+(l.loyer_mensuel||0),0);
   return `
     <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
-      <div class="kpi"><div class="kpi-label">Encaissé</div><div class="kpi-val" style="color:#4ade80">€${totalRev.toLocaleString()}</div><div class="kpi-sub">${locataires.filter(l=>l.statut_paiement==="ok").length} locataires</div></div>
-      <div class="kpi"><div class="kpi-label">Impayés</div><div class="kpi-val" style="color:#f87171">€${totalImp.toLocaleString()}</div><div class="kpi-sub">${locataires.filter(l=>l.statut_paiement==="late").length} locataires</div></div>
+      <div class="kpi"><div class="kpi-label">Encaissé</div><div class="kpi-val" style="color:#1f9d55">€${totalRev.toLocaleString()}</div><div class="kpi-sub">${locataires.filter(l=>l.statut_paiement==="ok").length} locataires</div></div>
+      <div class="kpi"><div class="kpi-label">Impayés</div><div class="kpi-val" style="color:#dc3b34">€${totalImp.toLocaleString()}</div><div class="kpi-sub">${locataires.filter(l=>l.statut_paiement==="late").length} locataires</div></div>
       <div class="kpi"><div class="kpi-label">Total locataires</div><div class="kpi-val">${locataires.length}</div><div class="kpi-sub">actifs</div></div>
     </div>
-    <div class="card"><div class="card-head">Suivi paiements manuel<span style="font-size:11px;color:#555;font-weight:400">ou utilisez le Rapprochement bancaire →</span></div><table><thead><tr><th>Locataire</th><th>Box</th><th>Loyer</th><th>Statut</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    <div class="card"><div class="card-head">Suivi paiements manuel<span style="font-size:11px;color:#6b7280;font-weight:400">ou utilisez le Rapprochement bancaire →</span></div><table><thead><tr><th>Locataire</th><th>Box</th><th>Loyer</th><th>Statut</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 // ── RAPPROCHEMENT BANCAIRE ────────────────────────────────────
@@ -298,13 +312,13 @@ function renderRapprochement(){
       </div>
       <div class="card">
         <div class="card-head">Format attendu du fichier CSV</div>
-        <div style="padding:14px 16px;font-size:12px;color:#666;line-height:2;font-family:monospace">
+        <div style="padding:14px 16px;font-size:12px;color:#6b7280;line-height:2;font-family:monospace">
           Date;Libellé;Montant<br>
           01/05/2026;VIR DUPONT JEAN;140<br>
           02/05/2026;VIR LEROY SARAH;95<br>
           03/05/2026;PRLV EDF;-120<br>
         </div>
-        <div style="padding:10px 16px;border-top:1px solid #222;font-size:12px;color:#555">
+        <div style="padding:10px 16px;border-top:1px solid #e1e4e8;font-size:12px;color:#6b7280">
           La plupart des banques françaises (Crédit Agricole, BNP, CIC, Société Générale) exportent dans ce format. Cherchez "Exporter" ou "Télécharger" dans votre espace relevés.
         </div>
       </div>
@@ -321,18 +335,18 @@ function renderRapprochement(){
     const isMatch=!!r.locataire;
     const isPositif=r.montant>0;
     const rowClass=isMatch?'matched':isPositif?'unmatched':'';
-    const dotColor=isMatch?'#4ade80':isPositif?'#fbbf24':'#555';
+    const dotColor=isMatch?'#1f9d55':isPositif?'#b8791f':'#6b7280';
     return `
       <div class="reconcile-row ${rowClass}">
         <div class="match-indicator" style="background:${dotColor}"></div>
-        <div style="width:90px;font-size:12px;color:#666;flex-shrink:0">${r.date||'—'}</div>
-        <div style="flex:1;font-size:13px;font-family:monospace;color:#ccc">${r.libelle}</div>
-        <div style="width:90px;text-align:right;font-family:monospace;font-weight:600;color:${r.montant>0?'#4ade80':'#f87171'}">€${Math.abs(r.montant)}</div>
+        <div style="width:90px;font-size:12px;color:#6b7280;flex-shrink:0">${r.date||'—'}</div>
+        <div style="flex:1;font-size:13px;font-family:monospace;color:#374151">${r.libelle}</div>
+        <div style="width:90px;text-align:right;font-family:monospace;font-weight:600;color:${r.montant>0?'#1f9d55':'#dc3b34'}">€${Math.abs(r.montant)}</div>
         <div style="width:160px;text-align:right">
           ${isMatch
             ? `${bdg('green','✓ '+r.locataire.nom)}`
             : isPositif
-              ? `<select onchange="assignManuel(${reconcileResults.indexOf(r)},this.value)" style="background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:3px 6px;color:#f0ece4;font-size:11px;outline:none"><option value="">Assigner...</option>${locataires.map(l=>`<option value="${l.id}">${l.nom} ${l.prenom||''}</option>`).join('')}</select>`
+              ? `<select onchange="assignManuel(${reconcileResults.indexOf(r)},this.value)" style="background:#f5f6f8;border:1px solid #d8dbde;border-radius:4px;padding:3px 6px;color:#1a1d21;font-size:11px;outline:none"><option value="">Assigner...</option>${locataires.map(l=>`<option value="${l.id}">${l.nom} ${l.prenom||''}</option>`).join('')}</select>`
               : bdg('gray','Autre')
           }
         </div>
@@ -341,9 +355,9 @@ function renderRapprochement(){
 
   return `
     <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
-      <div class="kpi"><div class="kpi-label">Virements identifiés</div><div class="kpi-val" style="color:#4ade80">${matched.length}</div><div class="kpi-sub">sur ${reconcileResults.filter(r=>r.montant>0).length} entrées</div></div>
-      <div class="kpi"><div class="kpi-label">Non identifiés</div><div class="kpi-val" style="color:#fbbf24">${unmatched.length}</div><div class="kpi-sub">à assigner manuellement</div></div>
-      <div class="kpi"><div class="kpi-label">Total encaissé</div><div class="kpi-val" style="color:#4ade80">€${reconcileResults.filter(r=>r.montant>0).reduce((s,r)=>s+r.montant,0).toLocaleString()}</div><div class="kpi-sub">ce mois</div></div>
+      <div class="kpi"><div class="kpi-label">Virements identifiés</div><div class="kpi-val" style="color:#1f9d55">${matched.length}</div><div class="kpi-sub">sur ${reconcileResults.filter(r=>r.montant>0).length} entrées</div></div>
+      <div class="kpi"><div class="kpi-label">Non identifiés</div><div class="kpi-val" style="color:#b8791f">${unmatched.length}</div><div class="kpi-sub">à assigner manuellement</div></div>
+      <div class="kpi"><div class="kpi-label">Total encaissé</div><div class="kpi-val" style="color:#1f9d55">€${reconcileResults.filter(r=>r.montant>0).reduce((s,r)=>s+r.montant,0).toLocaleString()}</div><div class="kpi-sub">ce mois</div></div>
     </div>
     <div class="card">
       <div class="card-head">
@@ -353,10 +367,10 @@ function renderRapprochement(){
           <button class="btn btn-primary" onclick="appliquerRapprochement()">✓ Appliquer les mises à jour</button>
         </div>
       </div>
-      <div style="padding:8px 14px;background:#1a1a1a;border-bottom:1px solid #222;display:flex;gap:16px;font-size:11px;color:#555">
-        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4ade80;margin-right:4px"></span>Identifié automatiquement</span>
-        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fbbf24;margin-right:4px"></span>À assigner manuellement</span>
-        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#555;margin-right:4px"></span>Débit / autre</span>
+      <div style="padding:8px 14px;background:#f5f6f8;border-bottom:1px solid #e1e4e8;display:flex;gap:16px;font-size:11px;color:#6b7280">
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#1f9d55;margin-right:4px"></span>Identifié automatiquement</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#b8791f;margin-right:4px"></span>À assigner manuellement</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#6b7280;margin-right:4px"></span>Débit / autre</span>
       </div>
       ${rows}
     </div>`;
@@ -364,7 +378,7 @@ function renderRapprochement(){
 
 // ── PARAMÈTRES ────────────────────────────────────────────────
 function renderParametres(){
-  const rows=boxes.map(b=>`<tr><td>${bdg('blue',b.numero)}</td><td>${b.surface} m²</td><td><input type="number" value="${b.loyer}" id="loyer-${b.id}" style="width:80px;background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:4px 8px;color:#f0ece4;font-size:13px;outline:none"></td><td>${bdg(b.status==="occ"?"blue":b.status==="late"?"red":b.status==="free"?"gray":"warn",(CFG[b.status]||CFG.free).label)}</td><td><select id="status-${b.id}" style="background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:4px 8px;color:#f0ece4;font-size:12px;outline:none">${Object.entries(CFG).map(([k,v])=>`<option value="${k}" ${b.status===k?'selected':''}>${v.label}</option>`).join('')}</select></td><td><button class="btn" style="font-size:11px;padding:3px 8px" onclick="saveBox(${b.id})">Sauver</button></td></tr>`).join('');
+  const rows=boxes.map(b=>`<tr><td>${bdg('blue',b.numero)}</td><td>${b.surface} m²</td><td><input type="number" value="${b.loyer}" id="loyer-${b.id}" style="width:80px;background:#f5f6f8;border:1px solid #d8dbde;border-radius:4px;padding:4px 8px;color:#1a1d21;font-size:13px;outline:none"></td><td>${bdg(b.status==="occ"?"blue":b.status==="late"?"red":b.status==="free"?"gray":"warn",(CFG[b.status]||CFG.free).label)}</td><td><select id="status-${b.id}" style="background:#f5f6f8;border:1px solid #d8dbde;border-radius:4px;padding:4px 8px;color:#1a1d21;font-size:12px;outline:none">${Object.entries(CFG).map(([k,v])=>`<option value="${k}" ${b.status===k?'selected':''}>${v.label}</option>`).join('')}</select></td><td><button class="btn" style="font-size:11px;padding:3px 8px" onclick="saveBox(${b.id})">Sauver</button></td></tr>`).join('');
   return `<div class="card"><div class="card-head">Configuration des ${boxes.length} box</div><table><thead><tr><th>Box</th><th>Surface</th><th>Loyer HT</th><th>Statut actuel</th><th>Modifier statut</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
@@ -385,6 +399,19 @@ function readCSV(file){
     parseAndReconcile(text);
   };
   reader.readAsText(file,'UTF-8');
+}
+
+// Signature = version normalisée du libellé (chiffres, dates, mots de liaison retirés).
+// Sert d'empreinte stable pour reconnaître un émetteur même quand le libellé est peu informatif,
+// et surtout pour ne plus dépendre du seul montant (souvent identique entre locataires).
+function signatureOf(libelle){
+  return (libelle||'')
+    .toUpperCase()
+    .replace(/[0-9]/g,'')
+    .replace(/\b(VIR|VIREMENT|VIRT|PRLV|PRELEVEMENT|SEPA|DE|POUR|REF|REFERENCE|LE|DU|FACTURE|LOYER|BOX|STOCKAGE)\b/g,'')
+    .replace(/[^A-Z ]/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
 }
 
 function parseAndReconcile(text){
@@ -408,13 +435,26 @@ function parseAndReconcile(text){
       }
     }
     if(isNaN(montant)||libelle.toLowerCase().includes('libel')||libelle.toLowerCase().includes('label'))continue;
-    const libUpper=libelle.toUpperCase();
-    const locFound=locataires.find(l=>{
-      const nom=(l.nom||'').toUpperCase();
-      const prenom=(l.prenom||'').toUpperCase();
-      return libUpper.includes(nom)||(prenom&&libUpper.includes(prenom));
-    });
-    results.push({date,libelle,montant,locataire:locFound||null});
+
+    const sig=signatureOf(libelle);
+
+    // 1) Signature déjà connue (apprise lors d'un rapprochement précédent) → priorité absolue,
+    //    fiable même si le libellé ne contient pas le nom et même en cas de montants identiques entre locataires.
+    let locFound=null;
+    if(sig.length>=4){
+      const known=signatures.find(s=>s.signature===sig);
+      if(known) locFound=locataires.find(l=>l.id===known.locataire_id)||null;
+    }
+    // 2) Repli — nom ou prénom retrouvé littéralement dans le libellé
+    if(!locFound){
+      const libUpper=libelle.toUpperCase();
+      locFound=locataires.find(l=>{
+        const nom=(l.nom||'').toUpperCase();
+        const prenom=(l.prenom||'').toUpperCase();
+        return libUpper.includes(nom)||(prenom&&libUpper.includes(prenom));
+      })||null;
+    }
+    results.push({date,libelle,montant,locataire:locFound,sig});
   }
   if(results.length===0){toast('Fichier non reconnu — vérifiez le format CSV');return;}
   reconcileResults=results;
@@ -433,10 +473,17 @@ function loadDemoCSV(){
   parseAndReconcile(demo);
 }
 
-function assignManuel(index,locataireId){
+async function rememberSignature(sig,locataireId){
+  if(!sig||sig.length<4)return;
+  await sb.from('signatures_bancaires').upsert({signature:sig,locataire_id:locataireId},{onConflict:'signature'});
+}
+
+async function assignManuel(index,locataireId){
   if(!locataireId)return;
   const loc=locataires.find(l=>l.id===parseInt(locataireId));
-  if(loc)reconcileResults[index].locataire=loc;
+  if(!loc)return;
+  reconcileResults[index].locataire=loc;
+  await rememberSignature(reconcileResults[index].sig,loc.id);
   renderPage();
 }
 
@@ -445,6 +492,7 @@ async function appliquerRapprochement(){
   if(matched.length===0){toast('Aucun paiement à appliquer');return;}
   for(const r of matched){
     await sb.from('locataires').update({statut_paiement:'ok'}).eq('id',r.locataire.id);
+    await rememberSignature(r.sig,r.locataire.id);
   }
   toast(`${matched.length} paiements appliqués ✓`);
   reconcileResults=[];
@@ -479,7 +527,7 @@ function openAddLocataire(){
   const freeBoxes=boxes.filter(b=>b.status==="free");
   const overlay=document.createElement('div');
   overlay.className='overlay';
-  overlay.innerHTML=`<div class="modal"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px"><span style="font-size:16px;font-weight:600;color:#d4a843">Nouveau locataire</span><button onclick="this.closest('.overlay').remove()" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer">×</button></div><div class="field"><label>Nom</label><input id="f-nom" type="text" placeholder="Nom de famille"></div><div class="field"><label>Prénom</label><input id="f-prenom" type="text" placeholder="Prénom"></div><div class="field"><label>Email</label><input id="f-email" type="email" placeholder="email@exemple.fr"></div><div class="field"><label>Téléphone</label><input id="f-tel" type="tel" placeholder="06 xx xx xx xx"></div><div class="field"><label>Box attribué</label><select id="f-box"><option value="">Choisir un box libre...</option>${freeBoxes.map(b=>`<option value="${b.id}" data-num="${b.numero}" data-loyer="${b.loyer}">${b.numero} — ${b.surface}m² — €${b.loyer}/mois</option>`).join('')}</select></div><div class="field"><label>Date d'entrée</label><input id="f-date" type="date"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px"><button class="btn" onclick="this.closest('.overlay').remove()">Annuler</button><button class="btn btn-primary" onclick="saveLocataire()">Créer</button></div></div>`;
+  overlay.innerHTML=`<div class="modal"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px"><span style="font-size:16px;font-weight:600;color:#0b8fa3">Nouveau locataire</span><button onclick="this.closest('.overlay').remove()" style="background:none;border:none;color:#8b9198;font-size:22px;cursor:pointer">×</button></div><div class="field"><label>Nom</label><input id="f-nom" type="text" placeholder="Nom de famille"></div><div class="field"><label>Prénom</label><input id="f-prenom" type="text" placeholder="Prénom"></div><div class="field"><label>Email</label><input id="f-email" type="email" placeholder="email@exemple.fr"></div><div class="field"><label>Téléphone</label><input id="f-tel" type="tel" placeholder="06 xx xx xx xx"></div><div class="field"><label>Box attribué</label><select id="f-box"><option value="">Choisir un box libre...</option>${freeBoxes.map(b=>`<option value="${b.id}" data-num="${b.numero}" data-loyer="${b.loyer}">${b.numero} — ${b.surface}m² — €${b.loyer}/mois</option>`).join('')}</select></div><div class="field"><label>Date d'entrée</label><input id="f-date" type="date"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px"><button class="btn" onclick="this.closest('.overlay').remove()">Annuler</button><button class="btn btn-primary" onclick="saveLocataire()">Créer</button></div></div>`;
   overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
   document.body.appendChild(overlay);
 }
@@ -509,7 +557,7 @@ function openBox(id){
   const tenant=locataires.find(l=>l.box_id===id);
   const overlay=document.createElement('div');
   overlay.className='overlay';
-  overlay.innerHTML=`<div class="modal"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><span style="font-size:16px;font-weight:600">${box.numero}</span><button onclick="this.closest('.overlay').remove()" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer">×</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px"><div style="background:#1a1a1a;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#555;text-transform:uppercase;margin-bottom:3px">Surface</div><div style="font-weight:500">${box.surface} m²</div></div><div style="background:#1a1a1a;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#555;text-transform:uppercase;margin-bottom:3px">Loyer</div><div style="font-weight:500">€${box.loyer}/mois</div></div><div style="background:#1a1a1a;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#555;text-transform:uppercase;margin-bottom:3px">Statut</div><div>${bdg(box.status==="occ"?"blue":box.status==="late"?"red":box.status==="free"?"gray":"warn",cfg.label)}</div></div><div style="background:#1a1a1a;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#555;text-transform:uppercase;margin-bottom:3px">Code accès</div><div style="font-family:monospace;filter:blur(4px)" id="modal-code">${box.code_entree||'Non défini'}</div></div></div>${tenant?`<div style="background:#1a1a1a;border-radius:5px;padding:12px 14px;margin-bottom:14px"><div style="font-size:10px;color:#555;text-transform:uppercase;margin-bottom:8px">Locataire</div><div style="font-weight:500;margin-bottom:3px">${tenant.nom} ${tenant.prenom||''}</div><div style="font-size:12px;color:#666">${tenant.email}</div></div>`:`<div style="background:#1a1a1a;border-radius:5px;padding:12px;margin-bottom:14px;color:#666;font-size:13px">Box disponible</div>`}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="document.getElementById('modal-code').style.filter='none'">Voir code</button>${box.status==="free"?`<button class="btn btn-primary" onclick="this.closest('.overlay').remove();openAddLocataire()">Attribuer</button>`:''}${tenant&&tenant.statut_paiement==="late"?`<button class="btn btn-danger" onclick="toast('Relance envoyée');this.closest('.overlay').remove()">Relancer</button>`:''}</div></div>`;
+  overlay.innerHTML=`<div class="modal"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><span style="font-size:16px;font-weight:600">${box.numero}</span><button onclick="this.closest('.overlay').remove()" style="background:none;border:none;color:#8b9198;font-size:22px;cursor:pointer">×</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px"><div style="background:#f5f6f8;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Surface</div><div style="font-weight:500">${box.surface} m²</div></div><div style="background:#f5f6f8;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Loyer</div><div style="font-weight:500">€${box.loyer}/mois</div></div><div style="background:#f5f6f8;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Statut</div><div>${bdg(box.status==="occ"?"blue":box.status==="late"?"red":box.status==="free"?"gray":"warn",cfg.label)}</div></div><div style="background:#f5f6f8;border-radius:5px;padding:10px 12px"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Code accès</div><div style="font-family:monospace;filter:blur(4px)" id="modal-code">${box.code_entree||'Non défini'}</div></div></div>${tenant?`<div style="background:#f5f6f8;border-radius:5px;padding:12px 14px;margin-bottom:14px"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:8px">Locataire</div><div style="font-weight:500;margin-bottom:3px">${tenant.nom} ${tenant.prenom||''}</div><div style="font-size:12px;color:#6b7280">${tenant.email}</div></div>`:`<div style="background:#f5f6f8;border-radius:5px;padding:12px;margin-bottom:14px;color:#6b7280;font-size:13px">Box disponible</div>`}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="document.getElementById('modal-code').style.filter='none'">Voir code</button>${box.status==="free"?`<button class="btn btn-primary" onclick="this.closest('.overlay').remove();openAddLocataire()">Attribuer</button>`:''}${tenant&&tenant.statut_paiement==="late"?`<button class="btn btn-danger" onclick="toast('Relance envoyée');this.closest('.overlay').remove()">Relancer</button>`:''}</div></div>`;
   overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
   document.body.appendChild(overlay);
 }
@@ -560,10 +608,9 @@ async function stopDrag() {
     box.pos_y = finalY;
   }
 
-  // TODO : Décommentez cette ligne quand vous aurez ajouté pos_x et pos_y dans Supabase
-  // await sb.from('boxes').update({ pos_x: finalX, pos_y: finalY }).eq('id', draggedBoxId);
-  
-  toast('Position mémorisée');
+  await sb.from('boxes').update({ pos_x: finalX, pos_y: finalY }).eq('id', draggedBoxId);
+
+  toast('Position enregistrée ✓');
 
   document.removeEventListener('mousemove', onDrag);
   document.removeEventListener('mouseup', stopDrag);
@@ -574,15 +621,14 @@ window.organiserAuto = async function() {
   if(!confirm('Réorganiser tous les box automatiquement ?')) return;
   
   boxes.forEach((b, index) => {
-    b.pos_x = (index % 10) * 80 + 20; 
+    b.pos_x = (index % 10) * 80 + 20;
     b.pos_y = Math.floor(index / 10) * 80 + 20;
-    
-    // Décommentez pour sauvegarder dans Supabase
-    // sb.from('boxes').update({ pos_x: b.pos_x, pos_y: b.pos_y }).eq('id', b.id);
   });
-  
+
+  await Promise.all(boxes.map(b => sb.from('boxes').update({ pos_x: b.pos_x, pos_y: b.pos_y }).eq('id', b.id)));
+
   renderPage();
-  toast('Box réorganisés');
+  toast('Box réorganisés ✓');
 };
 
 go('dashboard');
