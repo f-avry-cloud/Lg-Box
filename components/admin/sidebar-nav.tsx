@@ -11,6 +11,8 @@ import {
   Inbox,
   Download,
   Settings,
+  Wallet,
+  Landmark,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -22,6 +24,8 @@ const NAV = [
   { href: "/admin/customers", label: "Clients", icon: Users, adminOnly: false },
   { href: "/admin/contracts", label: "Contrats", icon: FileText, adminOnly: false },
   { href: "/admin/invoices", label: "Facturation", icon: Receipt, adminOnly: false },
+  { href: "/admin/expenses", label: "Dépenses", icon: Wallet, adminOnly: false },
+  { href: "/admin/bank", label: "Rapprochement", icon: Landmark, adminOnly: false },
   { href: "/admin/reservations", label: "Demandes", icon: Inbox, adminOnly: false },
   { href: "/admin/reports", label: "Rapports", icon: Download, adminOnly: false },
   { href: "/admin/settings", label: "Paramètres", icon: Settings, adminOnly: true },

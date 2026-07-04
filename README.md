@@ -41,6 +41,11 @@ supabase/storage.sql
 supabase/seed.sql
 ```
 
+> Si votre projet Supabase a été initialisé **avant** l'ajout du plan visuel par
+> étage, du suivi des frais et du rapprochement bancaire, `schema.sql` contient
+> déjà tout pour une base neuve — mais sur une base existante, exécutez en plus
+> `supabase/migrations/002_v1_1.sql` une seule fois pour rattraper ces tables.
+
 Récupérez ensuite dans **Project Settings → API** :
 - `Project URL`
 - `anon public` key
@@ -144,6 +149,7 @@ Volontairement non développés dans ce MVP — l'architecture laisse la place p
 - **Multi-site avancé** : la table `sites` existe déjà et `units.site_id` y fait référence, mais l'UI ne gère qu'un site unique (pas de sélecteur de site, pas de permissions par site).
 - **Facturation multi-devise / multi-langue** : montants et textes sont actuellement en euros et en français uniquement.
 - **Demande de résiliation en self-service** (portail client) : le back-office permet déjà de donner congé et de calculer automatiquement la date de fin ; un formulaire client (`(Optionnel V1.1)` dans le brief) qui déclencherait la même Server Action `changeContractStatus` reste à ajouter si le flux téléphone/email actuel ne suffit plus.
+- **Agrégation bancaire automatique** : le rapprochement (`/admin/bank`) fonctionne aujourd'hui par import CSV manuel (`lib/actions/bank.ts`, table `bank_transactions`). Pour brancher une vraie API d'agrégation (Bridge, Powens/Budget Insight, GoCardless Bank Account Data...), il suffit d'ajouter une route qui appelle `importBankStatement()` avec les lignes récupérées depuis l'API au lieu du CSV — toute la logique de suggestion de rapprochement (`lib/business/reconciliation.ts`) et de validation reste identique.
 
 ## Limites connues de cette itération
 
