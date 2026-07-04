@@ -31,24 +31,24 @@ export function ReconcileRow({
       return;
     }
     startTransition(async () => {
-      try {
-        await validateBankMatch(transaction.id, selected);
-        toast.success("Rapprochement validé, facture marquée payée.");
-        router.refresh();
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Erreur.");
+      const result = await validateBankMatch(transaction.id, selected);
+      if (!result.success) {
+        toast.error(result.error ?? "Erreur.");
+        return;
       }
+      toast.success("Rapprochement validé, facture marquée payée.");
+      router.refresh();
     });
   }
 
   function handleIgnore() {
     startTransition(async () => {
-      try {
-        await ignoreBankTransaction(transaction.id);
-        router.refresh();
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Erreur.");
+      const result = await ignoreBankTransaction(transaction.id);
+      if (!result.success) {
+        toast.error(result.error ?? "Erreur.");
+        return;
       }
+      router.refresh();
     });
   }
 

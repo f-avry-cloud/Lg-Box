@@ -23,12 +23,12 @@ export function UnitStatusSelect({ unitId, status }: { unitId: string; status: U
       disabled={pending}
       onValueChange={(value) =>
         startTransition(async () => {
-          try {
-            await updateUnitStatus(unitId, value as UnitStatus);
-            toast.success("Statut du box mis à jour.");
-          } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Erreur.");
+          const result = await updateUnitStatus(unitId, value as UnitStatus);
+          if (!result.success) {
+            toast.error(result.error ?? "Erreur.");
+            return;
           }
+          toast.success("Statut du box mis à jour.");
         })
       }
     >

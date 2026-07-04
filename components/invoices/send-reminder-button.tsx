@@ -19,13 +19,13 @@ export function SendReminderButton({ invoiceId }: { invoiceId: string }) {
       disabled={pending}
       onClick={() =>
         startTransition(async () => {
-          try {
-            await sendManualReminder(invoiceId);
-            toast.success("Relance envoyée.");
-            router.refresh();
-          } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Erreur.");
+          const result = await sendManualReminder(invoiceId);
+          if (!result.success) {
+            toast.error(result.error ?? "Erreur.");
+            return;
           }
+          toast.success("Relance envoyée.");
+          router.refresh();
         })
       }
     >

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireAdmin, requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { ok, fail, type ActionResult } from "@/lib/actions/result";
 
 export type ExpenseFormState = { error: string | null; success?: boolean };
 
@@ -35,11 +36,12 @@ export async function createExpense(
   return { error: null, success: true };
 }
 
-export async function deleteExpense(expenseId: string) {
+export async function deleteExpense(expenseId: string): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createClient();
   const { error } = await supabase.from("expenses").delete().eq("id", expenseId);
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   revalidatePath("/admin/expenses");
   revalidatePath("/admin/reports");
+  return ok;
 }

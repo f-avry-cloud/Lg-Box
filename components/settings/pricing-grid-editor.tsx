@@ -17,24 +17,24 @@ export function PricingGridEditor({ rows }: { rows: PricingGridRow[] }) {
 
   function handleAdd(formData: FormData) {
     startTransition(async () => {
-      try {
-        await upsertPricingRow(formData);
-        toast.success("Tarif enregistré.");
-        router.refresh();
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Erreur.");
+      const result = await upsertPricingRow(formData);
+      if (!result.success) {
+        toast.error(result.error ?? "Erreur.");
+        return;
       }
+      toast.success("Tarif enregistré.");
+      router.refresh();
     });
   }
 
   function handleDelete(id: string) {
     startTransition(async () => {
-      try {
-        await deletePricingRow(id);
-        router.refresh();
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Erreur.");
+      const result = await deletePricingRow(id);
+      if (!result.success) {
+        toast.error(result.error ?? "Erreur.");
+        return;
       }
+      router.refresh();
     });
   }
 

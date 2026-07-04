@@ -21,12 +21,12 @@ export function CustomerNotes({ customerId, initialNotes }: { customerId: string
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
-            try {
-              await updateCustomerNotes(customerId, notes);
-              toast.success("Notes enregistrées.");
-            } catch (e) {
-              toast.error(e instanceof Error ? e.message : "Erreur.");
+            const result = await updateCustomerNotes(customerId, notes);
+            if (!result.success) {
+              toast.error(result.error ?? "Erreur.");
+              return;
             }
+            toast.success("Notes enregistrées.");
           })
         }
       >

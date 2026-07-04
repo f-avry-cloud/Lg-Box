@@ -11,6 +11,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { daysUntil } from "@/lib/business/notice";
 import { getResend, FROM_EMAIL } from "@/lib/email/resend";
 import { renderInvoiceReadyEmail, renderReminderEmail, type ReminderStage } from "@/lib/email/templates";
+import { ok, fail, type ActionResult } from "@/lib/actions/result";
 import type { PaymentMethod } from "@/types/database";
 
 export type InvoiceFormState = { error: string | null; success?: boolean; invoiceId?: string };
@@ -95,8 +96,13 @@ export async function sendInvoiceNotifications(invoiceIds: string[]): Promise<nu
       date_echeance: formatDate(invoice.date_echeance),
     });
 
-    await getResend().emails.send({ from: FROM_EMAIL, to: customer.email, subject, text });
-    sent += 1;
+    const { error: sendError } = await getResend().emails.send({
+      from: FROM_EMAIL,
+      to: customer.email,
+      subject,
+      text,
+    });
+    if (!sendError) sent += 1;
   }
 
   return sent;
@@ -138,12 +144,12 @@ export async function createManualInvoice(
 export async function markInvoicePaid(
   invoiceId: string,
   input: { montant: number; methode: PaymentMethod; datePaiement: string; reference?: string }
-) {
+): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();
 
   const { data: invoice } = await supabase.from("invoices").select("*").eq("id", invoiceId).single();
-  if (!invoice) throw new Error("Facture introuvable.");
+  if (!invoice) return fail("Facture introuvable.");
 
   const { error: paymentError } = await supabase.from("payments").insert({
     invoice_id: invoiceId,
@@ -154,35 +160,36 @@ export async function markInvoicePaid(
     reference: input.reference || null,
     statut: "valide",
   });
-  if (paymentError) throw new Error(paymentError.message);
+  if (paymentError) return fail(paymentError.message);
 
   const { error: invoiceError } = await supabase
     .from("invoices")
     .update({ statut: "payee" })
     .eq("id", invoiceId);
-  if (invoiceError) throw new Error(invoiceError.message);
+  if (invoiceError) return fail(invoiceError.message);
 
   revalidatePath(`/admin/invoices/${invoiceId}`);
   revalidatePath("/admin/invoices");
+  return ok;
 }
 
 // Envoi manuel d'une relance à la demande de l'admin (bouton "Relancer"),
 // indépendant du cron quotidien. Le palier de ton (j-3/j0/j+7/j+15) est
 // déduit du retard actuel. Toujours journalisé dans activity_log, sans
 // bloquer un futur envoi automatique du même palier ce jour-là.
-export async function sendManualReminder(invoiceId: string) {
+export async function sendManualReminder(invoiceId: string): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();
 
   const { data: invoice } = await supabase.from("invoices").select("*").eq("id", invoiceId).single();
-  if (!invoice) throw new Error("Facture introuvable.");
+  if (!invoice) return fail("Facture introuvable.");
 
   const { data: customer } = await supabase
     .from("customers")
     .select("prenom, email")
     .eq("id", invoice.customer_id)
     .single();
-  if (!customer) throw new Error("Client introuvable.");
+  if (!customer) return fail("Client introuvable.");
 
   const late = -daysUntil(new Date(invoice.date_echeance));
   let stage: ReminderStage = "j-3";
@@ -198,9 +205,16 @@ export async function sendManualReminder(invoiceId: string) {
   });
 
   if (!process.env.RESEND_API_KEY) {
-    throw new Error("RESEND_API_KEY non configurée — impossible d'envoyer l'email.");
+    return fail("RESEND_API_KEY non configurée dans les variables d'environnement Vercel — impossible d'envoyer l'email.");
   }
-  await getResend().emails.send({ from: FROM_EMAIL, to: customer.email, subject, text });
+
+  const { error: sendError } = await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: customer.email,
+    subject,
+    text,
+  });
+  if (sendError) return fail(sendError.message);
 
   await supabase.from("activity_log").insert({
     action: `reminder_manual_${stage}`,
@@ -210,30 +224,32 @@ export async function sendManualReminder(invoiceId: string) {
   });
 
   revalidatePath("/admin/invoices");
+  return ok;
 }
 
-export async function cancelInvoice(invoiceId: string) {
+export async function cancelInvoice(invoiceId: string): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();
   const { error } = await supabase.from("invoices").update({ statut: "annulee" }).eq("id", invoiceId);
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   revalidatePath(`/admin/invoices/${invoiceId}`);
   revalidatePath("/admin/invoices");
+  return ok;
 }
 
-export async function generateInvoicePdf(invoiceId: string): Promise<string> {
+export async function generateInvoicePdf(invoiceId: string): Promise<ActionResult & { path?: string }> {
   await requireStaff();
   const supabase = await createClient();
 
   const { data: invoice } = await supabase.from("invoices").select("*").eq("id", invoiceId).single();
-  if (!invoice) throw new Error("Facture introuvable.");
+  if (!invoice) return fail("Facture introuvable.");
   const { data: customer } = await supabase
     .from("customers")
     .select("*")
     .eq("id", invoice.customer_id)
     .single();
   const { data: company } = await supabase.from("company_settings").select("*").single();
-  if (!customer || !company) throw new Error("Données manquantes pour générer le PDF.");
+  if (!customer || !company) return fail("Données manquantes pour générer le PDF.");
 
   const buffer = await renderPdfBuffer(
     <InvoiceDocument invoice={invoice} customer={customer} company={company} />
@@ -244,10 +260,10 @@ export async function generateInvoicePdf(invoiceId: string): Promise<string> {
   const { error: uploadError } = await service.storage
     .from("invoices")
     .upload(path, buffer, { contentType: "application/pdf", upsert: true });
-  if (uploadError) throw new Error(uploadError.message);
+  if (uploadError) return fail(uploadError.message);
 
   await supabase.from("invoices").update({ facture_pdf_url: path }).eq("id", invoiceId);
   revalidatePath(`/admin/invoices/${invoiceId}`);
 
-  return path;
+  return { ...ok, path };
 }

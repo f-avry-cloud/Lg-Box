@@ -23,12 +23,12 @@ export function ReservationStatusSelect({ id, status }: { id: string; status: Re
       disabled={pending}
       onValueChange={(value) =>
         startTransition(async () => {
-          try {
-            await updateReservationStatus(id, value as ReservationStatus);
-            toast.success("Statut mis à jour.");
-          } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Erreur.");
+          const result = await updateReservationStatus(id, value as ReservationStatus);
+          if (!result.success) {
+            toast.error(result.error ?? "Erreur.");
+            return;
           }
+          toast.success("Statut mis à jour.");
         })
       }
     >

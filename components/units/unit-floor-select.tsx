@@ -24,13 +24,13 @@ export function UnitFloorSelect({ unitId, floor }: { unitId: string; floor: Unit
       disabled={pending}
       onValueChange={(value) =>
         startTransition(async () => {
-          try {
-            await updateUnitFloor(unitId, value as UnitFloor);
-            toast.success("Étage mis à jour — repositionnez le box dans le plan si besoin.");
-            router.refresh();
-          } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Erreur.");
+          const result = await updateUnitFloor(unitId, value as UnitFloor);
+          if (!result.success) {
+            toast.error(result.error ?? "Erreur.");
+            return;
           }
+          toast.success("Étage mis à jour — repositionnez le box dans le plan si besoin.");
+          router.refresh();
         })
       }
     >

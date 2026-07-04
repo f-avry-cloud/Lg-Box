@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { ok, fail, type ActionResult } from "@/lib/actions/result";
 
 export type SettingsFormState = { error: string | null; success?: boolean };
 
@@ -35,25 +36,27 @@ export async function updateCompanySettings(
   return { error: null, success: true };
 }
 
-export async function upsertPricingRow(formData: FormData) {
+export async function upsertPricingRow(formData: FormData): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createClient();
 
   const tailleLibelle = String(formData.get("taille_libelle") ?? "").trim();
   const prixMensuel = Number(formData.get("prix_mensuel") ?? 0);
-  if (!tailleLibelle) throw new Error("Taille requise.");
+  if (!tailleLibelle) return fail("Taille requise.");
 
   const { error } = await supabase
     .from("pricing_grid")
     .upsert({ taille_libelle: tailleLibelle, prix_mensuel: prixMensuel }, { onConflict: "taille_libelle" });
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   revalidatePath("/admin/settings");
+  return ok;
 }
 
-export async function deletePricingRow(id: string) {
+export async function deletePricingRow(id: string): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createClient();
   const { error } = await supabase.from("pricing_grid").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   revalidatePath("/admin/settings");
+  return ok;
 }
