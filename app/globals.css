@@ -1,29 +1,29 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f1f2f4;
-  --foreground: #1a1d21;
+  --background: #f7f4ee;
+  --foreground: #2a2620;
   --card: #ffffff;
-  --card-foreground: #1a1d21;
+  --card-foreground: #2a2620;
   --popover: #ffffff;
-  --popover-foreground: #1a1d21;
-  --primary: #0b8fa3;
+  --popover-foreground: #2a2620;
+  --primary: #12909f;
   --primary-foreground: #ffffff;
-  --secondary: #f5f6f8;
-  --secondary-foreground: #1a1d21;
-  --muted: #f5f6f8;
-  --muted-foreground: #6b7280;
-  --accent: #e4f4f6;
-  --accent-foreground: #0b8fa3;
-  --destructive: #dc3b34;
+  --secondary: #efeae1;
+  --secondary-foreground: #2a2620;
+  --muted: #efeae1;
+  --muted-foreground: #7a7266;
+  --accent: #e2f2f1;
+  --accent-foreground: #0f7a87;
+  --destructive: #d9483f;
   --destructive-foreground: #ffffff;
-  --success: #1f9d55;
+  --success: #2f9e5b;
   --success-foreground: #ffffff;
   --warning: #b8791f;
   --warning-foreground: #ffffff;
-  --border: #e1e4e8;
-  --input: #d8dbde;
-  --ring: #0b8fa3;
+  --border: #e6e0d4;
+  --input: #d9d1c0;
+  --ring: #12909f;
   --radius: 0.625rem;
 }
 
@@ -57,27 +57,6 @@
   --radius-xl: calc(var(--radius) + 4px);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #101214;
-    --foreground: #f1f2f4;
-    --card: #17191c;
-    --card-foreground: #f1f2f4;
-    --popover: #17191c;
-    --popover-foreground: #f1f2f4;
-    --primary: #29b6cf;
-    --primary-foreground: #08181c;
-    --secondary: #1d2023;
-    --secondary-foreground: #f1f2f4;
-    --muted: #1d2023;
-    --muted-foreground: #9aa0a6;
-    --accent: #16333a;
-    --accent-foreground: #29b6cf;
-    --border: #26292d;
-    --input: #2c3034;
-  }
 }
 
 body {
