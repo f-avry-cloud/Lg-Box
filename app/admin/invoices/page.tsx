@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { InvoiceStatusBadge } from "@/components/status-badge";
 import { InvoiceCreateDialog } from "@/components/invoices/invoice-create-dialog";
 import { BulkInvoiceButton } from "@/components/invoices/bulk-invoice-button";
+import { BulkReminderButton } from "@/components/invoices/bulk-reminder-button";
 import { MarkPaidDialog } from "@/components/invoices/mark-paid-dialog";
 import { SendReminderButton } from "@/components/invoices/send-reminder-button";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -66,8 +67,9 @@ export default async function InvoicesPage() {
           <h1 className="text-lg font-semibold">Facturation</h1>
           <p className="text-sm text-muted-foreground">{invoices?.length ?? 0} factures au total.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <BulkInvoiceButton />
+          <BulkReminderButton unpaidCount={unpaid.length} />
           <InvoiceCreateDialog contracts={contractOptions} />
         </div>
       </div>

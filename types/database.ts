@@ -187,7 +187,17 @@ export type BankTransaction = {
   montant: number;
   statut: BankTransactionStatus;
   invoice_id: string | null;
+  expense_id: string | null;
   created_at: string;
+};
+
+export type EmailTemplateKey = "j-3" | "j0" | "j+7" | "j+15" | "invoice_ready";
+
+export type EmailTemplate = {
+  key: EmailTemplateKey;
+  subject: string;
+  body: string;
+  updated_at: string;
 };
 
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
@@ -214,6 +224,7 @@ export type Database = {
       pricing_grid: Table<PricingGridRow>;
       expenses: Table<Expense>;
       bank_transactions: Table<BankTransaction>;
+      email_templates: Table<EmailTemplate, EmailTemplate, Partial<EmailTemplate>>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

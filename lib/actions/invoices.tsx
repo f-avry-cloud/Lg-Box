@@ -10,7 +10,7 @@ import { InvoiceDocument } from "@/lib/pdf/invoice-document";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { daysUntil } from "@/lib/business/notice";
 import { getResend, FROM_EMAIL } from "@/lib/email/resend";
-import { renderInvoiceReadyEmail, renderReminderEmail, type ReminderStage } from "@/lib/email/templates";
+import { renderEmailTemplate, type ReminderStage } from "@/lib/email/templates";
 import { ok, fail, type ActionResult } from "@/lib/actions/result";
 import type { PaymentMethod } from "@/types/database";
 
@@ -20,6 +20,12 @@ export type BulkInvoiceResult = {
   created: number;
   skipped: number;
   emailsSent: number;
+  errors: string[];
+};
+
+export type BulkReminderResult = {
+  sent: number;
+  skipped: number;
   errors: string[];
 };
 
@@ -89,18 +95,19 @@ export async function sendInvoiceNotifications(invoiceIds: string[]): Promise<nu
     const customer = customerById.get(invoice.customer_id);
     if (!customer || !process.env.RESEND_API_KEY) continue;
 
-    const { subject, text } = renderInvoiceReadyEmail({
+    const rendered = await renderEmailTemplate(supabase, "invoice_ready", {
       prenom: customer.prenom,
       montant: formatCurrency(invoice.montant_ttc),
       numero_facture: invoice.numero_facture,
       date_echeance: formatDate(invoice.date_echeance),
     });
+    if (!rendered) continue;
 
     const { error: sendError } = await getResend().emails.send({
       from: FROM_EMAIL,
       to: customer.email,
-      subject,
-      text,
+      subject: rendered.subject,
+      text: rendered.text,
     });
     if (!sendError) sent += 1;
   }
@@ -191,18 +198,17 @@ export async function sendManualReminder(invoiceId: string): Promise<ActionResul
     .single();
   if (!customer) return fail("Client introuvable.");
 
-  const late = -daysUntil(new Date(invoice.date_echeance));
-  let stage: ReminderStage = "j-3";
-  if (late >= 15) stage = "j+15";
-  else if (late >= 7) stage = "j+7";
-  else if (late >= 0) stage = "j0";
+  const stage = reminderStageForDaysLate(-daysUntil(new Date(invoice.date_echeance)));
 
-  const { subject, text } = renderReminderEmail(stage, {
+  const rendered = await renderEmailTemplate(supabase, stage, {
     prenom: customer.prenom,
     montant: formatCurrency(invoice.montant_ttc),
     numero_facture: invoice.numero_facture,
     date_echeance: formatDate(invoice.date_echeance),
   });
+  if (!rendered) {
+    return fail("Modèle d'email introuvable — exécutez la migration supabase/migrations/003_v1_2.sql.");
+  }
 
   if (!process.env.RESEND_API_KEY) {
     return fail("RESEND_API_KEY non configurée dans les variables d'environnement Vercel — impossible d'envoyer l'email.");
@@ -211,8 +217,8 @@ export async function sendManualReminder(invoiceId: string): Promise<ActionResul
   const { error: sendError } = await getResend().emails.send({
     from: FROM_EMAIL,
     to: customer.email,
-    subject,
-    text,
+    subject: rendered.subject,
+    text: rendered.text,
   });
   if (sendError) return fail(sendError.message);
 
@@ -225,6 +231,73 @@ export async function sendManualReminder(invoiceId: string): Promise<ActionResul
 
   revalidatePath("/admin/invoices");
   return ok;
+}
+
+// Prépare le sujet/corps/destinataire de la relance sans l'envoyer, pour
+// ouvrir un brouillon dans le client mail par défaut de l'admin (texte
+// modifiable avant envoi), plutôt que de passer par Resend.
+export async function previewReminderEmail(
+  invoiceId: string
+): Promise<ActionResult & { to?: string; subject?: string; body?: string }> {
+  await requireStaff();
+  const supabase = await createClient();
+
+  const { data: invoice } = await supabase.from("invoices").select("*").eq("id", invoiceId).single();
+  if (!invoice) return fail("Facture introuvable.");
+
+  const { data: customer } = await supabase
+    .from("customers")
+    .select("prenom, email")
+    .eq("id", invoice.customer_id)
+    .single();
+  if (!customer) return fail("Client introuvable.");
+
+  const stage = reminderStageForDaysLate(-daysUntil(new Date(invoice.date_echeance)));
+  const rendered = await renderEmailTemplate(supabase, stage, {
+    prenom: customer.prenom,
+    montant: formatCurrency(invoice.montant_ttc),
+    numero_facture: invoice.numero_facture,
+    date_echeance: formatDate(invoice.date_echeance),
+  });
+  if (!rendered) {
+    return fail("Modèle d'email introuvable — exécutez la migration supabase/migrations/003_v1_2.sql.");
+  }
+
+  return { ...ok, to: customer.email, subject: rendered.subject, body: rendered.text };
+}
+
+function reminderStageForDaysLate(daysLate: number): ReminderStage {
+  if (daysLate >= 15) return "j+15";
+  if (daysLate >= 7) return "j+7";
+  if (daysLate >= 0) return "j0";
+  return "j-3";
+}
+
+// Envoie la relance manuelle à toutes les factures actuellement impayées
+// (émises ou en retard) en une fois, avec le palier de ton adapté à chacune.
+export async function sendAllReminders(): Promise<BulkReminderResult> {
+  await requireStaff();
+  const supabase = await createClient();
+
+  const { data: invoices } = await supabase
+    .from("invoices")
+    .select("*")
+    .in("statut", ["emise", "en_retard"]);
+
+  const errors: string[] = [];
+  let sent = 0;
+  let skipped = 0;
+
+  for (const invoice of invoices ?? []) {
+    const result = await sendManualReminder(invoice.id);
+    if (result.success) sent += 1;
+    else {
+      skipped += 1;
+      errors.push(`${invoice.numero_facture} : ${result.error}`);
+    }
+  }
+
+  return { sent, skipped, errors };
 }
 
 export async function cancelInvoice(invoiceId: string): Promise<ActionResult> {

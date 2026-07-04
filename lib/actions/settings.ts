@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ok, fail, type ActionResult } from "@/lib/actions/result";
+import type { EmailTemplateKey } from "@/types/database";
 
 export type SettingsFormState = { error: string | null; success?: boolean };
 
@@ -56,6 +57,22 @@ export async function deletePricingRow(id: string): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createClient();
   const { error } = await supabase.from("pricing_grid").delete().eq("id", id);
+  if (error) return fail(error.message);
+  revalidatePath("/admin/settings");
+  return ok;
+}
+
+export async function updateEmailTemplate(
+  key: EmailTemplateKey,
+  subject: string,
+  body: string
+): Promise<ActionResult> {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("email_templates")
+    .update({ subject, body, updated_at: new Date().toISOString() })
+    .eq("key", key);
   if (error) return fail(error.message);
   revalidatePath("/admin/settings");
   return ok;

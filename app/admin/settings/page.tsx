@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CompanySettingsForm } from "@/components/settings/company-settings-form";
 import { PricingGridEditor } from "@/components/settings/pricing-grid-editor";
+import { EmailTemplatesEditor } from "@/components/settings/email-templates-editor";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -10,6 +11,7 @@ export default async function SettingsPage() {
 
   const { data: settings } = await supabase.from("company_settings").select("*").single();
   const { data: pricing } = await supabase.from("pricing_grid").select("*").order("prix_mensuel");
+  const { data: emailTemplates } = await supabase.from("email_templates").select("*").order("key");
 
   if (!settings) return null;
 
@@ -37,6 +39,15 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <PricingGridEditor rows={pricing ?? []} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Modèles d&apos;email (relances et facture disponible)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EmailTemplatesEditor templates={emailTemplates ?? []} />
         </CardContent>
       </Card>
     </div>
