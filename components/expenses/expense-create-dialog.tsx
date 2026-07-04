@@ -17,18 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createExpense } from "@/lib/actions/expenses";
-
-const CATEGORIES = [
-  "Loyer / crédit",
-  "Assurance",
-  "Entretien / travaux",
-  "Électricité / eau",
-  "Marketing",
-  "Logiciels / abonnements",
-  "Taxes / impôts",
-  "Frais bancaires",
-  "Autre",
-];
+import { EXPENSE_CATEGORIES as CATEGORIES } from "@/lib/business/expense-categories";
 
 export function ExpenseCreateDialog() {
   const [open, setOpen] = useState(false);
