@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { updateCompanySettings, type SettingsFormState } from "@/lib/actions/settings";
+import { CONTRACT_TEMPLATE_VARIABLES } from "@/lib/pdf/contract-template";
 import type { CompanySettings } from "@/types/database";
 
 export function CompanySettingsForm({ settings }: { settings: CompanySettings }) {
@@ -66,6 +67,20 @@ export function CompanySettingsForm({ settings }: { settings: CompanySettings })
       <div className="col-span-2 flex flex-col gap-1.5">
         <Label htmlFor="cgv">Conditions générales de location</Label>
         <Textarea id="cgv" name="cgv" rows={8} defaultValue={settings.cgv ?? ""} />
+      </div>
+      <div className="col-span-2 flex flex-col gap-1.5">
+        <Label htmlFor="contrat_modele">Modèle de contrat (corps du contrat, laisser vide pour la mise en page par défaut)</Label>
+        <p className="text-xs text-muted-foreground">
+          Variables disponibles : {CONTRACT_TEMPLATE_VARIABLES.join(" ")}. Séparez les paragraphes par une
+          ligne vide.
+        </p>
+        <Textarea
+          id="contrat_modele"
+          name="contrat_modele"
+          rows={10}
+          defaultValue={settings.contrat_modele ?? ""}
+          placeholder={`Entre ${"{{entreprise_nom}}"}, ${"{{entreprise_adresse}}"} (SIRET ${"{{entreprise_siret}}"}), ci-après « le Loueur »,\net ${"{{prenom}}"} ${"{{nom}}"}, demeurant ${"{{adresse_client}}"}, ci-après « le Locataire »,\n\nIl est convenu la location du box n° ${"{{box_numero}}"} (${"{{box_taille}}"}) à compter du ${"{{date_debut}}"}, moyennant un loyer mensuel de ${"{{prix_mensuel}}"} et un dépôt de garantie de ${"{{depot_garantie}}"}.`}
+        />
       </div>
       {state.error && <p className="col-span-2 text-sm text-destructive">{state.error}</p>}
       <div className="col-span-2">

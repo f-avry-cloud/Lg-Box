@@ -103,6 +103,31 @@ Pour tester manuellement un cron en local ou en préproduction :
 curl -H "Authorization: Bearer $CRON_SECRET" https://votre-site.vercel.app/api/cron/send-reminders
 ```
 
+## Intégrer le formulaire de réservation sur un site existant (WordPress)
+
+Si vous avez déjà un site (WordPress ou autre) et voulez juste y ajouter le
+formulaire de demande de réservation sans rediriger vers `lg-box.vercel.app`,
+utilisez la page dédiée `/reservation-embed` (sans en-tête ni pied de page,
+pensée pour un `<iframe>`) :
+
+- **Sur WordPress** : ajoutez un bloc **HTML personnalisé** (ou un shortcode
+  via une extension comme "Insert Headers and Footers") avec :
+
+  ```html
+  <iframe
+    src="https://lg-box.vercel.app/reservation-embed"
+    style="width: 100%; min-height: 720px; border: 0;"
+    title="Réservation LG BOX"
+  ></iframe>
+  ```
+
+- **Sur un site statique / autre CMS** : le même extrait `<iframe>` fonctionne
+  tel quel, sans dépendance particulière.
+
+Les demandes envoyées depuis l'iframe créent une ligne dans
+`reservation_requests` et vous envoient un email, exactement comme depuis la
+page publique `/` — aucune différence côté back-office.
+
 ## Structure du projet
 
 ```
