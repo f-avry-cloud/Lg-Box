@@ -25,7 +25,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <p className="font-semibold text-primary">LG BOX</p>
           <p className="text-[11px] text-muted-foreground">Back-office self-stockage</p>
         </div>
-        <SidebarNav />
+        <SidebarNav role={profile.role} />
         <div className="border-t border-border p-3 text-xs text-muted-foreground">
           <div className="flex justify-between">
             <span>Occupation</span>
