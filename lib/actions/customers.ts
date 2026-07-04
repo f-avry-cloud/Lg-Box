@@ -1,0 +1,75 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+
+import { requireAdmin, requireStaff } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import type { CustomerType } from "@/types/database";
+
+export type CustomerFormState = { error: string | null; success?: boolean; customerId?: string };
+
+export async function createCustomer(
+  _prevState: CustomerFormState,
+  formData: FormData
+): Promise<CustomerFormState> {
+  await requireStaff();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("customers")
+    .insert({
+      prenom: String(formData.get("prenom") ?? "").trim(),
+      nom: String(formData.get("nom") ?? "").trim(),
+      email: String(formData.get("email") ?? "").trim(),
+      telephone: String(formData.get("telephone") ?? "") || null,
+      adresse: String(formData.get("adresse") ?? "") || null,
+      ville: String(formData.get("ville") ?? "") || null,
+      code_postal: String(formData.get("code_postal") ?? "") || null,
+      type: String(formData.get("type") ?? "particulier") as CustomerType,
+      siret: String(formData.get("siret") ?? "") || null,
+      notes: String(formData.get("notes") ?? "") || null,
+    })
+    .select("id")
+    .single();
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/customers");
+  return { error: null, success: true, customerId: data.id };
+}
+
+export async function updateCustomerNotes(customerId: string, notes: string) {
+  await requireStaff();
+  const supabase = await createClient();
+  const { error } = await supabase.from("customers").update({ notes }).eq("id", customerId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/admin/customers/${customerId}`);
+}
+
+export async function recordDocument(input: {
+  relatedTable: string;
+  relatedId: string;
+  nomFichier: string;
+  url: string;
+  type: "contrat" | "facture" | "piece_identite" | "autre";
+}) {
+  await requireStaff();
+  const supabase = await createClient();
+  const { error } = await supabase.from("documents").insert({
+    related_table: input.relatedTable,
+    related_id: input.relatedId,
+    nom_fichier: input.nomFichier,
+    url: input.url,
+    type: input.type,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath(`/admin/customers/${input.relatedId}`);
+}
+
+export async function deleteCustomerDocument(documentId: string, customerId: string) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase.from("documents").delete().eq("id", documentId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/admin/customers/${customerId}`);
+}
