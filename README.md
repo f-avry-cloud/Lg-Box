@@ -41,6 +41,11 @@ supabase/storage.sql
 supabase/seed.sql
 ```
 
+> Si votre projet Supabase a été initialisé **avant** l'ajout du plan visuel par
+> étage, du suivi des frais et du rapprochement bancaire, `schema.sql` contient
+> déjà tout pour une base neuve — mais sur une base existante, exécutez en plus
+> `supabase/migrations/002_v1_1.sql` une seule fois pour rattraper ces tables.
+
 Récupérez ensuite dans **Project Settings → API** :
 - `Project URL`
 - `anon public` key
@@ -98,6 +103,31 @@ Pour tester manuellement un cron en local ou en préproduction :
 curl -H "Authorization: Bearer $CRON_SECRET" https://votre-site.vercel.app/api/cron/send-reminders
 ```
 
+## Intégrer le formulaire de réservation sur un site existant (WordPress)
+
+Si vous avez déjà un site (WordPress ou autre) et voulez juste y ajouter le
+formulaire de demande de réservation sans rediriger vers `lg-box.vercel.app`,
+utilisez la page dédiée `/reservation-embed` (sans en-tête ni pied de page,
+pensée pour un `<iframe>`) :
+
+- **Sur WordPress** : ajoutez un bloc **HTML personnalisé** (ou un shortcode
+  via une extension comme "Insert Headers and Footers") avec :
+
+  ```html
+  <iframe
+    src="https://lg-box.vercel.app/reservation-embed"
+    style="width: 100%; min-height: 720px; border: 0;"
+    title="Réservation LG BOX"
+  ></iframe>
+  ```
+
+- **Sur un site statique / autre CMS** : le même extrait `<iframe>` fonctionne
+  tel quel, sans dépendance particulière.
+
+Les demandes envoyées depuis l'iframe créent une ligne dans
+`reservation_requests` et vous envoient un email, exactement comme depuis la
+page publique `/` — aucune différence côté back-office.
+
 ## Structure du projet
 
 ```
@@ -144,6 +174,7 @@ Volontairement non développés dans ce MVP — l'architecture laisse la place p
 - **Multi-site avancé** : la table `sites` existe déjà et `units.site_id` y fait référence, mais l'UI ne gère qu'un site unique (pas de sélecteur de site, pas de permissions par site).
 - **Facturation multi-devise / multi-langue** : montants et textes sont actuellement en euros et en français uniquement.
 - **Demande de résiliation en self-service** (portail client) : le back-office permet déjà de donner congé et de calculer automatiquement la date de fin ; un formulaire client (`(Optionnel V1.1)` dans le brief) qui déclencherait la même Server Action `changeContractStatus` reste à ajouter si le flux téléphone/email actuel ne suffit plus.
+- **Agrégation bancaire automatique** : le rapprochement (`/admin/bank`) fonctionne aujourd'hui par import CSV manuel (`lib/actions/bank.ts`, table `bank_transactions`). Pour brancher une vraie API d'agrégation (Bridge, Powens/Budget Insight, GoCardless Bank Account Data...), il suffit d'ajouter une route qui appelle `importBankStatement()` avec les lignes récupérées depuis l'API au lieu du CSV — toute la logique de suggestion de rapprochement (`lib/business/reconciliation.ts`) et de validation reste identique.
 
 ## Limites connues de cette itération
 

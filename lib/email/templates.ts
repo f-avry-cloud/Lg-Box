@@ -64,3 +64,34 @@ export function renderReminderEmail(
 
   return { subject: interpolate(template.subject), text: interpolate(template.body) };
 }
+
+const INVOICE_READY_TEMPLATE = {
+  subject: "Votre facture {{numero_facture}} est disponible",
+  body: `Bonjour {{prenom}},
+
+Votre facture {{numero_facture}} d'un montant de {{montant}} est disponible dans votre espace client, échéance le {{date_echeance}}.
+
+Vous pouvez la consulter et la télécharger à tout moment depuis votre espace client.
+
+Bien cordialement,
+L'équipe LG BOX`,
+};
+
+export function renderInvoiceReadyEmail(vars: {
+  prenom: string;
+  montant: string;
+  numero_facture: string;
+  date_echeance: string;
+}): { subject: string; text: string } {
+  const interpolate = (input: string) =>
+    input
+      .replaceAll("{{prenom}}", vars.prenom)
+      .replaceAll("{{montant}}", vars.montant)
+      .replaceAll("{{numero_facture}}", vars.numero_facture)
+      .replaceAll("{{date_echeance}}", vars.date_echeance);
+
+  return {
+    subject: interpolate(INVOICE_READY_TEMPLATE.subject),
+    text: interpolate(INVOICE_READY_TEMPLATE.body),
+  };
+}

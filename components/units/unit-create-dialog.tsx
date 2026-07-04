@@ -79,8 +79,21 @@ export function UnitCreateDialog() {
             </Select>
           </div>
           <div className="col-span-1 flex flex-col gap-1.5">
-            <Label htmlFor="zone">Zone / étage</Label>
-            <Input id="zone" name="zone" placeholder="Rez-de-chaussée" />
+            <Label htmlFor="zone">Zone (libellé libre)</Label>
+            <Input id="zone" name="zone" placeholder="Allée B" />
+          </div>
+          <div className="col-span-1 flex flex-col gap-1.5">
+            <Label htmlFor="floor">Étage</Label>
+            <Select name="floor" defaultValue="rez_de_chaussee">
+              <SelectTrigger id="floor">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sous_sol">Sous-sol</SelectItem>
+                <SelectItem value="rez_de_chaussee">Rez-de-chaussée</SelectItem>
+                <SelectItem value="premier_etage">1er étage</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="col-span-2 flex flex-col gap-1.5">
             <Label htmlFor="notes">Notes internes</Label>

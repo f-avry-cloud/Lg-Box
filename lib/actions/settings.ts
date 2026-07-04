@@ -23,6 +23,7 @@ export async function updateCompanySettings(
       adresse: String(formData.get("adresse") ?? "") || null,
       rib: String(formData.get("rib") ?? "") || null,
       cgv: String(formData.get("cgv") ?? "") || null,
+      contrat_modele: String(formData.get("contrat_modele") ?? "") || null,
       preavis_jours_defaut: Number(formData.get("preavis_jours_defaut") ?? 30),
       jour_prelevement_defaut: Number(formData.get("jour_prelevement_defaut") ?? 1),
       updated_at: new Date().toISOString(),

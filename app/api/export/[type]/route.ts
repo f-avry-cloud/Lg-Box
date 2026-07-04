@@ -75,6 +75,18 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
         { key: "created_at", label: "Client depuis" },
       ]
     );
+  } else if (type === "expenses") {
+    const { data } = await supabase.from("expenses").select("*").order("date_depense", { ascending: false });
+    csv = toCsv(
+      (data ?? []).map((e) => ({ ...e, date_depense: formatDate(e.date_depense) })),
+      [
+        { key: "date_depense", label: "Date" },
+        { key: "categorie", label: "Catégorie" },
+        { key: "fournisseur", label: "Fournisseur" },
+        { key: "description", label: "Description" },
+        { key: "montant", label: "Montant" },
+      ]
+    );
   } else {
     return NextResponse.json({ error: "Type d'export inconnu." }, { status: 400 });
   }

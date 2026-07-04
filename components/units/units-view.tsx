@@ -8,9 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UnitStatusBadge } from "@/components/status-badge";
+import { FloorPlanCanvas } from "@/components/units/floor-plan-canvas";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { Unit, UnitStatus } from "@/types/database";
+import type { Unit, UnitFloor, UnitStatus } from "@/types/database";
 
 const GRID_COLORS: Record<UnitStatus, string> = {
   libre: "border-success/40 bg-success/10 text-success",
@@ -18,6 +19,14 @@ const GRID_COLORS: Record<UnitStatus, string> = {
   reserve: "border-warning/40 bg-warning/10 text-warning",
   hors_service: "border-border bg-muted text-muted-foreground",
 };
+
+const FLOOR_LABELS: Record<UnitFloor, string> = {
+  sous_sol: "Sous-sol",
+  rez_de_chaussee: "Rez-de-chaussée",
+  premier_etage: "1er étage",
+};
+
+const FLOOR_ORDER: UnitFloor[] = ["sous_sol", "rez_de_chaussee", "premier_etage"];
 
 export function UnitsView({ units }: { units: Unit[] }) {
   const [statusFilter, setStatusFilter] = useState<string>("tous");
@@ -67,7 +76,7 @@ export function UnitsView({ units }: { units: Unit[] }) {
                 <TableHead>Numéro</TableHead>
                 <TableHead>Taille</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead>Zone</TableHead>
+                <TableHead>Étage</TableHead>
                 <TableHead>Prix / mois</TableHead>
                 <TableHead>Statut</TableHead>
               </TableRow>
@@ -82,7 +91,7 @@ export function UnitsView({ units }: { units: Unit[] }) {
                   </TableCell>
                   <TableCell>{unit.taille_libelle}</TableCell>
                   <TableCell className="capitalize">{unit.type}</TableCell>
-                  <TableCell>{unit.zone}</TableCell>
+                  <TableCell>{FLOOR_LABELS[unit.floor]}</TableCell>
                   <TableCell>{formatCurrency(unit.prix_mensuel_standard)}</TableCell>
                   <TableCell>
                     <UnitStatusBadge status={unit.statut} />
@@ -110,21 +119,24 @@ export function UnitsView({ units }: { units: Unit[] }) {
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2">
-          {filtered.map((unit) => (
-            <Link
-              key={unit.id}
-              href={`/admin/units/${unit.id}`}
-              className={cn(
-                "rounded-lg border px-2 py-2 text-center transition hover:opacity-75",
-                GRID_COLORS[unit.statut]
-              )}
-            >
-              <div className="font-mono text-xs font-semibold">{unit.numero}</div>
-              <div className="mt-0.5 text-[10px] opacity-80">{unit.taille_libelle}</div>
-            </Link>
+        <Tabs defaultValue="rez_de_chaussee">
+          <TabsList className="mb-3">
+            {FLOOR_ORDER.map((floor) => (
+              <TabsTrigger key={floor} value={floor}>
+                {FLOOR_LABELS[floor]}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {FLOOR_ORDER.map((floor) => (
+            <TabsContent key={floor} value={floor}>
+              <p className="mb-2 text-xs text-muted-foreground">
+                Glissez-déposez un box pour le repositionner. La position est enregistrée automatiquement.
+                Pour déplacer un box vers un autre étage, ouvrez sa fiche détail.
+              </p>
+              <FloorPlanCanvas units={filtered.filter((u) => u.floor === floor)} />
+            </TabsContent>
           ))}
-        </div>
+        </Tabs>
       </TabsContent>
     </Tabs>
   );

@@ -5,6 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { InvoiceStatusBadge } from "@/components/status-badge";
 import { InvoiceCreateDialog } from "@/components/invoices/invoice-create-dialog";
+import { BulkInvoiceButton } from "@/components/invoices/bulk-invoice-button";
+import { MarkPaidDialog } from "@/components/invoices/mark-paid-dialog";
+import { SendReminderButton } from "@/components/invoices/send-reminder-button";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { daysUntil } from "@/lib/business/notice";
 import { createClient } from "@/lib/supabase/server";
@@ -51,6 +54,11 @@ export default async function InvoicesPage() {
     .map((i) => ({ ...i, daysLate: -daysUntil(new Date(i.date_echeance)) }))
     .sort((a, b) => b.daysLate - a.daysLate);
 
+  const balanceByCustomer = new Map<string, number>();
+  unpaid.forEach((i) => {
+    balanceByCustomer.set(i.customer_id, (balanceByCustomer.get(i.customer_id) ?? 0) + i.montant_ttc);
+  });
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -58,7 +66,10 @@ export default async function InvoicesPage() {
           <h1 className="text-lg font-semibold">Facturation</h1>
           <p className="text-sm text-muted-foreground">{invoices?.length ?? 0} factures au total.</p>
         </div>
-        <InvoiceCreateDialog contracts={contractOptions} />
+        <div className="flex gap-2">
+          <BulkInvoiceButton />
+          <InvoiceCreateDialog contracts={contractOptions} />
+        </div>
       </div>
 
       <Tabs defaultValue="impayees">
@@ -75,10 +86,12 @@ export default async function InvoicesPage() {
                   <TableRow>
                     <TableHead>Numéro</TableHead>
                     <TableHead>Client</TableHead>
+                    <TableHead>Solde client</TableHead>
                     <TableHead>Échéance</TableHead>
                     <TableHead>Retard</TableHead>
                     <TableHead>Montant TTC</TableHead>
                     <TableHead>Statut</TableHead>
+                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -90,7 +103,12 @@ export default async function InvoicesPage() {
                         </Link>
                       </TableCell>
                       <TableCell>
-                        {customerById.get(i.customer_id)?.prenom} {customerById.get(i.customer_id)?.nom}
+                        <Link href={`/admin/customers/${i.customer_id}`} className="hover:text-primary">
+                          {customerById.get(i.customer_id)?.prenom} {customerById.get(i.customer_id)?.nom}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatCurrency(balanceByCustomer.get(i.customer_id) ?? 0)}
                       </TableCell>
                       <TableCell>{formatDate(i.date_echeance)}</TableCell>
                       <TableCell>{i.daysLate > 0 ? `${i.daysLate} j` : "—"}</TableCell>
@@ -98,11 +116,17 @@ export default async function InvoicesPage() {
                       <TableCell>
                         <InvoiceStatusBadge status={i.statut} />
                       </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <SendReminderButton invoiceId={i.id} />
+                          <MarkPaidDialog invoiceId={i.id} montantTtc={i.montant_ttc} />
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                   {unpaid.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                         Aucune facture impayée. 🎉
                       </TableCell>
                     </TableRow>
