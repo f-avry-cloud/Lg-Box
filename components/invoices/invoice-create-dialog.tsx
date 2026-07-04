@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createManualInvoice, type InvoiceFormState } from "@/lib/actions/invoices";
+import { createManualInvoice } from "@/lib/actions/invoices";
 
 function firstDayOfMonth(): string {
   const d = new Date();
@@ -34,18 +34,25 @@ export function InvoiceCreateDialog({
   contracts: { id: string; label: string }[];
 }) {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const [state, formAction, pending] = useActionState<InvoiceFormState, FormData>(createManualInvoice, {
-    error: null,
-  });
+  const [pending, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (state.success && state.invoiceId) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    startTransition(async () => {
+      const result = await createManualInvoice({ error: null }, formData);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
       toast.success("Facture générée.");
+      setError(null);
       setOpen(false);
-      router.push(`/admin/invoices/${state.invoiceId}`);
-    }
-  }, [state.success, state.invoiceId, router]);
+      if (result.invoiceId) router.push(`/admin/invoices/${result.invoiceId}`);
+    });
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -58,7 +65,7 @@ export function InvoiceCreateDialog({
         <DialogHeader>
           <DialogTitle>Générer une facture</DialogTitle>
         </DialogHeader>
-        <form action={formAction} className="flex flex-col gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
             <Label>Contrat</Label>
             <Select name="contract_id">
@@ -88,7 +95,7 @@ export function InvoiceCreateDialog({
             <Label>Montant TTC (laisser vide pour utiliser le loyer du contrat)</Label>
             <Input name="montant_ttc" type="number" step="0.01" placeholder="Ex. dépôt de garantie, frais..." />
           </div>
-          {state.error && <p className="text-sm text-destructive">{state.error}</p>}
+          {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="mt-2 flex justify-end">
             <Button type="submit" disabled={pending}>
               {pending ? "Génération..." : "Générer la facture"}

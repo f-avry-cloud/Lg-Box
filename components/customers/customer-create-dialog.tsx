@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
@@ -16,22 +16,29 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createCustomer, type CustomerFormState } from "@/lib/actions/customers";
+import { createCustomer } from "@/lib/actions/customers";
 
 export function CustomerCreateDialog() {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const [state, formAction, pending] = useActionState<CustomerFormState, FormData>(createCustomer, {
-    error: null,
-  });
+  const [pending, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (state.success && state.customerId) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    startTransition(async () => {
+      const result = await createCustomer({ error: null }, formData);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
       toast.success("Client créé.");
+      setError(null);
       setOpen(false);
-      router.push(`/admin/customers/${state.customerId}`);
-    }
-  }, [state.success, state.customerId, router]);
+      if (result.customerId) router.push(`/admin/customers/${result.customerId}`);
+    });
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -44,7 +51,7 @@ export function CustomerCreateDialog() {
         <DialogHeader>
           <DialogTitle>Créer un client</DialogTitle>
         </DialogHeader>
-        <form action={formAction} className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="prenom">Prénom</Label>
             <Input id="prenom" name="prenom" required />
@@ -93,7 +100,7 @@ export function CustomerCreateDialog() {
             <Label htmlFor="notes">Notes internes</Label>
             <Input id="notes" name="notes" />
           </div>
-          {state.error && <p className="col-span-2 text-sm text-destructive">{state.error}</p>}
+          {error && <p className="col-span-2 text-sm text-destructive">{error}</p>}
           <div className="col-span-2 mt-2 flex justify-end">
             <Button type="submit" disabled={pending}>
               {pending ? "Création..." : "Créer le client"}

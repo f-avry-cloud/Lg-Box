@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
@@ -17,25 +17,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { createContract, type ContractFormState } from "@/lib/actions/contracts";
+import { createContract } from "@/lib/actions/contracts";
 import type { Customer, Unit } from "@/types/database";
 
 export function ContractCreateDialog({ customers, units }: { customers: Customer[]; units: Unit[] }) {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [customerMode, setCustomerMode] = useState<"existant" | "nouveau">("existant");
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
   const router = useRouter();
-  const [state, formAction, pending] = useActionState<ContractFormState, FormData>(createContract, {
-    error: null,
-  });
+  const [pending, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (state.success && state.contractId) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    startTransition(async () => {
+      const result = await createContract({ error: null }, formData);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
       toast.success("Contrat créé.");
+      setError(null);
       setOpen(false);
-      router.push(`/admin/contracts/${state.contractId}`);
-    }
-  }, [state.success, state.contractId, router]);
+      if (result.contractId) router.push(`/admin/contracts/${result.contractId}`);
+    });
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -48,7 +55,7 @@ export function ContractCreateDialog({ customers, units }: { customers: Customer
         <DialogHeader>
           <DialogTitle>Créer un contrat</DialogTitle>
         </DialogHeader>
-        <form action={formAction} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Tabs value={customerMode} onValueChange={(v) => setCustomerMode(v as typeof customerMode)}>
             <TabsList>
               <TabsTrigger value="existant">Client existant</TabsTrigger>
@@ -145,7 +152,7 @@ export function ContractCreateDialog({ customers, units }: { customers: Customer
             </div>
           </div>
 
-          {state.error && <p className="text-sm text-destructive">{state.error}</p>}
+          {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="flex justify-end">
             <Button type="submit" disabled={pending}>
               {pending ? "Création..." : "Créer le contrat"}

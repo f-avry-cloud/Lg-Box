@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
 
@@ -15,20 +15,27 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createUnit, type UnitFormState } from "@/lib/actions/units";
+import { createUnit } from "@/lib/actions/units";
 
 export function UnitCreateDialog() {
   const [open, setOpen] = useState(false);
-  const [state, formAction, pending] = useActionState<UnitFormState, FormData>(createUnit, {
-    error: null,
-  });
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (state.success) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    startTransition(async () => {
+      const result = await createUnit({ error: null }, formData);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
       toast.success("Box créé.");
+      setError(null);
       setOpen(false);
-    }
-  }, [state.success]);
+    });
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -41,7 +48,7 @@ export function UnitCreateDialog() {
         <DialogHeader>
           <DialogTitle>Créer un box</DialogTitle>
         </DialogHeader>
-        <form action={formAction} className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
           <div className="col-span-1 flex flex-col gap-1.5">
             <Label htmlFor="numero">Numéro</Label>
             <Input id="numero" name="numero" required placeholder="D01" />
@@ -79,7 +86,7 @@ export function UnitCreateDialog() {
             <Label htmlFor="notes">Notes internes</Label>
             <Input id="notes" name="notes" />
           </div>
-          {state.error && <p className="col-span-2 text-sm text-destructive">{state.error}</p>}
+          {error && <p className="col-span-2 text-sm text-destructive">{error}</p>}
           <div className="col-span-2 mt-2 flex justify-end">
             <Button type="submit" disabled={pending}>
               {pending ? "Création..." : "Créer le box"}
