@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ContractStatusBadge } from "@/components/status-badge";
 import { UnitStatusSelect } from "@/components/units/unit-status-select";
+import { UnitFloorSelect } from "@/components/units/unit-floor-select";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
@@ -41,7 +42,10 @@ export default async function UnitDetailPage({ params }: { params: Promise<{ id:
             {unit.taille_libelle} · {unit.type} · {unit.zone} · {formatCurrency(unit.prix_mensuel_standard)}/mois
           </p>
         </div>
-        <UnitStatusSelect unitId={unit.id} status={unit.statut} />
+        <div className="flex items-center gap-2">
+          <UnitFloorSelect unitId={unit.id} floor={unit.floor} />
+          <UnitStatusSelect unitId={unit.id} status={unit.statut} />
+        </div>
       </div>
 
       {unit.notes && (

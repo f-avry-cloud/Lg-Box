@@ -11,6 +11,8 @@ export type PaymentMethod = "virement" | "carte" | "especes" | "cheque" | "prele
 export type PaymentStatus = "valide" | "en_attente" | "echoue";
 export type ReservationStatus = "nouvelle" | "contactee" | "convertie" | "refusee";
 export type DocumentType = "contrat" | "facture" | "piece_identite" | "autre";
+export type UnitFloor = "sous_sol" | "rez_de_chaussee" | "premier_etage";
+export type BankTransactionStatus = "non_rapproche" | "rapproche" | "ignore";
 
 export type Profile = {
   id: string;
@@ -44,6 +46,9 @@ export type Unit = {
   prix_mensuel_standard: number;
   statut: UnitStatus;
   notes: string | null;
+  floor: UnitFloor;
+  pos_x: number | null;
+  pos_y: number | null;
   created_at: string;
 };
 
@@ -151,6 +156,7 @@ export type CompanySettings = {
   adresse: string | null;
   rib: string | null;
   cgv: string | null;
+  contrat_modele: string | null;
   preavis_jours_defaut: number;
   jour_prelevement_defaut: number;
   updated_at: string;
@@ -160,6 +166,28 @@ export type PricingGridRow = {
   id: string;
   taille_libelle: string;
   prix_mensuel: number;
+};
+
+export type Expense = {
+  id: string;
+  categorie: string;
+  montant: number;
+  date_depense: string;
+  fournisseur: string | null;
+  description: string | null;
+  justificatif_url: string | null;
+  created_at: string;
+};
+
+export type BankTransaction = {
+  id: string;
+  import_batch_id: string;
+  date_operation: string;
+  libelle: string;
+  montant: number;
+  statut: BankTransactionStatus;
+  invoice_id: string | null;
+  created_at: string;
 };
 
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
@@ -184,6 +212,8 @@ export type Database = {
       activity_log: Table<ActivityLog>;
       company_settings: Table<CompanySettings>;
       pricing_grid: Table<PricingGridRow>;
+      expenses: Table<Expense>;
+      bank_transactions: Table<BankTransaction>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

@@ -18,6 +18,8 @@ create type payment_method as enum ('virement', 'carte', 'especes', 'cheque', 'p
 create type payment_status as enum ('valide', 'en_attente', 'echoue');
 create type reservation_status as enum ('nouvelle', 'contactee', 'convertie', 'refusee');
 create type document_type as enum ('contrat', 'facture', 'piece_identite', 'autre');
+create type unit_floor as enum ('sous_sol', 'rez_de_chaussee', 'premier_etage');
+create type bank_transaction_status as enum ('non_rapproche', 'rapproche', 'ignore');
 
 -- ----------------------------------------------------------------------------
 -- profiles — étend auth.users avec un rôle applicatif
@@ -60,6 +62,9 @@ create table units (
   prix_mensuel_standard numeric(10, 2) not null default 0,
   statut unit_status not null default 'libre',
   notes text,
+  floor unit_floor not null default 'rez_de_chaussee',
+  pos_x numeric(6, 2),
+  pos_y numeric(6, 2),
   created_at timestamptz not null default now(),
   unique (site_id, numero)
 );
@@ -216,6 +221,7 @@ create table company_settings (
   adresse text,
   rib text,
   cgv text,
+  contrat_modele text,
   preavis_jours_defaut smallint not null default 30,
   jour_prelevement_defaut smallint not null default 1,
   updated_at timestamptz not null default now()
@@ -228,6 +234,39 @@ create table pricing_grid (
   taille_libelle text not null unique,
   prix_mensuel numeric(10, 2) not null
 );
+
+-- ----------------------------------------------------------------------------
+-- expenses (suivi des frais, pour un résultat net et pas seulement le CA)
+-- ----------------------------------------------------------------------------
+create table expenses (
+  id uuid primary key default gen_random_uuid(),
+  categorie text not null,
+  montant numeric(10, 2) not null,
+  date_depense date not null default current_date,
+  fournisseur text,
+  description text,
+  justificatif_url text,
+  created_at timestamptz not null default now()
+);
+
+create index idx_expenses_date on expenses (date_depense);
+
+-- ----------------------------------------------------------------------------
+-- bank_transactions (rapprochement bancaire par import CSV)
+-- ----------------------------------------------------------------------------
+create table bank_transactions (
+  id uuid primary key default gen_random_uuid(),
+  import_batch_id uuid not null,
+  date_operation date not null,
+  libelle text not null,
+  montant numeric(10, 2) not null,
+  statut bank_transaction_status not null default 'non_rapproche',
+  invoice_id uuid references invoices (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create index idx_bank_transactions_statut on bank_transactions (statut);
+create index idx_bank_transactions_batch on bank_transactions (import_batch_id);
 
 -- ============================================================================
 -- Fonctions utilitaires pour RLS
@@ -273,6 +312,8 @@ alter table documents enable row level security;
 alter table activity_log enable row level security;
 alter table company_settings enable row level security;
 alter table pricing_grid enable row level security;
+alter table expenses enable row level security;
+alter table bank_transactions enable row level security;
 
 -- profiles : chacun voit son propre profil, admin voit tout
 create policy "profiles_self_select" on profiles for select using (id = auth.uid() or is_admin());
@@ -341,6 +382,17 @@ create policy "company_settings_public_select" on company_settings for select us
 create policy "company_settings_admin_update" on company_settings for update using (is_admin());
 create policy "pricing_grid_public_select" on pricing_grid for select using (true);
 create policy "pricing_grid_admin_write" on pricing_grid for all using (is_admin()) with check (is_admin());
+
+-- expenses / bank_transactions : staff uniquement (données financières internes)
+create policy "expenses_staff_select" on expenses for select using (is_staff());
+create policy "expenses_staff_insert" on expenses for insert with check (is_staff());
+create policy "expenses_staff_update" on expenses for update using (is_staff());
+create policy "expenses_admin_delete" on expenses for delete using (is_admin());
+
+create policy "bank_transactions_staff_select" on bank_transactions for select using (is_staff());
+create policy "bank_transactions_staff_insert" on bank_transactions for insert with check (is_staff());
+create policy "bank_transactions_staff_update" on bank_transactions for update using (is_staff());
+create policy "bank_transactions_admin_delete" on bank_transactions for delete using (is_admin());
 
 -- ============================================================================
 -- Trigger : création automatique du profil à l'inscription (rôle tenant par défaut)

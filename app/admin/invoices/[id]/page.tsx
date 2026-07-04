@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { InvoiceStatusBadge, PaymentStatusBadge } from "@/components/status-badge";
 import { InvoicePdfSection } from "@/components/invoices/invoice-pdf-section";
 import { MarkPaidDialog } from "@/components/invoices/mark-paid-dialog";
+import { SendReminderButton } from "@/components/invoices/send-reminder-button";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
@@ -42,6 +43,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         </div>
         <div className="flex items-center gap-2">
           <InvoiceStatusBadge status={invoice.statut} />
+          {isPayable && <SendReminderButton invoiceId={invoice.id} />}
           {isPayable && <MarkPaidDialog invoiceId={invoice.id} montantTtc={invoice.montant_ttc} />}
         </div>
       </div>

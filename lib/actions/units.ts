@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import type { UnitStatus, UnitType } from "@/types/database";
+import type { UnitFloor, UnitStatus, UnitType } from "@/types/database";
 
 export type UnitFormState = { error: string | null; success?: boolean };
 
@@ -28,6 +28,7 @@ export async function createUnit(
     prix_mensuel_standard: Number(formData.get("prix_mensuel_standard") ?? 0),
     statut: "libre",
     notes: String(formData.get("notes") ?? "") || null,
+    floor: String(formData.get("floor") ?? "rez_de_chaussee") as UnitFloor,
   });
 
   if (error) return { error: error.message };
@@ -51,4 +52,31 @@ export async function updateUnitNotes(unitId: string, notes: string) {
   const { error } = await supabase.from("units").update({ notes }).eq("id", unitId);
   if (error) throw new Error(error.message);
   revalidatePath(`/admin/units/${unitId}`);
+}
+
+export async function updateUnitFloor(unitId: string, floor: UnitFloor) {
+  await requireStaff();
+  const supabase = await createClient();
+  // On repart d'une position centrale par défaut sur le nouvel étage, l'admin
+  // pourra ensuite glisser le box où il veut.
+  const { error } = await supabase
+    .from("units")
+    .update({ floor, pos_x: 50, pos_y: 50 })
+    .eq("id", unitId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/units");
+  revalidatePath(`/admin/units/${unitId}`);
+}
+
+export async function updateUnitPosition(unitId: string, posX: number, posY: number) {
+  await requireStaff();
+  const supabase = await createClient();
+  const clampedX = Math.min(100, Math.max(0, posX));
+  const clampedY = Math.min(100, Math.max(0, posY));
+  const { error } = await supabase
+    .from("units")
+    .update({ pos_x: clampedX, pos_y: clampedY })
+    .eq("id", unitId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/units");
 }
