@@ -4,7 +4,22 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { CustomerCreateDialog } from "@/components/customers/customer-create-dialog";
+import { CsvImportDialog } from "@/components/import/csv-import-dialog";
+import { importCustomersCsv } from "@/lib/actions/import";
 import { createClient } from "@/lib/supabase/server";
+
+const CUSTOMER_IMPORT_FIELDS = [
+  { key: "prenom", label: "Prénom", required: true },
+  { key: "nom", label: "Nom", required: true },
+  { key: "email", label: "Email", required: true },
+  { key: "telephone", label: "Téléphone" },
+  { key: "adresse", label: "Adresse" },
+  { key: "ville", label: "Ville" },
+  { key: "code_postal", label: "Code postal" },
+  { key: "type", label: "Type (particulier/professionnel)" },
+  { key: "siret", label: "SIRET" },
+  { key: "notes", label: "Notes" },
+];
 
 export default async function CustomersPage({
   searchParams,
@@ -27,7 +42,16 @@ export default async function CustomersPage({
           <h1 className="text-lg font-semibold">Clients</h1>
           <p className="text-sm text-muted-foreground">{customers?.length ?? 0} clients enregistrés.</p>
         </div>
-        <CustomerCreateDialog />
+        <div className="flex gap-2">
+          <CsvImportDialog
+            triggerLabel="Importer CSV"
+            title="Importer des clients depuis un CSV"
+            description="Utile pour reprendre une base de locataires existante sans ressaisie manuelle."
+            fields={CUSTOMER_IMPORT_FIELDS}
+            onImport={importCustomersCsv}
+          />
+          <CustomerCreateDialog />
+        </div>
       </div>
 
       <form className="mb-4">
