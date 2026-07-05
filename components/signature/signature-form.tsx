@@ -7,12 +7,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signDocuments } from "@/lib/actions/contract-signature";
 
-export function SignatureForm({ token }: { token: string }) {
-  const [fullName, setFullName] = useState("");
-  const [acknowledged, setAcknowledged] = useState(false);
+export function SignatureForm({
+  token,
+  defaultFullName,
+  includesContract,
+  includesSepaMandate,
+}: {
+  token: string;
+  defaultFullName: string;
+  includesContract: boolean;
+  includesSepaMandate: boolean;
+}) {
+  const [fullName, setFullName] = useState(defaultFullName);
+  const [acceptedContract, setAcceptedContract] = useState(false);
+  const [acceptedSepaMandate, setAcceptedSepaMandate] = useState(false);
   const [pending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const ready =
+    fullName.trim().length > 0 &&
+    (!includesContract || acceptedContract) &&
+    (!includesSepaMandate || acceptedSepaMandate);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,8 +48,8 @@ export function SignatureForm({ token }: { token: string }) {
       <div className="rounded-md border border-success/40 bg-success/5 p-4 text-sm">
         <p className="font-medium text-success">Merci, vos documents ont bien été signés.</p>
         <p className="mt-1 text-muted-foreground">
-          Vous pouvez retrouver vos documents signés et leur preuve de signature à tout moment depuis votre
-          espace client.
+          Vous recevrez une confirmation par email. Vous pouvez également retrouver vos documents signés et leur
+          preuve de signature à tout moment depuis votre espace client.
         </p>
       </div>
     );
@@ -52,20 +68,35 @@ export function SignatureForm({ token }: { token: string }) {
         />
       </div>
 
-      <label className="flex items-start gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={acknowledged}
-          onChange={(e) => setAcknowledged(e.target.checked)}
-          className="mt-0.5"
-        />
-        Je reconnais avoir lu et j&apos;accepte les termes du ou des document(s) présenté(s) ci-dessus.
-      </label>
+      {includesContract && (
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={acceptedContract}
+            onChange={(e) => setAcceptedContract(e.target.checked)}
+            className="mt-0.5"
+          />
+          Je reconnais avoir lu et j&apos;accepte les termes du contrat de location ainsi que les conditions
+          générales de location.
+        </label>
+      )}
+
+      {includesSepaMandate && (
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={acceptedSepaMandate}
+            onChange={(e) => setAcceptedSepaMandate(e.target.checked)}
+            className="mt-0.5"
+          />
+          Je reconnais avoir lu et j&apos;accepte le mandat de prélèvement SEPA présenté ci-dessus.
+        </label>
+      )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div>
-        <Button type="submit" disabled={pending || !acknowledged || !fullName.trim()}>
+        <Button type="submit" disabled={pending || !ready}>
           {pending ? "Signature en cours..." : "Signer"}
         </Button>
       </div>

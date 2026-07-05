@@ -11,9 +11,10 @@ import { ok, fail, type ActionResult } from "@/lib/actions/result";
 import { renderEmailTemplate, signatureLink } from "@/lib/email/templates";
 import { getResend, FROM_EMAIL } from "@/lib/email/resend";
 import { isSignatureTokenValid, SIGNATURE_TOKEN_TTL_DAYS } from "@/lib/business/contract-signature";
-import { renderContractPlainText } from "@/lib/pdf/contract-template";
+import { renderContractFullText } from "@/lib/pdf/contract-template";
 import { renderSepaMandatePlainText } from "@/lib/pdf/sepa-mandate-template";
 import { CertifiedContractDocument } from "@/lib/pdf/certified-contract-document";
+import { loadCompanySignatureImage } from "@/lib/pdf/company-signature";
 import { CertifiedSepaMandateDocument, SepaMandateSummaryDocument } from "@/lib/pdf/sepa-mandate-document";
 import { renderPdfBuffer } from "@/lib/pdf/generate";
 import { mergePdfBuffers } from "@/lib/pdf/merge";
@@ -101,22 +102,30 @@ export async function sendContractForSignature(
     prenom: payload.customer.prenom,
     lien_signature: signatureLink(created.token),
   });
-
-  if (rendered && process.env.RESEND_API_KEY) {
-    await getResend().emails.send({
-      from: FROM_EMAIL,
-      to: payload.customer.email,
-      subject: rendered.subject,
-      text: rendered.text,
-    });
+  if (!rendered) {
+    return fail("Modèle d'email introuvable — exécutez la migration supabase/migrations/008_v1_7.sql.");
   }
+
+  if (!process.env.RESEND_API_KEY) {
+    return fail(
+      "RESEND_API_KEY non configurée dans les variables d'environnement Vercel — impossible d'envoyer l'email. Le lien a bien été généré : utilisez le bouton « Mail » pour l'envoyer manuellement."
+    );
+  }
+
+  const { error: sendError } = await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: payload.customer.email,
+    subject: rendered.subject,
+    text: rendered.text,
+  });
+  if (sendError) return fail(sendError.message);
 
   await service.from("activity_log").insert({
     action: "contract_signature_requested",
     table_concernee: "contracts",
     enregistrement_id: contractId,
     detail: {
-      resend_configured: Boolean(process.env.RESEND_API_KEY),
+      resend_configured: true,
       includes_contract: options.includeContract,
       includes_sepa_mandate: options.includeSepaMandate,
     },
@@ -204,14 +213,16 @@ export async function signDocuments(token: string, signerFullName: string): Prom
   const signedDocuments: { document_type: "contrat" | "mandat_sepa"; document_hash: string; signed_document_path: string }[] = [];
 
   if (request.includes_contract) {
-    const documentText = renderContractPlainText(contract, customer, unit, company);
+    const documentText = renderContractFullText(contract, customer, unit, company);
     const documentHash = createHash("sha256").update(documentText).digest("hex");
+    const signatureImage = await loadCompanySignatureImage(service, company.signature_image_path);
     const buffer = await renderPdfBuffer(
       <CertifiedContractDocument
         contract={contract}
         customer={customer}
         unit={unit}
         company={company}
+        signatureImage={signatureImage}
         proof={{ ...sharedProof, documentHash }}
       />
     );
@@ -299,6 +310,28 @@ export async function signDocuments(token: string, signerFullName: string): Prom
       includes_sepa_mandate: request.includes_sepa_mandate,
     },
   });
+
+  // Email de confirmation post-signature — best-effort : la signature est déjà
+  // actée et les documents stockés, un échec d'envoi ne doit pas faire échouer
+  // la démarche. Sert aussi de trace indépendante côté locataire (renforce
+  // l'opposabilité de la preuve, au-delà du token utilisé une seule fois).
+  try {
+    if (process.env.RESEND_API_KEY) {
+      const rendered = await renderEmailTemplate(service, "documents_signed_confirmation", {
+        prenom: customer.prenom,
+      });
+      if (rendered) {
+        await getResend().emails.send({
+          from: FROM_EMAIL,
+          to: customer.email,
+          subject: rendered.subject,
+          text: rendered.text,
+        });
+      }
+    }
+  } catch {
+    // ignoré volontairement — voir commentaire ci-dessus
+  }
 
   revalidatePath(`/admin/contracts/${contract.id}`);
   revalidatePath("/admin/contracts");

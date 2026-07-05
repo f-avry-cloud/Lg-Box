@@ -1,7 +1,8 @@
-import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 import { formatCurrency, formatDateLong } from "@/lib/format";
 import { interpolateContractTemplate } from "@/lib/pdf/contract-template";
+import type { CompanySignatureImage } from "@/lib/pdf/company-signature";
 import type { CompanySettings, Contract, Customer, Unit } from "@/types/database";
 
 const styles = StyleSheet.create({
@@ -25,11 +26,13 @@ export function ContractPageContent({
   customer,
   unit,
   company,
+  signatureImage,
 }: {
   contract: Contract;
   customer: Customer;
   unit: Unit;
   company: CompanySettings;
+  signatureImage?: CompanySignatureImage | null;
 }) {
   return (
     <Page size="A4" style={styles.page}>
@@ -105,7 +108,16 @@ export function ContractPageContent({
       <View style={styles.section}>
         <Text>Fait le {formatDateLong(contract.date_signature ?? contract.date_debut)}</Text>
         <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 30 }}>
-          <Text>Le Loueur</Text>
+          <View>
+            <Text>Le Loueur</Text>
+            {signatureImage && (
+              // eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf/renderer Image, not an <img>
+              <Image
+                src={{ data: signatureImage.data, format: signatureImage.format }}
+                style={{ width: 100, height: 45, marginTop: 4 }}
+              />
+            )}
+          </View>
           <Text>Le Locataire</Text>
         </View>
       </View>
@@ -122,6 +134,7 @@ export function ContractDocument(props: {
   customer: Customer;
   unit: Unit;
   company: CompanySettings;
+  signatureImage?: CompanySignatureImage | null;
 }) {
   return (
     <Document>

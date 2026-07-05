@@ -225,6 +225,7 @@ export type CompanySettings = {
   mandat_sepa_modele: string | null;
   mandat_sepa_template_mode: SepaMandateTemplateMode;
   mandat_sepa_upload_path: string | null;
+  signature_image_path: string | null;
   updated_at: string;
 };
 
@@ -264,7 +265,8 @@ export type EmailTemplateKey =
   | "j+15"
   | "invoice_ready"
   | "contract_signature_request"
-  | "contract_signature_reminder";
+  | "contract_signature_reminder"
+  | "documents_signed_confirmation";
 
 export type EmailTemplate = {
   key: EmailTemplateKey;

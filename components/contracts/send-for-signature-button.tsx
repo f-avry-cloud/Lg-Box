@@ -34,6 +34,11 @@ export function SendForSignatureButton({ contract }: { contract: Contract }) {
       const result = await sendContractForSignature(contract.id, { includeContract, includeSepaMandate });
       if (!result.success) {
         toast.error(result.error ?? "Erreur.");
+        // Le lien peut avoir été créé même si l'envoi automatique a échoué
+        // (ex. RESEND_API_KEY manquante) — on rafraîchit pour que le bouton
+        // Mail de secours retrouve ce lien.
+        setOpen(false);
+        router.refresh();
         return;
       }
       toast.success("Lien de signature envoyé.");
