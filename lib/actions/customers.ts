@@ -47,6 +47,46 @@ export async function createCustomer(
   return { error: null, success: true, customerId: data.id };
 }
 
+export async function updateCustomer(
+  _prevState: CustomerFormState,
+  formData: FormData
+): Promise<CustomerFormState> {
+  await requireStaff();
+  const supabase = await createClient();
+
+  const customerId = String(formData.get("id") ?? "");
+  if (!customerId) return { error: "Client introuvable." };
+
+  const adresse = String(formData.get("adresse") ?? "") || null;
+  const ville = String(formData.get("ville") ?? "") || null;
+  const codePostal = String(formData.get("code_postal") ?? "") || null;
+  const coords = await geocodeAddress(adresse, codePostal, ville);
+
+  const { error } = await supabase
+    .from("customers")
+    .update({
+      prenom: String(formData.get("prenom") ?? "").trim(),
+      nom: String(formData.get("nom") ?? "").trim(),
+      email: String(formData.get("email") ?? "").trim(),
+      telephone: String(formData.get("telephone") ?? "") || null,
+      adresse,
+      ville,
+      code_postal: codePostal,
+      type: String(formData.get("type") ?? "particulier") as CustomerType,
+      siret: String(formData.get("siret") ?? "") || null,
+      latitude: coords?.latitude ?? null,
+      longitude: coords?.longitude ?? null,
+    })
+    .eq("id", customerId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/customers/${customerId}`);
+  revalidatePath("/admin/customers");
+  revalidatePath("/admin/reports");
+  return { error: null, success: true, customerId };
+}
+
 export async function updateCustomerNotes(customerId: string, notes: string): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();

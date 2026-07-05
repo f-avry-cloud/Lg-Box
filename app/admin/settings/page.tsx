@@ -3,6 +3,7 @@ import { CompanySettingsForm } from "@/components/settings/company-settings-form
 import { SiteSettingsForm } from "@/components/settings/site-settings-form";
 import { PricingGridEditor } from "@/components/settings/pricing-grid-editor";
 import { EmailTemplatesEditor } from "@/components/settings/email-templates-editor";
+import { DangerZone } from "@/components/settings/danger-zone";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -14,6 +15,13 @@ export default async function SettingsPage() {
   const { data: site } = await supabase.from("sites").select("*").limit(1).maybeSingle();
   const { data: pricing } = await supabase.from("pricing_grid").select("*").order("prix_mensuel");
   const { data: emailTemplates } = await supabase.from("email_templates").select("*").order("key");
+  const [{ count: customersCount }, { count: contractsCount }, { count: invoicesCount }, { count: paymentsCount }] =
+    await Promise.all([
+      supabase.from("customers").select("id", { count: "exact", head: true }),
+      supabase.from("contracts").select("id", { count: "exact", head: true }),
+      supabase.from("invoices").select("id", { count: "exact", head: true }),
+      supabase.from("payments").select("id", { count: "exact", head: true }),
+    ]);
 
   if (!settings) return null;
 
@@ -63,6 +71,15 @@ export default async function SettingsPage() {
           <EmailTemplatesEditor templates={emailTemplates ?? []} />
         </CardContent>
       </Card>
+
+      <DangerZone
+        counts={{
+          customers: customersCount ?? 0,
+          contracts: contractsCount ?? 0,
+          invoices: invoicesCount ?? 0,
+          payments: paymentsCount ?? 0,
+        }}
+      />
     </div>
   );
 }
