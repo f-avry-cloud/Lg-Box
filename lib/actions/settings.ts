@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ok, fail, type ActionResult } from "@/lib/actions/result";
+import { geocodeAddress } from "@/lib/geocoding";
 import type { EmailTemplateKey } from "@/types/database";
 
 export type SettingsFormState = { error: string | null; success?: boolean };
@@ -34,6 +35,43 @@ export async function updateCompanySettings(
 
   if (error) return { error: error.message };
   revalidatePath("/admin/settings");
+  return { error: null, success: true };
+}
+
+export async function updateSiteSettings(
+  _prevState: SettingsFormState,
+  formData: FormData
+): Promise<SettingsFormState> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const siteId = String(formData.get("id") ?? "");
+  if (!siteId) return { error: "Site introuvable." };
+
+  const adresse = String(formData.get("adresse") ?? "") || null;
+  const ville = String(formData.get("ville") ?? "") || null;
+  const codePostal = String(formData.get("code_postal") ?? "") || null;
+  const coords = await geocodeAddress(adresse, codePostal, ville);
+
+  const { error } = await supabase
+    .from("sites")
+    .update({
+      nom: String(formData.get("nom") ?? "") || "LG BOX",
+      adresse,
+      ville,
+      code_postal: codePostal,
+      telephone: String(formData.get("telephone") ?? "") || null,
+      email_contact: String(formData.get("email_contact") ?? "") || null,
+      horaires: String(formData.get("horaires") ?? "") || null,
+      latitude: coords?.latitude ?? null,
+      longitude: coords?.longitude ?? null,
+    })
+    .eq("id", siteId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/reports");
+  revalidatePath("/");
   return { error: null, success: true };
 }
 

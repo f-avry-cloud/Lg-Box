@@ -2,6 +2,7 @@ import { Download } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format";
+import { haversineDistanceKm } from "@/lib/geocoding";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ReportsPage() {
@@ -17,6 +18,8 @@ export default async function ReportsPage() {
     { data: expensesThisMonth },
     { count: totalUnits },
     { count: loues },
+    { data: site },
+    { data: customers },
   ] = await Promise.all([
     supabase.from("invoices").select("montant_ttc").neq("statut", "annulee").gte("date_emission", monthStart),
     supabase.from("payments").select("montant").eq("statut", "valide").gte("date_paiement", monthStart),
@@ -24,6 +27,8 @@ export default async function ReportsPage() {
     supabase.from("expenses").select("montant").gte("date_depense", monthStart),
     supabase.from("units").select("id", { count: "exact", head: true }),
     supabase.from("units").select("id", { count: "exact", head: true }).eq("statut", "loue"),
+    supabase.from("sites").select("latitude, longitude").limit(1).maybeSingle(),
+    supabase.from("customers").select("latitude, longitude"),
   ]);
 
   const caFacture = (invoicedThisMonth ?? []).reduce((sum, i) => sum + i.montant_ttc, 0);
@@ -32,6 +37,15 @@ export default async function ReportsPage() {
   const charges = (expensesThisMonth ?? []).reduce((sum, e) => sum + e.montant, 0);
   const resultatNet = caEncaisse - charges;
   const occupation = totalUnits ? Math.round(((loues ?? 0) / totalUnits) * 100) : 0;
+
+  const distanceMoyenneKm = (() => {
+    if (!site?.latitude || !site?.longitude) return null;
+    const distances = (customers ?? [])
+      .filter((c) => c.latitude && c.longitude)
+      .map((c) => haversineDistanceKm({ latitude: site.latitude!, longitude: site.longitude! }, { latitude: c.latitude!, longitude: c.longitude! }));
+    if (distances.length === 0) return null;
+    return distances.reduce((sum, d) => sum + d, 0) / distances.length;
+  })();
 
   const exports = [
     { type: "invoices", label: "Factures" },
@@ -68,6 +82,24 @@ export default async function ReportsPage() {
             value={formatCurrency(resultatNet)}
             accent={resultatNet >= 0 ? "text-success" : "text-destructive"}
           />
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Éloignement des locataires</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <Metric
+            label="Distance moyenne au centre"
+            value={distanceMoyenneKm !== null ? `${distanceMoyenneKm.toFixed(1)} km` : "—"}
+          />
+          {distanceMoyenneKm === null && (
+            <p className="col-span-2 self-center text-sm text-muted-foreground sm:col-span-2">
+              Renseignez l&apos;adresse du centre dans Paramètres pour activer cette statistique — les
+              adresses des clients sont géolocalisées automatiquement à la création ou à l&apos;import.
+            </p>
+          )}
         </CardContent>
       </Card>
 

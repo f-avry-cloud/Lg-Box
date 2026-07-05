@@ -31,12 +31,14 @@ export function CsvImportDialog({
   description,
   fields,
   onImport,
+  templateUrl,
 }: {
   triggerLabel: string;
   title: string;
   description: string;
   fields: CsvImportField[];
   onImport: (rows: Record<string, string>[]) => Promise<ActionResult & { imported?: number }>;
+  templateUrl?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<string[][]>([]);
@@ -116,6 +118,11 @@ export function CsvImportDialog({
         {rows.length === 0 ? (
           <div className="flex flex-col gap-2">
             <p className="text-sm text-muted-foreground">{description}</p>
+            {templateUrl && (
+              <a href={templateUrl} download className="text-sm text-primary hover:underline">
+                Télécharger un modèle de fichier CSV
+              </a>
+            )}
             <Label htmlFor="csv-file">Fichier CSV</Label>
             <input id="csv-file" type="file" accept=".csv,text/csv" onChange={handleFile} className="text-sm" />
           </div>

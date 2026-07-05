@@ -36,6 +36,7 @@ export default async function UnitsPage() {
             description="Utile pour reprendre un inventaire de box existant sans ressaisie manuelle."
             fields={UNIT_IMPORT_FIELDS}
             onImport={importUnitsCsv}
+            templateUrl="/templates/box-modele.csv"
           />
           <UnitCreateDialog />
         </div>

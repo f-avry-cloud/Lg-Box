@@ -1,0 +1,3 @@
+numero,taille_libelle,taille_m2,prix_mensuel_standard,type,floor,zone,statut,notes
+A01,5m²,5,69,interieur,rez_de_chaussee,Zone A,libre,
+A02,10m²,10,119,climatise,sous_sol,Zone A,loue,

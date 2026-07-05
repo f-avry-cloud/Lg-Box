@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin, requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ok, fail, type ActionResult } from "@/lib/actions/result";
+import { geocodeAddress } from "@/lib/geocoding";
 import type { CustomerType } from "@/types/database";
 
 export type CustomerFormState = { error: string | null; success?: boolean; customerId?: string };
@@ -16,6 +17,11 @@ export async function createCustomer(
   await requireStaff();
   const supabase = await createClient();
 
+  const adresse = String(formData.get("adresse") ?? "") || null;
+  const ville = String(formData.get("ville") ?? "") || null;
+  const codePostal = String(formData.get("code_postal") ?? "") || null;
+  const coords = await geocodeAddress(adresse, codePostal, ville);
+
   const { data, error } = await supabase
     .from("customers")
     .insert({
@@ -23,12 +29,14 @@ export async function createCustomer(
       nom: String(formData.get("nom") ?? "").trim(),
       email: String(formData.get("email") ?? "").trim(),
       telephone: String(formData.get("telephone") ?? "") || null,
-      adresse: String(formData.get("adresse") ?? "") || null,
-      ville: String(formData.get("ville") ?? "") || null,
-      code_postal: String(formData.get("code_postal") ?? "") || null,
+      adresse,
+      ville,
+      code_postal: codePostal,
       type: String(formData.get("type") ?? "particulier") as CustomerType,
       siret: String(formData.get("siret") ?? "") || null,
       notes: String(formData.get("notes") ?? "") || null,
+      latitude: coords?.latitude ?? null,
+      longitude: coords?.longitude ?? null,
     })
     .select("id")
     .single();
