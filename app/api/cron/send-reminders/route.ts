@@ -3,9 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { createServiceClient } from "@/lib/supabase/server";
 import { daysUntil } from "@/lib/business/notice";
+import { isSignatureTokenValid } from "@/lib/business/contract-signature";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { getResend, FROM_EMAIL } from "@/lib/email/resend";
-import { renderEmailTemplate, type ReminderStage } from "@/lib/email/templates";
+import { renderEmailTemplate, signatureLink, type ReminderStage } from "@/lib/email/templates";
+import { createSignatureRequest } from "@/lib/actions/contract-signature";
 
 // Relances automatiques : J-3 avant échéance, le jour J, puis J+7 et J+15
 // après échéance si toujours impayée. A planifier quotidiennement via
@@ -96,5 +98,88 @@ export async function GET(request: NextRequest) {
     sent.push(invoice.id);
   }
 
-  return NextResponse.json({ markedOverdue: overdueIds.length, sent: sent.length, skipped: skipped.length });
+  // 3. Relance des contrats en attente de signature depuis plus de X jours
+  // (délai configurable dans Paramètres). Envoyée une seule fois par contrat
+  // — le garde-fou activity_log empêche tout doublon.
+  const { data: companySettings } = await supabase
+    .from("company_settings")
+    .select("relance_signature_jours_defaut")
+    .single();
+  const signatureReminderDelayDays = companySettings?.relance_signature_jours_defaut ?? 7;
+
+  const { data: pendingContracts } = await supabase
+    .from("contracts")
+    .select("id, customer_id")
+    .eq("signature_status", "en_attente");
+
+  const signatureRemindersSent: string[] = [];
+
+  for (const contract of pendingContracts ?? []) {
+    const action = "contract_signature_reminder";
+    const { data: alreadySent } = await supabase
+      .from("activity_log")
+      .select("id")
+      .eq("table_concernee", "contracts")
+      .eq("enregistrement_id", contract.id)
+      .eq("action", action)
+      .limit(1);
+    if (alreadySent && alreadySent.length > 0) continue;
+
+    const { data: latestSignature } = await supabase
+      .from("contract_signatures")
+      .select("*")
+      .eq("contract_id", contract.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!latestSignature) continue;
+
+    const daysSinceRequest = -daysUntil(new Date(latestSignature.created_at), today);
+    if (daysSinceRequest < signatureReminderDelayDays) continue;
+
+    let token = latestSignature.signature_token;
+    if (!isSignatureTokenValid(latestSignature, today).valid) {
+      const created = await createSignatureRequest(supabase, contract.id);
+      if ("error" in created) continue;
+      token = created.token;
+    }
+
+    const { data: customer } = await supabase
+      .from("customers")
+      .select("prenom, email")
+      .eq("id", contract.customer_id)
+      .single();
+    if (!customer) continue;
+
+    const rendered = await renderEmailTemplate(supabase, "contract_signature_reminder", {
+      prenom: customer.prenom,
+      lien_signature: signatureLink(token),
+    });
+    if (!rendered) continue;
+
+    if (process.env.RESEND_API_KEY) {
+      await getResend().emails.send({
+        from: FROM_EMAIL,
+        to: customer.email,
+        subject: rendered.subject,
+        text: rendered.text,
+      });
+    }
+
+    await supabase.from("activity_log").insert({
+      action,
+      table_concernee: "contracts",
+      enregistrement_id: contract.id,
+      detail: { stage: "signature_reminder" },
+    });
+
+    signatureRemindersSent.push(contract.id);
+  }
+
+  return NextResponse.json({
+    markedOverdue: overdueIds.length,
+    sent: sent.length,
+    skipped: skipped.length,
+    signatureRemindersSent: signatureRemindersSent.length,
+  });
 }

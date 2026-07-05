@@ -47,3 +47,39 @@ export function interpolateContractTemplate(
     template
   );
 }
+
+// Rendu texte brut du contrat, utilisé à la fois pour l'affichage sur la
+// page de signature publique et pour le hash SHA-256 de preuve — les deux
+// doivent toujours produire exactement le même contenu.
+export function renderContractPlainText(
+  contract: Contract,
+  customer: Customer,
+  unit: Unit,
+  company: CompanySettings
+): string {
+  if (company.contrat_modele) {
+    return interpolateContractTemplate(company.contrat_modele, { contract, customer, unit, company });
+  }
+
+  const locataire =
+    customer.type === "professionnel" && customer.siret
+      ? `${customer.prenom} ${customer.nom} (SIRET ${customer.siret})`
+      : `${customer.prenom} ${customer.nom}`;
+
+  return [
+    "CONTRAT DE LOCATION DE BOX DE SELF-STOCKAGE",
+    "",
+    `Entre ${company.nom_entreprise ?? "LG BOX"}, ${company.adresse ?? ""}, ci-après « le Loueur »,`,
+    `Et ${locataire}, demeurant ${[customer.adresse, customer.code_postal, customer.ville].filter(Boolean).join(" ")}, ci-après « le Locataire ».`,
+    "",
+    `Box loué : n° ${unit.numero} — ${unit.taille_libelle} (${unit.type})`,
+    `Date de début : ${formatDateLong(contract.date_debut)}`,
+    `Durée : indéterminée, préavis de ${contract.preavis_jours} jours`,
+    `Loyer mensuel : ${formatCurrency(contract.prix_mensuel)} TTC`,
+    `Dépôt de garantie : ${formatCurrency(contract.depot_garantie)}`,
+    `Jour de prélèvement mensuel : le ${contract.jour_prelevement_mensuel} de chaque mois`,
+    "",
+    "CONDITIONS GÉNÉRALES",
+    company.cgv ?? "Conditions générales de location à compléter dans les paramètres du back-office.",
+  ].join("\n");
+}

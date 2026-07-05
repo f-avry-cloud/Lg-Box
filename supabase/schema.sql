@@ -117,12 +117,59 @@ create table contracts (
   date_demande_resiliation date,
   contrat_pdf_url text,
   motif_resiliation text,
+  signature_status text not null default 'non_requise'
+    check (signature_status in ('non_requise', 'en_attente', 'signe')),
   created_at timestamptz not null default now()
 );
 
 create index idx_contracts_customer on contracts (customer_id);
 create index idx_contracts_unit on contracts (unit_id);
 create index idx_contracts_statut on contracts (statut);
+
+-- ----------------------------------------------------------------------------
+-- contract_signatures (preuve de signature électronique, art. 1367 C. civ.)
+-- ----------------------------------------------------------------------------
+create table contract_signatures (
+  id uuid primary key default gen_random_uuid(),
+  contract_id uuid not null references contracts (id) on delete cascade,
+  customer_id uuid not null references customers (id) on delete cascade,
+  signer_full_name text,
+  signed_at timestamptz,
+  ip_address text,
+  user_agent text,
+  document_hash text,
+  signed_document_path text,
+  signature_token text not null unique,
+  token_expires_at timestamptz not null,
+  token_used_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index idx_contract_signatures_contract on contract_signatures (contract_id);
+create index idx_contract_signatures_customer on contract_signatures (customer_id);
+
+-- ----------------------------------------------------------------------------
+-- security_deposits (dépôt de garantie et restitution)
+-- ----------------------------------------------------------------------------
+create table security_deposits (
+  id uuid primary key default gen_random_uuid(),
+  contract_id uuid not null references contracts (id) on delete cascade,
+  customer_id uuid not null references customers (id) on delete cascade,
+  amount_expected numeric(10, 2) not null default 0,
+  amount_received numeric(10, 2),
+  payment_method payment_method,
+  received_at date,
+  status text not null default 'non_demande'
+    check (status in ('non_demande', 'demande', 'recu', 'partiellement_rembourse', 'rembourse', 'retenu')),
+  amount_refunded numeric(10, 2),
+  refunded_at date,
+  refund_reason text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index idx_security_deposits_contract on security_deposits (contract_id);
+create index idx_security_deposits_customer on security_deposits (customer_id);
 
 -- ----------------------------------------------------------------------------
 -- invoices
@@ -228,6 +275,7 @@ create table company_settings (
   contrat_modele text,
   preavis_jours_defaut smallint not null default 30,
   jour_prelevement_defaut smallint not null default 1,
+  relance_signature_jours_defaut smallint not null default 7,
   updated_at timestamptz not null default now()
 );
 
@@ -277,7 +325,10 @@ create index idx_bank_transactions_batch on bank_transactions (import_batch_id);
 -- email_templates (relances + facture disponible, éditables dans Paramètres)
 -- ----------------------------------------------------------------------------
 create table email_templates (
-  key text primary key check (key in ('j-3', 'j0', 'j+7', 'j+15', 'invoice_ready')),
+  key text primary key check (key in (
+    'j-3', 'j0', 'j+7', 'j+15', 'invoice_ready',
+    'contract_signature_request', 'contract_signature_reminder'
+  )),
   subject text not null,
   body text not null,
   updated_at timestamptz not null default now()
@@ -325,6 +376,22 @@ L''équipe LG BOX'),
 Votre facture {{numero_facture}} d''un montant de {{montant}} est disponible dans votre espace client, échéance le {{date_echeance}}.
 
 Vous pouvez la consulter et la télécharger à tout moment depuis votre espace client : {{lien_portail}}
+
+Bien cordialement,
+L''équipe LG BOX'),
+('contract_signature_request', 'Votre contrat LG BOX est prêt à être signé', 'Bonjour {{prenom}},
+
+Votre contrat de location est prêt. Merci de le consulter et de le signer électroniquement via le lien suivant (valable 7 jours) :
+
+{{lien_signature}}
+
+Bien cordialement,
+L''équipe LG BOX'),
+('contract_signature_reminder', '[Rappel] Votre contrat LG BOX est toujours en attente de signature', 'Bonjour {{prenom}},
+
+Nous n''avons pas encore reçu votre signature électronique pour votre contrat de location. Merci de le signer via le lien suivant :
+
+{{lien_signature}}
 
 Bien cordialement,
 L''équipe LG BOX');
@@ -429,6 +496,8 @@ alter table pricing_grid enable row level security;
 alter table expenses enable row level security;
 alter table bank_transactions enable row level security;
 alter table email_templates enable row level security;
+alter table contract_signatures enable row level security;
+alter table security_deposits enable row level security;
 
 -- profiles : chacun voit son propre profil, admin voit tout
 create policy "profiles_self_select" on profiles for select using (id = auth.uid() or is_admin());
@@ -511,6 +580,21 @@ create policy "bank_transactions_admin_delete" on bank_transactions for delete u
 
 create policy "email_templates_staff_select" on email_templates for select using (is_staff());
 create policy "email_templates_admin_update" on email_templates for update using (is_admin());
+
+-- contract_signatures : lecture staff + locataire propriétaire du contrat.
+-- Aucune écriture exposée à authenticated/anon — uniquement via service
+-- role (envoi pour signature, signature via token public).
+create policy "contract_signatures_staff_select" on contract_signatures for select using (
+  is_staff() or customer_id = current_customer_id()
+);
+
+-- security_deposits : staff gère, locataire voit ses propres dépôts.
+create policy "security_deposits_staff_select" on security_deposits for select using (
+  is_staff() or customer_id = current_customer_id()
+);
+create policy "security_deposits_staff_insert" on security_deposits for insert with check (is_staff());
+create policy "security_deposits_staff_update" on security_deposits for update using (is_staff());
+create policy "security_deposits_admin_delete" on security_deposits for delete using (is_admin());
 
 -- ============================================================================
 -- Trigger : création automatique du profil à l'inscription (rôle tenant par défaut)

@@ -6,14 +6,23 @@ export type ReminderStage = "j-3" | "j0" | "j+7" | "j+15";
 
 export type EmailVars = {
   prenom: string;
-  montant: string;
-  numero_facture: string;
-  date_echeance: string;
-  lien_portail: string;
+  montant?: string;
+  numero_facture?: string;
+  date_echeance?: string;
+  lien_portail?: string;
+  lien_signature?: string;
 };
 
 function interpolate(text: string, vars: EmailVars): string {
-  return Object.entries(vars).reduce(
+  const allVars: Record<string, string> = {
+    montant: "",
+    numero_facture: "",
+    date_echeance: "",
+    lien_portail: "",
+    lien_signature: "",
+    ...vars,
+  };
+  return Object.entries(allVars).reduce(
     (acc, [key, value]) => acc.replaceAll(`{{${key}}}`, value),
     text
   );
@@ -22,6 +31,11 @@ function interpolate(text: string, vars: EmailVars): string {
 export function portailLink(): string {
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "";
   return `${base}/portail/factures`;
+}
+
+export function signatureLink(token: string): string {
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  return `${base}/signature/${token}`;
 }
 
 // Récupère un modèle d'email éditable (Paramètres > Modèles d'email) et

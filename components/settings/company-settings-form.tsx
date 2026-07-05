@@ -64,6 +64,16 @@ export function CompanySettingsForm({ settings }: { settings: CompanySettings })
           defaultValue={settings.jour_prelevement_defaut}
         />
       </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="relance_signature_jours_defaut">Relance de signature après (jours)</Label>
+        <Input
+          id="relance_signature_jours_defaut"
+          name="relance_signature_jours_defaut"
+          type="number"
+          min={1}
+          defaultValue={settings.relance_signature_jours_defaut}
+        />
+      </div>
       <div className="col-span-2 flex flex-col gap-1.5">
         <Label htmlFor="cgv">Conditions générales de location</Label>
         <Textarea id="cgv" name="cgv" rows={8} defaultValue={settings.cgv ?? ""} />

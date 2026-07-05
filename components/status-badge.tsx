@@ -4,6 +4,8 @@ import type {
   InvoiceStatus,
   PaymentStatus,
   ReservationStatus,
+  SecurityDepositStatus,
+  SignatureStatus,
   UnitStatus,
 } from "@/types/database";
 
@@ -42,6 +44,21 @@ const RESERVATION_LABELS: Record<ReservationStatus, { label: string; variant: "s
   refusee: { label: "Refusée", variant: "muted" },
 };
 
+const SIGNATURE_LABELS: Record<SignatureStatus, { label: string; variant: "success" | "warning" | "muted" }> = {
+  non_requise: { label: "Non requise", variant: "muted" },
+  en_attente: { label: "En attente de signature", variant: "warning" },
+  signe: { label: "Signé", variant: "success" },
+};
+
+const DEPOSIT_LABELS: Record<SecurityDepositStatus, { label: string; variant: "success" | "secondary" | "warning" | "muted" | "destructive" }> = {
+  non_demande: { label: "Non demandé", variant: "muted" },
+  demande: { label: "Demandé", variant: "warning" },
+  recu: { label: "Reçu", variant: "success" },
+  partiellement_rembourse: { label: "Partiellement remboursé", variant: "secondary" },
+  rembourse: { label: "Remboursé", variant: "muted" },
+  retenu: { label: "Retenu", variant: "destructive" },
+};
+
 export function UnitStatusBadge({ status }: { status: UnitStatus }) {
   const { label, variant } = UNIT_LABELS[status];
   return <Badge variant={variant}>{label}</Badge>;
@@ -64,6 +81,16 @@ export function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
 
 export function ReservationStatusBadge({ status }: { status: ReservationStatus }) {
   const { label, variant } = RESERVATION_LABELS[status];
+  return <Badge variant={variant}>{label}</Badge>;
+}
+
+export function SignatureStatusBadge({ status }: { status: SignatureStatus }) {
+  const { label, variant } = SIGNATURE_LABELS[status];
+  return <Badge variant={variant}>{label}</Badge>;
+}
+
+export function SecurityDepositStatusBadge({ status }: { status: SecurityDepositStatus }) {
+  const { label, variant } = DEPOSIT_LABELS[status];
   return <Badge variant={variant}>{label}</Badge>;
 }
 

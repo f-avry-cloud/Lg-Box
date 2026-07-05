@@ -29,6 +29,7 @@ export async function updateCompanySettings(
       contrat_modele: String(formData.get("contrat_modele") ?? "") || null,
       preavis_jours_defaut: Number(formData.get("preavis_jours_defaut") ?? 30),
       jour_prelevement_defaut: Number(formData.get("jour_prelevement_defaut") ?? 1),
+      relance_signature_jours_defaut: Number(formData.get("relance_signature_jours_defaut") ?? 7),
       updated_at: new Date().toISOString(),
     })
     .eq("id", true);
