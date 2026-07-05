@@ -5,6 +5,7 @@ import type {
   PaymentStatus,
   ReservationStatus,
   SecurityDepositStatus,
+  SepaMandateStatus,
   SignatureStatus,
   UnitStatus,
 } from "@/types/database";
@@ -50,6 +51,12 @@ const SIGNATURE_LABELS: Record<SignatureStatus, { label: string; variant: "succe
   signe: { label: "Signé", variant: "success" },
 };
 
+const SEPA_MANDATE_LABELS: Record<SepaMandateStatus, { label: string; variant: "success" | "warning" | "muted" }> = {
+  non_requis: { label: "Non requis", variant: "muted" },
+  en_attente: { label: "En attente de signature", variant: "warning" },
+  signe: { label: "Signé", variant: "success" },
+};
+
 const DEPOSIT_LABELS: Record<SecurityDepositStatus, { label: string; variant: "success" | "secondary" | "warning" | "muted" | "destructive" }> = {
   non_demande: { label: "Non demandé", variant: "muted" },
   demande: { label: "Demandé", variant: "warning" },
@@ -91,6 +98,11 @@ export function SignatureStatusBadge({ status }: { status: SignatureStatus }) {
 
 export function SecurityDepositStatusBadge({ status }: { status: SecurityDepositStatus }) {
   const { label, variant } = DEPOSIT_LABELS[status];
+  return <Badge variant={variant}>{label}</Badge>;
+}
+
+export function SepaMandateStatusBadge({ status }: { status: SepaMandateStatus }) {
+  const { label, variant } = SEPA_MANDATE_LABELS[status];
   return <Badge variant={variant}>{label}</Badge>;
 }
 

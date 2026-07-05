@@ -14,6 +14,9 @@ export type DocumentType = "contrat" | "facture" | "piece_identite" | "autre";
 export type UnitFloor = "sous_sol" | "rez_de_chaussee" | "premier_etage";
 export type BankTransactionStatus = "non_rapproche" | "rapproche" | "ignore";
 export type SignatureStatus = "non_requise" | "en_attente" | "signe";
+export type SepaMandateStatus = "non_requis" | "en_attente" | "signe";
+export type SignedDocumentType = "contrat" | "mandat_sepa";
+export type SepaMandateTemplateMode = "integre" | "upload";
 export type SecurityDepositStatus =
   | "non_demande"
   | "demande"
@@ -97,22 +100,35 @@ export type Contract = {
   contrat_pdf_url: string | null;
   motif_resiliation: string | null;
   signature_status: SignatureStatus;
+  sepa_mandate_status: SepaMandateStatus;
+  iban: string | null;
+  bic: string | null;
+  rum: string | null;
   created_at: string;
 };
 
-export type ContractSignature = {
+export type SignatureRequest = {
   id: string;
   contract_id: string;
   customer_id: string;
+  includes_contract: boolean;
+  includes_sepa_mandate: boolean;
   signer_full_name: string | null;
   signed_at: string | null;
   ip_address: string | null;
   user_agent: string | null;
-  document_hash: string | null;
-  signed_document_path: string | null;
   signature_token: string;
   token_expires_at: string;
   token_used_at: string | null;
+  created_at: string;
+};
+
+export type SignedDocument = {
+  id: string;
+  signature_request_id: string;
+  document_type: SignedDocumentType;
+  document_hash: string;
+  signed_document_path: string;
   created_at: string;
 };
 
@@ -205,6 +221,10 @@ export type CompanySettings = {
   preavis_jours_defaut: number;
   jour_prelevement_defaut: number;
   relance_signature_jours_defaut: number;
+  ics: string | null;
+  mandat_sepa_modele: string | null;
+  mandat_sepa_template_mode: SepaMandateTemplateMode;
+  mandat_sepa_upload_path: string | null;
   updated_at: string;
 };
 
@@ -278,7 +298,8 @@ export type Database = {
       expenses: Table<Expense>;
       bank_transactions: Table<BankTransaction>;
       email_templates: Table<EmailTemplate, EmailTemplate, Partial<EmailTemplate>>;
-      contract_signatures: Table<ContractSignature>;
+      signature_requests: Table<SignatureRequest>;
+      signed_documents: Table<SignedDocument>;
       security_deposits: Table<SecurityDeposit>;
     };
     Views: Record<string, never>;

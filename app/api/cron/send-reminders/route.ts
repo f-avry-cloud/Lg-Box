@@ -98,9 +98,9 @@ export async function GET(request: NextRequest) {
     sent.push(invoice.id);
   }
 
-  // 3. Relance des contrats en attente de signature depuis plus de X jours
-  // (délai configurable dans Paramètres). Envoyée une seule fois par contrat
-  // — le garde-fou activity_log empêche tout doublon.
+  // 3. Relance des contrats/mandats en attente de signature depuis plus de X
+  // jours (délai configurable dans Paramètres). Envoyée une seule fois par
+  // contrat — le garde-fou activity_log empêche tout doublon.
   const { data: companySettings } = await supabase
     .from("company_settings")
     .select("relance_signature_jours_defaut")
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
   const { data: pendingContracts } = await supabase
     .from("contracts")
     .select("id, customer_id")
-    .eq("signature_status", "en_attente");
+    .or("signature_status.eq.en_attente,sepa_mandate_status.eq.en_attente");
 
   const signatureRemindersSent: string[] = [];
 
@@ -125,21 +125,24 @@ export async function GET(request: NextRequest) {
       .limit(1);
     if (alreadySent && alreadySent.length > 0) continue;
 
-    const { data: latestSignature } = await supabase
-      .from("contract_signatures")
+    const { data: latestRequest } = await supabase
+      .from("signature_requests")
       .select("*")
       .eq("contract_id", contract.id)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (!latestSignature) continue;
+    if (!latestRequest) continue;
 
-    const daysSinceRequest = -daysUntil(new Date(latestSignature.created_at), today);
+    const daysSinceRequest = -daysUntil(new Date(latestRequest.created_at), today);
     if (daysSinceRequest < signatureReminderDelayDays) continue;
 
-    let token = latestSignature.signature_token;
-    if (!isSignatureTokenValid(latestSignature, today).valid) {
-      const created = await createSignatureRequest(supabase, contract.id);
+    let token = latestRequest.signature_token;
+    if (!isSignatureTokenValid(latestRequest, today).valid) {
+      const created = await createSignatureRequest(supabase, contract.id, {
+        includeContract: latestRequest.includes_contract,
+        includeSepaMandate: latestRequest.includes_sepa_mandate,
+      });
       if ("error" in created) continue;
       token = created.token;
     }

@@ -1,5 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ContractStatusBadge, SecurityDepositStatusBadge, SignatureStatusBadge } from "@/components/status-badge";
+import {
+  ContractStatusBadge,
+  SecurityDepositStatusBadge,
+  SepaMandateStatusBadge,
+  SignatureStatusBadge,
+} from "@/components/status-badge";
 import { PaymentButton } from "@/components/portal/payment-button";
 import { DownloadDocumentButton } from "@/components/documents/download-button";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -41,13 +46,18 @@ export default async function PortailHomePage() {
   }
 
   const { data: unit } = await supabase.from("units").select("*").eq("id", contract.unit_id).single();
-  const { data: latestSignature } = await supabase
-    .from("contract_signatures")
+  const { data: latestRequest } = await supabase
+    .from("signature_requests")
     .select("*")
     .eq("contract_id", contract.id)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  const { data: signedDocuments } = latestRequest
+    ? await supabase.from("signed_documents").select("*").eq("signature_request_id", latestRequest.id)
+    : { data: [] };
+  const contractDoc = (signedDocuments ?? []).find((d) => d.document_type === "contrat");
+  const mandateDoc = (signedDocuments ?? []).find((d) => d.document_type === "mandat_sepa");
   const { data: deposit } = await supabase
     .from("security_deposits")
     .select("*")
@@ -75,12 +85,12 @@ export default async function PortailHomePage() {
           <SignatureStatusBadge status={contract.signature_status} />
         </CardHeader>
         <CardContent className="flex items-center justify-between text-sm">
-          {contract.signature_status === "signe" && latestSignature?.signed_document_path ? (
+          {contract.signature_status === "signe" && contractDoc ? (
             <>
-              <p className="text-muted-foreground">Signé le {formatDate(latestSignature.signed_at ?? "")}</p>
+              <p className="text-muted-foreground">Signé le {formatDate(latestRequest?.signed_at ?? "")}</p>
               <DownloadDocumentButton
                 bucket="contracts"
-                path={latestSignature.signed_document_path}
+                path={contractDoc.signed_document_path}
                 label="Télécharger le contrat signé"
               />
             </>
@@ -93,6 +103,29 @@ export default async function PortailHomePage() {
           )}
         </CardContent>
       </Card>
+
+      {contract.sepa_mandate_status !== "non_requis" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Mandat de prélèvement SEPA</CardTitle>
+            <SepaMandateStatusBadge status={contract.sepa_mandate_status} />
+          </CardHeader>
+          <CardContent className="flex items-center justify-between text-sm">
+            {contract.sepa_mandate_status === "signe" && mandateDoc ? (
+              <>
+                <p className="text-muted-foreground">Signé le {formatDate(latestRequest?.signed_at ?? "")}</p>
+                <DownloadDocumentButton
+                  bucket="contracts"
+                  path={mandateDoc.signed_document_path}
+                  label="Télécharger le mandat signé"
+                />
+              </>
+            ) : (
+              <p className="text-muted-foreground">Vous avez reçu un email avec un lien pour signer votre mandat.</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {deposit && deposit.status !== "non_demande" && (
         <Card>

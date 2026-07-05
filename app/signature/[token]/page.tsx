@@ -2,23 +2,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SignatureForm } from "@/components/signature/signature-form";
 import { isSignatureTokenValid } from "@/lib/business/contract-signature";
 import { renderContractPlainText } from "@/lib/pdf/contract-template";
+import { renderSepaMandatePlainText } from "@/lib/pdf/sepa-mandate-template";
+import { DownloadDocumentButton } from "@/components/documents/download-button";
 import { formatDateLong } from "@/lib/format";
 import { createServiceClient } from "@/lib/supabase/server";
 
 // Page publique, sans authentification : accédée via un lien à token envoyé
 // par email. Toute la lecture passe par le service role (aucune policy RLS
-// n'expose contract_signatures à un visiteur anonyme).
+// n'expose signature_requests à un visiteur anonyme).
 export default async function SignaturePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const service = createServiceClient();
 
-  const { data: signature } = await service
-    .from("contract_signatures")
+  const { data: request } = await service
+    .from("signature_requests")
     .select("*")
     .eq("signature_token", token)
     .maybeSingle();
 
-  if (!signature) {
+  if (!request) {
     return (
       <Message title="Lien invalide">
         Ce lien de signature n&apos;existe pas. Contactez-nous pour en recevoir un nouveau.
@@ -26,12 +28,12 @@ export default async function SignaturePage({ params }: { params: Promise<{ toke
     );
   }
 
-  const check = isSignatureTokenValid(signature);
+  const check = isSignatureTokenValid(request);
   if (!check.valid) {
     return (
-      <Message title={check.reason === "used" ? "Contrat déjà signé" : "Lien expiré"}>
+      <Message title={check.reason === "used" ? "Documents déjà signés" : "Lien expiré"}>
         {check.reason === "used"
-          ? "Ce contrat a déjà été signé avec ce lien."
+          ? "Ces documents ont déjà été signés avec ce lien."
           : "Ce lien de signature a expiré. Contactez-nous pour en recevoir un nouveau."}
       </Message>
     );
@@ -40,7 +42,7 @@ export default async function SignaturePage({ params }: { params: Promise<{ toke
   const { data: contract } = await service
     .from("contracts")
     .select("*")
-    .eq("id", signature.contract_id)
+    .eq("id", request.contract_id)
     .single();
   const { data: customer } = contract
     ? await service.from("customers").select("*").eq("id", contract.customer_id).single()
@@ -51,26 +53,61 @@ export default async function SignaturePage({ params }: { params: Promise<{ toke
   const { data: company } = await service.from("company_settings").select("*").single();
 
   if (!contract || !customer || !unit || !company) {
-    return <Message title="Contrat introuvable">Impossible de charger ce contrat. Contactez-nous.</Message>;
+    return <Message title="Documents introuvables">Impossible de charger vos documents. Contactez-nous.</Message>;
   }
 
-  const documentText = renderContractPlainText(contract, customer, unit, company);
+  const contractText = request.includes_contract
+    ? renderContractPlainText(contract, customer, unit, company)
+    : null;
+  const showMandateUpload = request.includes_sepa_mandate && company.mandat_sepa_template_mode === "upload";
+  const mandateText =
+    request.includes_sepa_mandate && company.mandat_sepa_template_mode === "integre"
+      ? renderSepaMandatePlainText(contract, customer, company)
+      : null;
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
       <div>
-        <h1 className="text-lg font-semibold">Signature de votre contrat</h1>
+        <h1 className="text-lg font-semibold">Signature de vos documents</h1>
         <p className="text-sm text-muted-foreground">
-          Lien valable jusqu&apos;au {formatDateLong(signature.token_expires_at)}.
+          Lien valable jusqu&apos;au {formatDateLong(request.token_expires_at)}.
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Contrat à signer</CardTitle>
-        </CardHeader>
-        <CardContent className="whitespace-pre-line text-sm leading-relaxed">{documentText}</CardContent>
-      </Card>
+      {contractText && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Contrat à signer</CardTitle>
+          </CardHeader>
+          <CardContent className="whitespace-pre-line text-sm leading-relaxed">{contractText}</CardContent>
+        </Card>
+      )}
+
+      {request.includes_sepa_mandate && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Mandat de prélèvement SEPA à signer</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 text-sm leading-relaxed">
+            {showMandateUpload && company.mandat_sepa_upload_path && (
+              <DownloadDocumentButton
+                bucket="documents"
+                path={company.mandat_sepa_upload_path}
+                label="Télécharger le modèle de mandat SEPA"
+              />
+            )}
+            <div className="rounded-md border border-border p-3">
+              <p>
+                <strong>RUM</strong> : {contract.rum} — <strong>ICS</strong> : {company.ics}
+              </p>
+              <p>
+                <strong>IBAN</strong> : {contract.iban} — <strong>BIC</strong> : {contract.bic}
+              </p>
+            </div>
+            {mandateText && <p className="whitespace-pre-line">{mandateText}</p>}
+          </CardContent>
+        </Card>
+      )}
 
       <SignatureForm token={token} />
     </div>

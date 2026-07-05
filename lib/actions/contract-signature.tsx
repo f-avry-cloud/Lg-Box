@@ -12,39 +12,60 @@ import { renderEmailTemplate, signatureLink } from "@/lib/email/templates";
 import { getResend, FROM_EMAIL } from "@/lib/email/resend";
 import { isSignatureTokenValid, SIGNATURE_TOKEN_TTL_DAYS } from "@/lib/business/contract-signature";
 import { renderContractPlainText } from "@/lib/pdf/contract-template";
+import { renderSepaMandatePlainText } from "@/lib/pdf/sepa-mandate-template";
 import { CertifiedContractDocument } from "@/lib/pdf/certified-contract-document";
+import { CertifiedSepaMandateDocument, SepaMandateSummaryDocument } from "@/lib/pdf/sepa-mandate-document";
 import { renderPdfBuffer } from "@/lib/pdf/generate";
-import type { Database } from "@/types/database";
+import { mergePdfBuffers } from "@/lib/pdf/merge";
+import type { Contract, Database } from "@/types/database";
 
-// Crée (ou renouvelle) une demande de signature : nouveau token à usage
-// unique, expirant dans SIGNATURE_TOKEN_TTL_DAYS jours. Appelée aussi bien
-// depuis l'action staff "Envoyer pour signature" que depuis la relance
-// automatique du cron lorsqu'un lien précédent a expiré — toujours avec un
-// client service role, cette table n'ayant aucune policy d'écriture.
+export type SignatureRequestOptions = { includeContract: boolean; includeSepaMandate: boolean };
+
+// Crée (ou renouvelle) une demande de signature couvrant le contrat, le
+// mandat SEPA, ou les deux — un seul token, un seul geste de signature.
+// Appelée aussi bien depuis l'action staff "Envoyer pour signature" que
+// depuis la relance automatique du cron, toujours avec un client service
+// role : ni signature_requests ni signed_documents n'ont de policy d'écriture.
 export async function createSignatureRequest(
   supabase: SupabaseClient<Database>,
-  contractId: string
+  contractId: string,
+  options: SignatureRequestOptions
 ): Promise<{ token: string } | { error: string }> {
-  const { data: contract } = await supabase
-    .from("contracts")
-    .select("id, customer_id, signature_status")
-    .eq("id", contractId)
-    .single();
+  if (!options.includeContract && !options.includeSepaMandate) {
+    return { error: "Sélectionnez au moins un document à signer." };
+  }
+
+  const { data: contract } = await supabase.from("contracts").select("*").eq("id", contractId).single();
   if (!contract) return { error: "Contrat introuvable." };
-  if (contract.signature_status === "signe") return { error: "Ce contrat est déjà signé." };
+  if (options.includeContract && contract.signature_status === "signe") {
+    return { error: "Ce contrat est déjà signé." };
+  }
+  if (options.includeSepaMandate) {
+    if (contract.sepa_mandate_status === "signe") return { error: "Ce mandat SEPA est déjà signé." };
+    if (!contract.iban || !contract.bic || !contract.rum) {
+      return { error: "Renseignez l'IBAN, le BIC et générez le RUM avant d'envoyer le mandat SEPA." };
+    }
+  }
 
   const token = randomBytes(32).toString("hex");
   const tokenExpiresAt = new Date(Date.now() + SIGNATURE_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
 
-  const { error } = await supabase.from("contract_signatures").insert({
+  const { error } = await supabase.from("signature_requests").insert({
     contract_id: contract.id,
     customer_id: contract.customer_id,
+    includes_contract: options.includeContract,
+    includes_sepa_mandate: options.includeSepaMandate,
     signature_token: token,
     token_expires_at: tokenExpiresAt.toISOString(),
   });
   if (error) return { error: error.message };
 
-  await supabase.from("contracts").update({ signature_status: "en_attente" }).eq("id", contract.id);
+  const update: Partial<Contract> = {};
+  if (options.includeContract) update.signature_status = "en_attente";
+  if (options.includeSepaMandate) update.sepa_mandate_status = "en_attente";
+  if (Object.keys(update).length > 0) {
+    await supabase.from("contracts").update(update).eq("id", contract.id);
+  }
 
   return { token };
 }
@@ -61,12 +82,16 @@ async function loadEmailPayload(service: SupabaseClient<Database>, contractId: s
   return { contract, customer };
 }
 
-// Bouton "Envoyer pour signature" sur la fiche contrat (staff).
-export async function sendContractForSignature(contractId: string): Promise<ActionResult> {
+// Bouton "Envoyer pour signature" sur la fiche contrat (staff), avec choix
+// des documents à inclure (contrat, mandat SEPA, ou les deux).
+export async function sendContractForSignature(
+  contractId: string,
+  options: SignatureRequestOptions
+): Promise<ActionResult> {
   await requireStaff();
   const service = createServiceClient();
 
-  const created = await createSignatureRequest(service, contractId);
+  const created = await createSignatureRequest(service, contractId, options);
   if ("error" in created) return fail(created.error);
 
   const payload = await loadEmailPayload(service, contractId);
@@ -90,7 +115,11 @@ export async function sendContractForSignature(contractId: string): Promise<Acti
     action: "contract_signature_requested",
     table_concernee: "contracts",
     enregistrement_id: contractId,
-    detail: { resend_configured: Boolean(process.env.RESEND_API_KEY) },
+    detail: {
+      resend_configured: Boolean(process.env.RESEND_API_KEY),
+      includes_contract: options.includeContract,
+      includes_sepa_mandate: options.includeSepaMandate,
+    },
   });
 
   revalidatePath(`/admin/contracts/${contractId}`);
@@ -109,7 +138,7 @@ export async function previewSignatureRequestEmail(
   if (!payload) return fail("Contrat ou client introuvable.");
 
   const { data: latest } = await service
-    .from("contract_signatures")
+    .from("signature_requests")
     .select("*")
     .eq("contract_id", contractId)
     .order("created_at", { ascending: false })
@@ -130,24 +159,24 @@ export async function previewSignatureRequestEmail(
 
 // Signature via le lien public à token — aucune session utilisateur : tout
 // passe par le service role, en dehors du contexte RLS.
-export async function signContract(token: string, signerFullName: string): Promise<ActionResult> {
+export async function signDocuments(token: string, signerFullName: string): Promise<ActionResult> {
   const fullName = signerFullName.trim();
   if (!fullName) return fail("Merci de saisir votre nom complet.");
 
   const service = createServiceClient();
 
-  const { data: signature } = await service
-    .from("contract_signatures")
+  const { data: request } = await service
+    .from("signature_requests")
     .select("*")
     .eq("signature_token", token)
     .maybeSingle();
-  if (!signature) return fail("Lien de signature introuvable.");
+  if (!request) return fail("Lien de signature introuvable.");
 
-  const check = isSignatureTokenValid(signature);
+  const check = isSignatureTokenValid(request);
   if (!check.valid) {
     return fail(
       check.reason === "used"
-        ? "Ce contrat a déjà été signé avec ce lien."
+        ? "Ces documents ont déjà été signés avec ce lien."
         : "Ce lien de signature a expiré — contactez-nous pour en recevoir un nouveau."
     );
   }
@@ -155,7 +184,7 @@ export async function signContract(token: string, signerFullName: string): Promi
   const { data: contract } = await service
     .from("contracts")
     .select("*")
-    .eq("id", signature.contract_id)
+    .eq("id", request.contract_id)
     .single();
   const { data: customer } = contract
     ? await service.from("customers").select("*").eq("id", contract.customer_id).single()
@@ -169,57 +198,106 @@ export async function signContract(token: string, signerFullName: string): Promi
   const headersList = await headers();
   const ipAddress = (headersList.get("x-forwarded-for") ?? "inconnue").split(",")[0].trim();
   const userAgent = headersList.get("user-agent");
-
-  const documentText = renderContractPlainText(contract, customer, unit, company);
-  const documentHash = createHash("sha256").update(documentText).digest("hex");
   const signedAt = new Date();
+  const sharedProof = { signerFullName: fullName, signedAt: signedAt.toISOString(), ipAddress, userAgent, contractId: contract.id };
 
-  const buffer = await renderPdfBuffer(
-    <CertifiedContractDocument
-      contract={contract}
-      customer={customer}
-      unit={unit}
-      company={company}
-      proof={{
-        signerFullName: fullName,
-        signedAt: signedAt.toISOString(),
-        ipAddress,
-        userAgent,
-        documentHash,
-        contractId: contract.id,
-      }}
-    />
+  const signedDocuments: { document_type: "contrat" | "mandat_sepa"; document_hash: string; signed_document_path: string }[] = [];
+
+  if (request.includes_contract) {
+    const documentText = renderContractPlainText(contract, customer, unit, company);
+    const documentHash = createHash("sha256").update(documentText).digest("hex");
+    const buffer = await renderPdfBuffer(
+      <CertifiedContractDocument
+        contract={contract}
+        customer={customer}
+        unit={unit}
+        company={company}
+        proof={{ ...sharedProof, documentHash }}
+      />
+    );
+    const path = `${customer.id}/${contract.id}-signe.pdf`;
+    const { error: uploadError } = await service.storage
+      .from("contracts")
+      .upload(path, buffer, { contentType: "application/pdf", upsert: true });
+    if (uploadError) return fail(uploadError.message);
+    signedDocuments.push({ document_type: "contrat", document_hash: documentHash, signed_document_path: path });
+  }
+
+  if (request.includes_sepa_mandate) {
+    let documentHash: string;
+    let buffer: Buffer;
+
+    if (company.mandat_sepa_template_mode === "upload" && company.mandat_sepa_upload_path) {
+      const { data: templateFile, error: downloadError } = await service.storage
+        .from("documents")
+        .download(company.mandat_sepa_upload_path);
+      if (downloadError || !templateFile) return fail("Modèle de mandat SEPA importé introuvable.");
+      const templateBuffer = Buffer.from(await templateFile.arrayBuffer());
+      documentHash = createHash("sha256").update(templateBuffer).digest("hex");
+
+      const summaryBuffer = await renderPdfBuffer(
+        <SepaMandateSummaryDocument
+          contract={contract}
+          customer={customer}
+          company={company}
+          proof={{ ...sharedProof, documentHash }}
+        />
+      );
+      buffer = await mergePdfBuffers([templateBuffer, summaryBuffer]);
+    } else {
+      const documentText = renderSepaMandatePlainText(contract, customer, company);
+      documentHash = createHash("sha256").update(documentText).digest("hex");
+      buffer = await renderPdfBuffer(
+        <CertifiedSepaMandateDocument
+          contract={contract}
+          customer={customer}
+          company={company}
+          proof={{ ...sharedProof, documentHash }}
+        />
+      );
+    }
+
+    const path = `${customer.id}/${contract.id}-mandat-sepa-signe.pdf`;
+    const { error: uploadError } = await service.storage
+      .from("contracts")
+      .upload(path, buffer, { contentType: "application/pdf", upsert: true });
+    if (uploadError) return fail(uploadError.message);
+    signedDocuments.push({ document_type: "mandat_sepa", document_hash: documentHash, signed_document_path: path });
+  }
+
+  await service.from("signed_documents").insert(
+    signedDocuments.map((doc) => ({ ...doc, signature_request_id: request.id }))
   );
 
-  const signedDocumentPath = `${customer.id}/${contract.id}-signe.pdf`;
-  const { error: uploadError } = await service.storage
-    .from("contracts")
-    .upload(signedDocumentPath, buffer, { contentType: "application/pdf", upsert: true });
-  if (uploadError) return fail(uploadError.message);
-
   await service
-    .from("contract_signatures")
+    .from("signature_requests")
     .update({
       signer_full_name: fullName,
       signed_at: signedAt.toISOString(),
       ip_address: ipAddress,
       user_agent: userAgent,
-      document_hash: documentHash,
-      signed_document_path: signedDocumentPath,
       token_used_at: signedAt.toISOString(),
     })
-    .eq("id", signature.id);
+    .eq("id", request.id);
 
-  await service
-    .from("contracts")
-    .update({ signature_status: "signe", date_signature: signedAt.toISOString().slice(0, 10) })
-    .eq("id", contract.id);
+  const contractUpdate: Partial<Contract> = {};
+  if (request.includes_contract) {
+    contractUpdate.signature_status = "signe";
+    contractUpdate.date_signature = signedAt.toISOString().slice(0, 10);
+  }
+  if (request.includes_sepa_mandate) contractUpdate.sepa_mandate_status = "signe";
+  await service.from("contracts").update(contractUpdate).eq("id", contract.id);
 
   await service.from("activity_log").insert({
     action: "contract_signed",
     table_concernee: "contracts",
     enregistrement_id: contract.id,
-    detail: { signer_full_name: fullName, ip_address: ipAddress },
+    detail: {
+      signer_full_name: fullName,
+      ip_address: ipAddress,
+      includes_contract: request.includes_contract,
+      includes_sepa_mandate: request.includes_sepa_mandate,
+    },
   });
 
   revalidatePath(`/admin/contracts/${contract.id}`);

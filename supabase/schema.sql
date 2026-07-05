@@ -119,6 +119,11 @@ create table contracts (
   motif_resiliation text,
   signature_status text not null default 'non_requise'
     check (signature_status in ('non_requise', 'en_attente', 'signe')),
+  sepa_mandate_status text not null default 'non_requis'
+    check (sepa_mandate_status in ('non_requis', 'en_attente', 'signe')),
+  iban text,
+  bic text,
+  rum text unique,
   created_at timestamptz not null default now()
 );
 
@@ -127,26 +132,39 @@ create index idx_contracts_unit on contracts (unit_id);
 create index idx_contracts_statut on contracts (statut);
 
 -- ----------------------------------------------------------------------------
--- contract_signatures (preuve de signature électronique, art. 1367 C. civ.)
+-- signature_requests / signed_documents (preuve de signature électronique,
+-- art. 1367 C. civ.) — une demande peut couvrir le contrat, le mandat SEPA,
+-- ou les deux, signés en un seul geste.
 -- ----------------------------------------------------------------------------
-create table contract_signatures (
+create table signature_requests (
   id uuid primary key default gen_random_uuid(),
   contract_id uuid not null references contracts (id) on delete cascade,
   customer_id uuid not null references customers (id) on delete cascade,
+  includes_contract boolean not null default true,
+  includes_sepa_mandate boolean not null default false,
   signer_full_name text,
   signed_at timestamptz,
   ip_address text,
   user_agent text,
-  document_hash text,
-  signed_document_path text,
   signature_token text not null unique,
   token_expires_at timestamptz not null,
   token_used_at timestamptz,
   created_at timestamptz not null default now()
 );
 
-create index idx_contract_signatures_contract on contract_signatures (contract_id);
-create index idx_contract_signatures_customer on contract_signatures (customer_id);
+create index idx_signature_requests_contract on signature_requests (contract_id);
+create index idx_signature_requests_customer on signature_requests (customer_id);
+
+create table signed_documents (
+  id uuid primary key default gen_random_uuid(),
+  signature_request_id uuid not null references signature_requests (id) on delete cascade,
+  document_type text not null check (document_type in ('contrat', 'mandat_sepa')),
+  document_hash text not null,
+  signed_document_path text not null,
+  created_at timestamptz not null default now()
+);
+
+create index idx_signed_documents_request on signed_documents (signature_request_id);
 
 -- ----------------------------------------------------------------------------
 -- security_deposits (dépôt de garantie et restitution)
@@ -276,6 +294,11 @@ create table company_settings (
   preavis_jours_defaut smallint not null default 30,
   jour_prelevement_defaut smallint not null default 1,
   relance_signature_jours_defaut smallint not null default 7,
+  ics text,
+  mandat_sepa_modele text,
+  mandat_sepa_template_mode text not null default 'integre'
+    check (mandat_sepa_template_mode in ('integre', 'upload')),
+  mandat_sepa_upload_path text,
   updated_at timestamptz not null default now()
 );
 
@@ -496,7 +519,8 @@ alter table pricing_grid enable row level security;
 alter table expenses enable row level security;
 alter table bank_transactions enable row level security;
 alter table email_templates enable row level security;
-alter table contract_signatures enable row level security;
+alter table signature_requests enable row level security;
+alter table signed_documents enable row level security;
 alter table security_deposits enable row level security;
 
 -- profiles : chacun voit son propre profil, admin voit tout
@@ -581,11 +605,19 @@ create policy "bank_transactions_admin_delete" on bank_transactions for delete u
 create policy "email_templates_staff_select" on email_templates for select using (is_staff());
 create policy "email_templates_admin_update" on email_templates for update using (is_admin());
 
--- contract_signatures : lecture staff + locataire propriétaire du contrat.
--- Aucune écriture exposée à authenticated/anon — uniquement via service
--- role (envoi pour signature, signature via token public).
-create policy "contract_signatures_staff_select" on contract_signatures for select using (
+-- signature_requests / signed_documents : lecture staff + locataire
+-- propriétaire du contrat. Aucune écriture exposée à authenticated/anon —
+-- uniquement via service role (envoi pour signature, signature via token public).
+create policy "signature_requests_staff_select" on signature_requests for select using (
   is_staff() or customer_id = current_customer_id()
+);
+
+create policy "signed_documents_staff_select" on signed_documents for select using (
+  is_staff() or exists (
+    select 1 from signature_requests sr
+    where sr.id = signed_documents.signature_request_id
+    and sr.customer_id = current_customer_id()
+  )
 );
 
 -- security_deposits : staff gère, locataire voit ses propres dépôts.

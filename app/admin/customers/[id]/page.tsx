@@ -12,6 +12,7 @@ import {
   PaymentStatusBadge,
   SecurityDepositStatusBadge,
   SignatureStatusBadge,
+  SepaMandateStatusBadge,
 } from "@/components/status-badge";
 import { DocumentUpload } from "@/components/customers/document-upload";
 import { CustomerNotes } from "@/components/customers/customer-notes";
@@ -160,6 +161,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                     <TableHead>Prix</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>Signature</TableHead>
+                    <TableHead>Mandat SEPA</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -179,11 +181,14 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                       <TableCell>
                         <SignatureStatusBadge status={c.signature_status} />
                       </TableCell>
+                      <TableCell>
+                        <SepaMandateStatusBadge status={c.sepa_mandate_status} />
+                      </TableCell>
                     </TableRow>
                   ))}
                   {(!contracts || contracts.length === 0) && (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                         Aucun contrat.
                       </TableCell>
                     </TableRow>

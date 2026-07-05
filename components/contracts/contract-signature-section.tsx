@@ -1,45 +1,48 @@
 import { SendForSignatureButton } from "@/components/contracts/send-for-signature-button";
-import { SignatureStatusBadge } from "@/components/status-badge";
+import { SignatureStatusBadge, SepaMandateStatusBadge } from "@/components/status-badge";
 import { DownloadDocumentButton } from "@/components/documents/download-button";
 import { formatDateLong } from "@/lib/format";
-import type { Contract, ContractSignature } from "@/types/database";
+import type { Contract, SignatureRequest, SignedDocument } from "@/types/database";
 
 export function ContractSignatureSection({
   contract,
-  latestSignature,
+  latestRequest,
+  signedDocuments,
 }: {
   contract: Contract;
-  latestSignature: ContractSignature | null;
+  latestRequest: SignatureRequest | null;
+  signedDocuments: SignedDocument[];
 }) {
-  const isSigned = contract.signature_status === "signe";
-  const buttonLabel = contract.signature_status === "en_attente" ? "Renvoyer pour signature" : "Envoyer pour signature";
+  const contractDoc = signedDocuments.find((d) => d.document_type === "contrat");
+  const mandateDoc = signedDocuments.find((d) => d.document_type === "mandat_sepa");
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <SignatureStatusBadge status={contract.signature_status} />
-        {isSigned && latestSignature?.signed_at && (
-          <span className="text-sm text-muted-foreground">
-            Signé le {formatDateLong(latestSignature.signed_at)} par {latestSignature.signer_full_name}
-          </span>
-        )}
-        {contract.signature_status === "en_attente" && latestSignature && (
-          <span className="text-sm text-muted-foreground">
-            Lien envoyé, expire le {formatDateLong(latestSignature.token_expires_at)}
-          </span>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <span className="w-28 text-xs uppercase tracking-wide text-muted-foreground">Contrat</span>
+          <SignatureStatusBadge status={contract.signature_status} />
+          {contract.signature_status === "signe" && contractDoc && (
+            <DownloadDocumentButton bucket="contracts" path={contractDoc.signed_document_path} label="Télécharger (avec preuve)" />
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-28 text-xs uppercase tracking-wide text-muted-foreground">Mandat SEPA</span>
+          <SepaMandateStatusBadge status={contract.sepa_mandate_status} />
+          {contract.sepa_mandate_status === "signe" && mandateDoc && (
+            <DownloadDocumentButton bucket="contracts" path={mandateDoc.signed_document_path} label="Télécharger (avec preuve)" />
+          )}
+        </div>
+        {latestRequest && !latestRequest.token_used_at && (
+          <p className="text-sm text-muted-foreground">
+            Lien envoyé, expire le {formatDateLong(latestRequest.token_expires_at)}
+          </p>
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {!isSigned && <SendForSignatureButton contractId={contract.id} label={buttonLabel} />}
-        {isSigned && latestSignature?.signed_document_path && (
-          <DownloadDocumentButton
-            bucket="contracts"
-            path={latestSignature.signed_document_path}
-            label="Télécharger le contrat signé (avec preuve)"
-          />
-        )}
-      </div>
+      {(contract.signature_status !== "signe" || contract.sepa_mandate_status !== "signe") && (
+        <SendForSignatureButton contract={contract} />
+      )}
     </div>
   );
 }

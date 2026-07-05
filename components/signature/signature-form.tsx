@@ -5,7 +5,7 @@ import { useState, useTransition, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signContract } from "@/lib/actions/contract-signature";
+import { signDocuments } from "@/lib/actions/contract-signature";
 
 export function SignatureForm({ token }: { token: string }) {
   const [fullName, setFullName] = useState("");
@@ -17,7 +17,7 @@ export function SignatureForm({ token }: { token: string }) {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     startTransition(async () => {
-      const result = await signContract(token, fullName);
+      const result = await signDocuments(token, fullName);
       if (!result.success) {
         setError(result.error ?? "Erreur lors de la signature.");
         return;
@@ -30,9 +30,9 @@ export function SignatureForm({ token }: { token: string }) {
   if (done) {
     return (
       <div className="rounded-md border border-success/40 bg-success/5 p-4 text-sm">
-        <p className="font-medium text-success">Merci, votre contrat a bien été signé.</p>
+        <p className="font-medium text-success">Merci, vos documents ont bien été signés.</p>
         <p className="mt-1 text-muted-foreground">
-          Vous pouvez retrouver votre contrat signé et sa preuve de signature à tout moment depuis votre
+          Vous pouvez retrouver vos documents signés et leur preuve de signature à tout moment depuis votre
           espace client.
         </p>
       </div>
@@ -59,7 +59,7 @@ export function SignatureForm({ token }: { token: string }) {
           onChange={(e) => setAcknowledged(e.target.checked)}
           className="mt-0.5"
         />
-        Je reconnais avoir lu et j&apos;accepte les termes du présent contrat.
+        Je reconnais avoir lu et j&apos;accepte les termes du ou des document(s) présenté(s) ci-dessus.
       </label>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
