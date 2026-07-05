@@ -49,6 +49,7 @@ export default async function CustomersPage({
             description="Utile pour reprendre une base de locataires existante sans ressaisie manuelle."
             fields={CUSTOMER_IMPORT_FIELDS}
             onImport={importCustomersCsv}
+            templateUrl="/templates/clients-modele.csv"
           />
           <CustomerCreateDialog />
         </div>

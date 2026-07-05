@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CompanySettingsForm } from "@/components/settings/company-settings-form";
+import { SiteSettingsForm } from "@/components/settings/site-settings-form";
 import { PricingGridEditor } from "@/components/settings/pricing-grid-editor";
 import { EmailTemplatesEditor } from "@/components/settings/email-templates-editor";
 import { requireAdmin } from "@/lib/auth";
@@ -10,6 +11,7 @@ export default async function SettingsPage() {
   const supabase = await createClient();
 
   const { data: settings } = await supabase.from("company_settings").select("*").single();
+  const { data: site } = await supabase.from("sites").select("*").limit(1).maybeSingle();
   const { data: pricing } = await supabase.from("pricing_grid").select("*").order("prix_mensuel");
   const { data: emailTemplates } = await supabase.from("email_templates").select("*").order("key");
 
@@ -32,6 +34,17 @@ export default async function SettingsPage() {
           <CompanySettingsForm settings={settings} />
         </CardContent>
       </Card>
+
+      {site && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Centre</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SiteSettingsForm site={site} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

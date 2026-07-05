@@ -32,6 +32,8 @@ export type Site = {
   telephone: string | null;
   email_contact: string | null;
   horaires: string | null;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string;
 };
 
@@ -66,6 +68,8 @@ export type Customer = {
   siret: string | null;
   piece_identite_url: string | null;
   notes: string | null;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string;
 };
 

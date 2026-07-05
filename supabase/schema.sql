@@ -45,6 +45,8 @@ create table sites (
   telephone text,
   email_contact text,
   horaires text,
+  latitude numeric(9, 6),
+  longitude numeric(9, 6),
   created_at timestamptz not null default now()
 );
 
@@ -89,6 +91,8 @@ create table customers (
   siret text,
   piece_identite_url text,
   notes text,
+  latitude numeric(9, 6),
+  longitude numeric(9, 6),
   created_at timestamptz not null default now()
 );
 

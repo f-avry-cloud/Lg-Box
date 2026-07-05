@@ -59,6 +59,23 @@ Copiez `.env.example` vers `.env.local` et complétez les valeurs :
 cp .env.example .env.local
 ```
 
+### 3bis. Configurer Resend (envoi des emails de relance)
+
+Sans cette étape, les boutons « Relancer », « Relancer tout » et l'envoi automatique de facture affichent
+l'erreur *« RESEND_API_KEY non configurée »* — le reste de l'application fonctionne normalement (un bouton
+« Mail » permet d'ouvrir un brouillon dans votre client mail habituel en attendant).
+
+1. Créez un compte gratuit sur [resend.com](https://resend.com).
+2. Dans **API Keys**, créez une clé et copiez-la dans `RESEND_API_KEY` (`.env.local` en local, puis dans les
+   variables d'environnement Vercel du projet en production).
+3. Pour envoyer depuis votre propre domaine (ex. `contact@lgbox.fr`) plutôt que l'adresse de test Resend :
+   dans **Domains**, ajoutez votre domaine et suivez les enregistrements DNS proposés (SPF/DKIM), puis
+   renseignez `RESEND_FROM_EMAIL="LG BOX <contact@votredomaine.fr>"`. Sans domaine vérifié, laissez cette
+   variable vide : les emails partiront de l'adresse de test `onboarding@resend.dev` (fonctionne, mais moins
+   professionnel et parfois filtré en spam).
+4. Sur Vercel, après avoir ajouté/modifié une variable d'environnement, redéployez (Deployments → ⋯ →
+   Redeploy) pour qu'elle soit prise en compte.
+
 ### 4. Installation et lancement
 
 ```bash
