@@ -15,13 +15,19 @@ export default async function SettingsPage() {
   const { data: site } = await supabase.from("sites").select("*").limit(1).maybeSingle();
   const { data: pricing } = await supabase.from("pricing_grid").select("*").order("prix_mensuel");
   const { data: emailTemplates } = await supabase.from("email_templates").select("*").order("key");
-  const [{ count: customersCount }, { count: contractsCount }, { count: invoicesCount }, { count: paymentsCount }] =
-    await Promise.all([
-      supabase.from("customers").select("id", { count: "exact", head: true }),
-      supabase.from("contracts").select("id", { count: "exact", head: true }),
-      supabase.from("invoices").select("id", { count: "exact", head: true }),
-      supabase.from("payments").select("id", { count: "exact", head: true }),
-    ]);
+  const [
+    { count: customersCount },
+    { count: contractsCount },
+    { count: invoicesCount },
+    { count: paymentsCount },
+    { count: unitsCount },
+  ] = await Promise.all([
+    supabase.from("customers").select("id", { count: "exact", head: true }),
+    supabase.from("contracts").select("id", { count: "exact", head: true }),
+    supabase.from("invoices").select("id", { count: "exact", head: true }),
+    supabase.from("payments").select("id", { count: "exact", head: true }),
+    supabase.from("units").select("id", { count: "exact", head: true }),
+  ]);
 
   if (!settings) return null;
 
@@ -78,6 +84,7 @@ export default async function SettingsPage() {
           contracts: contractsCount ?? 0,
           invoices: invoicesCount ?? 0,
           payments: paymentsCount ?? 0,
+          units: unitsCount ?? 0,
         }}
       />
     </div>

@@ -384,6 +384,32 @@ $$;
 revoke all on function reset_tenant_data() from public;
 grant execute on function reset_tenant_data() to authenticated;
 
+-- Réinitialisation de l'inventaire des box — mêmes garanties que
+-- reset_tenant_data(), refuse d'agir tant que des contrats existent
+-- encore (contrainte on delete restrict de contracts.unit_id).
+create or replace function reset_units_data()
+returns void
+language plpgsql
+as $$
+begin
+  if not is_admin() then
+    raise exception 'Seul un administrateur peut réinitialiser les box.';
+  end if;
+
+  if exists (select 1 from contracts) then
+    raise exception 'Des contrats existent encore sur ces box — réinitialisez d''abord les données locataires.';
+  end if;
+
+  delete from units where true;
+
+  insert into activity_log (user_id, action, table_concernee, detail)
+  values (auth.uid(), 'reset_units_data', 'units', jsonb_build_object('triggered_at', now()));
+end;
+$$;
+
+revoke all on function reset_units_data() from public;
+grant execute on function reset_units_data() to authenticated;
+
 -- ============================================================================
 -- Row Level Security
 -- ============================================================================
