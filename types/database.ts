@@ -233,6 +233,7 @@ export type Database = {
     Views: Record<string, never>;
     Functions: {
       reset_tenant_data: { Args: Record<string, never>; Returns: void };
+      reset_units_data: { Args: Record<string, never>; Returns: void };
     };
   };
 };
