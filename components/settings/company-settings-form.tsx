@@ -1,14 +1,17 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { updateCompanySettings, type SettingsFormState } from "@/lib/actions/settings";
+import { DownloadDocumentButton } from "@/components/documents/download-button";
+import { updateCompanySettings, setCompanySignatureImagePath, type SettingsFormState } from "@/lib/actions/settings";
 import { CONTRACT_TEMPLATE_VARIABLES } from "@/lib/pdf/contract-template";
+import { createClient } from "@/lib/supabase/client";
 import type { CompanySettings } from "@/types/database";
 
 export function CompanySettingsForm({ settings }: { settings: CompanySettings }) {
@@ -16,10 +19,39 @@ export function CompanySettingsForm({ settings }: { settings: CompanySettings })
     updateCompanySettings,
     { error: null }
   );
+  const [signatureImagePath, setSignatureImagePath] = useState(settings.signature_image_path);
+  const [uploadingSignature, setUploadingSignature] = useState(false);
+  const signatureInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (state.success) toast.success("Paramètres enregistrés.");
   }, [state.success]);
+
+  async function handleSignatureFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingSignature(true);
+    try {
+      const ext = file.type === "image/png" ? "png" : "jpg";
+      const path = `company-templates/signature-lgbox.${ext}`;
+      const supabase = createClient();
+      const { error: uploadError } = await supabase.storage
+        .from("documents")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (uploadError) throw uploadError;
+
+      const result = await setCompanySignatureImagePath(path);
+      if (!result.success) throw new Error(result.error ?? "Échec de l'enregistrement.");
+
+      setSignatureImagePath(path);
+      toast.success("Signature importée.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Échec de l'envoi.");
+    } finally {
+      setUploadingSignature(false);
+      if (signatureInputRef.current) signatureInputRef.current.value = "";
+    }
+  }
 
   return (
     <form action={formAction} className="grid grid-cols-2 gap-4">
@@ -73,6 +105,34 @@ export function CompanySettingsForm({ settings }: { settings: CompanySettings })
           min={1}
           defaultValue={settings.relance_signature_jours_defaut}
         />
+      </div>
+      <div className="col-span-2 flex flex-col gap-2 rounded-md border border-border p-3">
+        <Label>Signature LG BOX</Label>
+        <p className="text-xs text-muted-foreground">
+          Image de la signature du Loueur, apposée automatiquement sur chaque contrat généré et affichée sur
+          l&apos;espace de signature électronique — le locataire n&apos;a donc pas à la re-signer.
+        </p>
+        <div className="flex items-center gap-2">
+          <input
+            ref={signatureInputRef}
+            type="file"
+            accept="image/png,image/jpeg"
+            className="hidden"
+            onChange={handleSignatureFile}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={uploadingSignature}
+            onClick={() => signatureInputRef.current?.click()}
+          >
+            <Upload /> {uploadingSignature ? "Envoi..." : signatureImagePath ? "Remplacer l'image" : "Importer une image"}
+          </Button>
+          {signatureImagePath && (
+            <DownloadDocumentButton bucket="documents" path={signatureImagePath} label="Voir la signature actuelle" />
+          )}
+        </div>
       </div>
       <div className="col-span-2 flex flex-col gap-1.5">
         <Label htmlFor="cgv">Conditions générales de location</Label>

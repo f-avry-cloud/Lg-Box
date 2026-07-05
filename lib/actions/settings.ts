@@ -39,6 +39,22 @@ export async function updateCompanySettings(
   return { error: null, success: true };
 }
 
+// Sauvegarde le chemin de stockage de l'image de signature LG BOX, apposée
+// automatiquement sur chaque contrat généré (voir lib/pdf/company-signature.ts).
+export async function setCompanySignatureImagePath(path: string): Promise<ActionResult> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("company_settings")
+    .update({ signature_image_path: path, updated_at: new Date().toISOString() })
+    .eq("id", true);
+  if (error) return fail(error.message);
+
+  revalidatePath("/admin/settings");
+  return ok;
+}
+
 export async function updateSepaMandateSettings(
   _prevState: SettingsFormState,
   formData: FormData

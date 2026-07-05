@@ -19,6 +19,7 @@ const LABELS: Record<EmailTemplateKey, string> = {
   invoice_ready: "Facture disponible",
   contract_signature_request: "Contrat à signer",
   contract_signature_reminder: "Relance de signature",
+  documents_signed_confirmation: "Confirmation de signature",
 };
 
 const VARIABLES = [

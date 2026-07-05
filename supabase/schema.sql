@@ -299,6 +299,7 @@ create table company_settings (
   mandat_sepa_template_mode text not null default 'integre'
     check (mandat_sepa_template_mode in ('integre', 'upload')),
   mandat_sepa_upload_path text,
+  signature_image_path text,
   updated_at timestamptz not null default now()
 );
 
@@ -350,7 +351,8 @@ create index idx_bank_transactions_batch on bank_transactions (import_batch_id);
 create table email_templates (
   key text primary key check (key in (
     'j-3', 'j0', 'j+7', 'j+15', 'invoice_ready',
-    'contract_signature_request', 'contract_signature_reminder'
+    'contract_signature_request', 'contract_signature_reminder',
+    'documents_signed_confirmation'
   )),
   subject text not null,
   body text not null,
@@ -415,6 +417,14 @@ L''équipe LG BOX'),
 Nous n''avons pas encore reçu votre signature électronique pour votre contrat de location. Merci de le signer via le lien suivant :
 
 {{lien_signature}}
+
+Bien cordialement,
+L''équipe LG BOX'),
+('documents_signed_confirmation', 'Confirmation — vos documents ont été signés', 'Bonjour {{prenom}},
+
+Nous vous confirmons la bonne réception de votre signature électronique.
+
+Vous pouvez à tout moment retrouver vos documents signés et leur preuve de signature depuis votre espace client : {{lien_portail}}
 
 Bien cordialement,
 L''équipe LG BOX');

@@ -48,10 +48,13 @@ export function interpolateContractTemplate(
   );
 }
 
-// Rendu texte brut du contrat, utilisé à la fois pour l'affichage sur la
-// page de signature publique et pour le hash SHA-256 de preuve — les deux
-// doivent toujours produire exactement le même contenu.
-export function renderContractPlainText(
+// Texte par défaut si aucune CGV n'a été renseignée dans les paramètres.
+const DEFAULT_CGV_TEXT = "Conditions générales de location à compléter dans les paramètres du back-office.";
+
+// Corps du contrat (hors CGV), utilisé pour l'affichage principal sur la
+// page de signature publique — les CGV y sont accessibles séparément via un
+// lien plutôt que recopiées en bloc au milieu du texte.
+export function renderContractBodyText(
   contract: Contract,
   customer: Customer,
   unit: Unit,
@@ -78,8 +81,19 @@ export function renderContractPlainText(
     `Loyer mensuel : ${formatCurrency(contract.prix_mensuel)} TTC`,
     `Dépôt de garantie : ${formatCurrency(contract.depot_garantie)}`,
     `Jour de prélèvement mensuel : le ${contract.jour_prelevement_mensuel} de chaque mois`,
-    "",
-    "CONDITIONS GÉNÉRALES",
-    company.cgv ?? "Conditions générales de location à compléter dans les paramètres du back-office.",
   ].join("\n");
+}
+
+// Texte complet (corps + CGV), utilisé pour le hash SHA-256 de preuve — la
+// preuve doit couvrir l'intégralité de ce qui engage juridiquement le
+// signataire, y compris les CGV, même si elles sont présentées séparément
+// (via un lien) sur la page de signature.
+export function renderContractFullText(
+  contract: Contract,
+  customer: Customer,
+  unit: Unit,
+  company: CompanySettings
+): string {
+  const body = renderContractBodyText(contract, customer, unit, company);
+  return [body, "", "CONDITIONS GÉNÉRALES", company.cgv ?? DEFAULT_CGV_TEXT].join("\n");
 }

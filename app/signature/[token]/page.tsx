@@ -1,7 +1,9 @@
+import Link from "next/link";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SignatureForm } from "@/components/signature/signature-form";
 import { isSignatureTokenValid } from "@/lib/business/contract-signature";
-import { renderContractPlainText } from "@/lib/pdf/contract-template";
+import { renderContractBodyText } from "@/lib/pdf/contract-template";
 import { renderSepaMandatePlainText } from "@/lib/pdf/sepa-mandate-template";
 import { DownloadDocumentButton } from "@/components/documents/download-button";
 import { formatDateLong } from "@/lib/format";
@@ -57,13 +59,21 @@ export default async function SignaturePage({ params }: { params: Promise<{ toke
   }
 
   const contractText = request.includes_contract
-    ? renderContractPlainText(contract, customer, unit, company)
+    ? renderContractBodyText(contract, customer, unit, company)
     : null;
   const showMandateUpload = request.includes_sepa_mandate && company.mandat_sepa_template_mode === "upload";
   const mandateText =
     request.includes_sepa_mandate && company.mandat_sepa_template_mode === "integre"
       ? renderSepaMandatePlainText(contract, customer, company)
       : null;
+
+  let signatureImageUrl: string | null = null;
+  if (contractText && company.signature_image_path) {
+    const { data: signed } = await service.storage
+      .from("documents")
+      .createSignedUrl(company.signature_image_path, 60 * 30);
+    signatureImageUrl = signed?.signedUrl ?? null;
+  }
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
@@ -72,6 +82,13 @@ export default async function SignaturePage({ params }: { params: Promise<{ toke
         <p className="text-sm text-muted-foreground">
           Lien valable jusqu&apos;au {formatDateLong(request.token_expires_at)}.
         </p>
+        {contractText && (
+          <p className="mt-1 text-sm">
+            <Link href={`/signature/${token}/cgv`} className="underline underline-offset-2">
+              Consulter les conditions générales de location
+            </Link>
+          </p>
+        )}
       </div>
 
       {contractText && (
@@ -79,7 +96,19 @@ export default async function SignaturePage({ params }: { params: Promise<{ toke
           <CardHeader>
             <CardTitle>Contrat à signer</CardTitle>
           </CardHeader>
-          <CardContent className="whitespace-pre-line text-sm leading-relaxed">{contractText}</CardContent>
+          <CardContent className="flex flex-col gap-3 text-sm leading-relaxed">
+            <p className="whitespace-pre-line">{contractText}</p>
+            <div className="flex items-center justify-between border-t border-border pt-3">
+              <div>
+                <p className="text-muted-foreground">Le Loueur</p>
+                {signatureImageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={signatureImageUrl} alt="Signature LG BOX" className="mt-1 h-12" />
+                )}
+              </div>
+              <p className="text-muted-foreground">Le Locataire</p>
+            </div>
+          </CardContent>
         </Card>
       )}
 
@@ -109,7 +138,12 @@ export default async function SignaturePage({ params }: { params: Promise<{ toke
         </Card>
       )}
 
-      <SignatureForm token={token} />
+      <SignatureForm
+        token={token}
+        defaultFullName={`${customer.prenom} ${customer.nom}`.trim()}
+        includesContract={request.includes_contract}
+        includesSepaMandate={request.includes_sepa_mandate}
+      />
     </div>
   );
 }

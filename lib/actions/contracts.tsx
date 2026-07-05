@@ -8,6 +8,7 @@ import { canTransitionContract, unitStatusForContractStatus } from "@/lib/busine
 import { computeNoticeEndDate } from "@/lib/business/notice";
 import { renderPdfBuffer } from "@/lib/pdf/generate";
 import { ContractDocument } from "@/lib/pdf/contract-document";
+import { loadCompanySignatureImage } from "@/lib/pdf/company-signature";
 import { ok, fail, type ActionResult } from "@/lib/actions/result";
 import type { Contract, ContractStatus, CustomerType } from "@/types/database";
 
@@ -129,12 +130,20 @@ export async function generateContractPdf(contractId: string): Promise<ActionRes
   const { data: company } = await supabase.from("company_settings").select("*").single();
   if (!customer || !unit || !company) return fail("Données manquantes pour générer le PDF.");
 
+  const service = createServiceClient();
+  const signatureImage = await loadCompanySignatureImage(service, company.signature_image_path);
+
   const buffer = await renderPdfBuffer(
-    <ContractDocument contract={contract} customer={customer} unit={unit} company={company} />
+    <ContractDocument
+      contract={contract}
+      customer={customer}
+      unit={unit}
+      company={company}
+      signatureImage={signatureImage}
+    />
   );
 
   const path = `${customer.id}/${contract.id}.pdf`;
-  const service = createServiceClient();
   const { error: uploadError } = await service.storage
     .from("contracts")
     .upload(path, buffer, { contentType: "application/pdf", upsert: true });
