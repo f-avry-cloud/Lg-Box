@@ -101,22 +101,30 @@ export async function sendContractForSignature(
     prenom: payload.customer.prenom,
     lien_signature: signatureLink(created.token),
   });
-
-  if (rendered && process.env.RESEND_API_KEY) {
-    await getResend().emails.send({
-      from: FROM_EMAIL,
-      to: payload.customer.email,
-      subject: rendered.subject,
-      text: rendered.text,
-    });
+  if (!rendered) {
+    return fail("Modèle d'email introuvable — exécutez la migration supabase/migrations/008_v1_7.sql.");
   }
+
+  if (!process.env.RESEND_API_KEY) {
+    return fail(
+      "RESEND_API_KEY non configurée dans les variables d'environnement Vercel — impossible d'envoyer l'email. Le lien a bien été généré : utilisez le bouton « Mail » pour l'envoyer manuellement."
+    );
+  }
+
+  const { error: sendError } = await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: payload.customer.email,
+    subject: rendered.subject,
+    text: rendered.text,
+  });
+  if (sendError) return fail(sendError.message);
 
   await service.from("activity_log").insert({
     action: "contract_signature_requested",
     table_concernee: "contracts",
     enregistrement_id: contractId,
     detail: {
-      resend_configured: Boolean(process.env.RESEND_API_KEY),
+      resend_configured: true,
       includes_contract: options.includeContract,
       includes_sepa_mandate: options.includeSepaMandate,
     },
