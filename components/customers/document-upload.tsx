@@ -31,13 +31,14 @@ export function DocumentUpload({
       const { error: uploadError } = await supabase.storage.from("documents").upload(path, file);
       if (uploadError) throw uploadError;
 
-      await recordDocument({
+      const result = await recordDocument({
         relatedTable: "customers",
         relatedId: customerId,
         nomFichier: file.name,
         url: path,
         type: documentType,
       });
+      if (!result.success) throw new Error(result.error ?? "Échec de l'enregistrement du document.");
 
       toast.success("Document ajouté.");
     } catch (err) {

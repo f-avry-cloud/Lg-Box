@@ -20,12 +20,12 @@ export function DeleteExpenseButton({ expenseId }: { expenseId: string }) {
       title="Supprimer"
       onClick={() =>
         startTransition(async () => {
-          try {
-            await deleteExpense(expenseId);
-            router.refresh();
-          } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Erreur.");
+          const result = await deleteExpense(expenseId);
+          if (!result.success) {
+            toast.error(result.error ?? "Erreur.");
+            return;
           }
+          router.refresh();
         })
       }
     >

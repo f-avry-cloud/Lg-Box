@@ -72,15 +72,15 @@ export function CsvImportDialog() {
     }
 
     startTransition(async () => {
-      try {
-        const res = await importBankStatement(parsed);
-        toast.success(`${res.imported} opération(s) importée(s).`);
-        setOpen(false);
-        setRows([]);
-        router.refresh();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erreur lors de l'import.");
+      const res = await importBankStatement(parsed);
+      if (!res.success) {
+        toast.error(res.error ?? "Erreur lors de l'import.");
+        return;
       }
+      toast.success(`${res.imported} opération(s) importée(s).`);
+      setOpen(false);
+      setRows([]);
+      router.refresh();
     });
   }
 

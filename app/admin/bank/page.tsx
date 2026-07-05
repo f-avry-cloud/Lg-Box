@@ -9,20 +9,22 @@ import { createClient } from "@/lib/supabase/server";
 export default async function BankReconciliationPage() {
   const supabase = await createClient();
 
-  const [{ data: pending }, { data: resolved }, { data: unpaidInvoices }] = await Promise.all([
-    supabase
-      .from("bank_transactions")
-      .select("*")
-      .eq("statut", "non_rapproche")
-      .order("date_operation", { ascending: false }),
-    supabase
-      .from("bank_transactions")
-      .select("*")
-      .neq("statut", "non_rapproche")
-      .order("date_operation", { ascending: false })
-      .limit(50),
-    supabase.from("invoices").select("*").in("statut", ["emise", "en_retard"]),
-  ]);
+  const [{ data: pending }, { data: resolved }, { data: unpaidInvoices }, { data: expenses }] =
+    await Promise.all([
+      supabase
+        .from("bank_transactions")
+        .select("*")
+        .eq("statut", "non_rapproche")
+        .order("date_operation", { ascending: false }),
+      supabase
+        .from("bank_transactions")
+        .select("*")
+        .neq("statut", "non_rapproche")
+        .order("date_operation", { ascending: false })
+        .limit(50),
+      supabase.from("invoices").select("*").in("statut", ["emise", "en_retard"]),
+      supabase.from("expenses").select("*").order("date_depense", { ascending: false }).limit(100),
+    ]);
 
   const customerIds = [...new Set((unpaidInvoices ?? []).map((i) => i.customer_id))];
   const { data: customers } = customerIds.length
@@ -37,14 +39,20 @@ export default async function BankReconciliationPage() {
     } — ${formatCurrency(i.montant_ttc)}`,
   }));
 
+  const expenseOptions = (expenses ?? []).map((e) => ({
+    id: e.id,
+    label: `${formatDate(e.date_depense)} — ${e.categorie} — ${formatCurrency(e.montant)}`,
+  }));
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold">Rapprochement bancaire</h1>
           <p className="text-sm text-muted-foreground">
-            Importez un relevé CSV, puis validez chaque rapprochement suggéré (montant identique
-            surligné en vert) ou choisissez la bonne facture manuellement.
+            Importez un relevé CSV. Les entrées (montant positif) se rapprochent d&apos;une facture ;
+            les sorties (montant négatif, en rouge) se rapprochent d&apos;une dépense existante ou en
+            créent une nouvelle en un clic.
           </p>
         </div>
         <CsvImportDialog />
@@ -61,7 +69,7 @@ export default async function BankReconciliationPage() {
                 <TableHead>Date</TableHead>
                 <TableHead>Libellé</TableHead>
                 <TableHead>Montant</TableHead>
-                <TableHead>Facture correspondante</TableHead>
+                <TableHead>Facture ou dépense correspondante</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -73,6 +81,7 @@ export default async function BankReconciliationPage() {
                     key={t.id}
                     transaction={t}
                     invoiceOptions={invoiceOptions}
+                    expenseOptions={expenseOptions}
                     suggestedInvoiceId={suggestion?.id ?? null}
                   />
                 );

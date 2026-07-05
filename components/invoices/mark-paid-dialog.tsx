@@ -74,19 +74,19 @@ export function MarkPaidDialog({ invoiceId, montantTtc }: { invoiceId: string; m
             disabled={pending}
             onClick={() =>
               startTransition(async () => {
-                try {
-                  await markInvoicePaid(invoiceId, {
-                    montant: Number(montant),
-                    methode,
-                    datePaiement,
-                    reference,
-                  });
-                  toast.success("Paiement enregistré.");
-                  setOpen(false);
-                  router.refresh();
-                } catch (e) {
-                  toast.error(e instanceof Error ? e.message : "Erreur.");
+                const result = await markInvoicePaid(invoiceId, {
+                  montant: Number(montant),
+                  methode,
+                  datePaiement,
+                  reference,
+                });
+                if (!result.success) {
+                  toast.error(result.error ?? "Erreur.");
+                  return;
                 }
+                toast.success("Paiement enregistré.");
+                setOpen(false);
+                router.refresh();
               })
             }
           >

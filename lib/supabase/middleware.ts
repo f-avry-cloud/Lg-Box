@@ -35,12 +35,20 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isAdminArea = pathname.startsWith("/admin");
-  const isPortalArea = pathname.startsWith("/portail");
+  const isPortalArea = pathname.startsWith("/portail") && pathname !== "/portail/connexion";
 
   if (!user && (isAdminArea || isPortalArea)) {
     const url = request.nextUrl.clone();
     url.pathname = isAdminArea ? "/connexion" : "/portail/connexion";
     url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // Un utilisateur déjà connecté n'a rien à faire sur les pages de connexion.
+  if (user && (pathname === "/connexion" || pathname === "/portail/connexion")) {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname === "/connexion" ? "/admin" : "/portail";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 

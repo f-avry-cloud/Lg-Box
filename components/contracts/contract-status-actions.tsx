@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { changeContractStatus } from "@/lib/actions/contracts";
+import type { ActionResult } from "@/lib/actions/result";
 import type { Contract } from "@/types/database";
 
 export function ContractStatusActions({ contract }: { contract: Contract }) {
@@ -26,15 +27,16 @@ export function ContractStatusActions({ contract }: { contract: Contract }) {
   const [motif, setMotif] = useState("");
   const [dateFin, setDateFin] = useState("");
 
-  function run(action: () => Promise<void>) {
+  function run(action: () => Promise<ActionResult>, onSuccess?: () => void) {
     startTransition(async () => {
-      try {
-        await action();
-        toast.success("Statut du contrat mis à jour.");
-        router.refresh();
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Erreur.");
+      const result = await action();
+      if (!result.success) {
+        toast.error(result.error ?? "Erreur.");
+        return;
       }
+      toast.success("Statut du contrat mis à jour.");
+      onSuccess?.();
+      router.refresh();
     });
   }
 
@@ -75,13 +77,14 @@ export function ContractStatusActions({ contract }: { contract: Contract }) {
               <Button
                 disabled={pending}
                 onClick={() =>
-                  run(async () => {
-                    await changeContractStatus(contract.id, "en_preavis", {
-                      motif,
-                      dateFin: dateFin || undefined,
-                    });
-                    setNoticeOpen(false);
-                  })
+                  run(
+                    () =>
+                      changeContractStatus(contract.id, "en_preavis", {
+                        motif,
+                        dateFin: dateFin || undefined,
+                      }),
+                    () => setNoticeOpen(false)
+                  )
                 }
               >
                 Confirmer le préavis

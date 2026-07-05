@@ -6,12 +6,13 @@ import { toast } from "sonner";
 import { FileText } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import type { ActionResult } from "@/lib/actions/result";
 
 export function GeneratePdfButton({
   action,
   label = "Générer le PDF",
 }: {
-  action: () => Promise<string>;
+  action: () => Promise<ActionResult & { path?: string }>;
   label?: string;
 }) {
   const router = useRouter();
@@ -24,13 +25,13 @@ export function GeneratePdfButton({
       disabled={pending}
       onClick={() =>
         startTransition(async () => {
-          try {
-            await action();
-            toast.success("PDF généré.");
-            router.refresh();
-          } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Échec de la génération.");
+          const result = await action();
+          if (!result.success) {
+            toast.error(result.error ?? "Échec de la génération.");
+            return;
           }
+          toast.success("PDF généré.");
+          router.refresh();
         })
       }
     >

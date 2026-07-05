@@ -101,8 +101,10 @@ export function FloorPlanCanvas({ units }: { units: Unit[] }) {
 
     setPositions((prev) => ({ ...prev, [unitId]: next }));
 
-    updateUnitPosition(unitId, next.x, next.y).catch((e) => {
-      toast.error(e instanceof Error ? e.message : "Impossible d'enregistrer la position.");
+    updateUnitPosition(unitId, next.x, next.y).then((result) => {
+      if (!result.success) {
+        toast.error(result.error ?? "Impossible d'enregistrer la position.");
+      }
     });
   }
 

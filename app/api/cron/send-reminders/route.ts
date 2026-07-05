@@ -5,7 +5,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { daysUntil } from "@/lib/business/notice";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { getResend, FROM_EMAIL } from "@/lib/email/resend";
-import { renderReminderEmail, type ReminderStage } from "@/lib/email/templates";
+import { renderEmailTemplate, type ReminderStage } from "@/lib/email/templates";
 
 // Relances automatiques : J-3 avant échéance, le jour J, puis J+7 et J+15
 // après échéance si toujours impayée. A planifier quotidiennement via
@@ -69,19 +69,20 @@ export async function GET(request: NextRequest) {
       .single();
     if (!customer) continue;
 
-    const { subject, text } = renderReminderEmail(stage, {
+    const rendered = await renderEmailTemplate(supabase, stage, {
       prenom: customer.prenom,
       montant: formatCurrency(invoice.montant_ttc),
       numero_facture: invoice.numero_facture,
       date_echeance: formatDate(invoice.date_echeance),
     });
+    if (!rendered) continue;
 
     if (process.env.RESEND_API_KEY) {
       await getResend().emails.send({
         from: FROM_EMAIL,
         to: customer.email,
-        subject,
-        text,
+        subject: rendered.subject,
+        text: rendered.text,
       });
     }
 

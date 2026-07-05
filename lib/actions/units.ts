@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { ok, fail, type ActionResult } from "@/lib/actions/result";
 import type { UnitFloor, UnitStatus, UnitType } from "@/types/database";
 
 export type UnitFormState = { error: string | null; success?: boolean };
@@ -37,24 +38,26 @@ export async function createUnit(
   return { error: null, success: true };
 }
 
-export async function updateUnitStatus(unitId: string, statut: UnitStatus) {
+export async function updateUnitStatus(unitId: string, statut: UnitStatus): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();
   const { error } = await supabase.from("units").update({ statut }).eq("id", unitId);
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   revalidatePath("/admin/units");
   revalidatePath(`/admin/units/${unitId}`);
+  return ok;
 }
 
-export async function updateUnitNotes(unitId: string, notes: string) {
+export async function updateUnitNotes(unitId: string, notes: string): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();
   const { error } = await supabase.from("units").update({ notes }).eq("id", unitId);
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   revalidatePath(`/admin/units/${unitId}`);
+  return ok;
 }
 
-export async function updateUnitFloor(unitId: string, floor: UnitFloor) {
+export async function updateUnitFloor(unitId: string, floor: UnitFloor): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();
   // On repart d'une position centrale par défaut sur le nouvel étage, l'admin
@@ -63,12 +66,17 @@ export async function updateUnitFloor(unitId: string, floor: UnitFloor) {
     .from("units")
     .update({ floor, pos_x: 50, pos_y: 50 })
     .eq("id", unitId);
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   revalidatePath("/admin/units");
   revalidatePath(`/admin/units/${unitId}`);
+  return ok;
 }
 
-export async function updateUnitPosition(unitId: string, posX: number, posY: number) {
+export async function updateUnitPosition(
+  unitId: string,
+  posX: number,
+  posY: number
+): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();
   const clampedX = Math.min(100, Math.max(0, posX));
@@ -77,6 +85,7 @@ export async function updateUnitPosition(unitId: string, posX: number, posY: num
     .from("units")
     .update({ pos_x: clampedX, pos_y: clampedY })
     .eq("id", unitId);
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   revalidatePath("/admin/units");
+  return ok;
 }

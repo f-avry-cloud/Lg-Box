@@ -5,12 +5,15 @@ import { revalidatePath } from "next/cache";
 
 import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { ok, fail, type ActionResult } from "@/lib/actions/result";
 
 export type BankImportRow = { date: string; libelle: string; montant: number };
 
-export async function importBankStatement(rows: BankImportRow[]): Promise<{ imported: number }> {
+export async function importBankStatement(
+  rows: BankImportRow[]
+): Promise<ActionResult & { imported?: number }> {
   await requireStaff();
-  if (rows.length === 0) return { imported: 0 };
+  if (rows.length === 0) return { ...ok, imported: 0 };
   const supabase = await createClient();
 
   const batchId = randomUUID();
@@ -23,15 +26,15 @@ export async function importBankStatement(rows: BankImportRow[]): Promise<{ impo
       statut: "non_rapproche" as const,
     }))
   );
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
 
   revalidatePath("/admin/bank");
-  return { imported: rows.length };
+  return { ...ok, imported: rows.length };
 }
 
 // Valide un rapprochement : enregistre le paiement sur la facture choisie,
 // la marque payée, et referme la ligne bancaire correspondante.
-export async function validateBankMatch(transactionId: string, invoiceId: string) {
+export async function validateBankMatch(transactionId: string, invoiceId: string): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();
 
@@ -40,10 +43,10 @@ export async function validateBankMatch(transactionId: string, invoiceId: string
     .select("*")
     .eq("id", transactionId)
     .single();
-  if (!transaction) throw new Error("Opération bancaire introuvable.");
+  if (!transaction) return fail("Opération bancaire introuvable.");
 
   const { data: invoice } = await supabase.from("invoices").select("*").eq("id", invoiceId).single();
-  if (!invoice) throw new Error("Facture introuvable.");
+  if (!invoice) return fail("Facture introuvable.");
 
   const { error: paymentError } = await supabase.from("payments").insert({
     invoice_id: invoiceId,
@@ -54,31 +57,92 @@ export async function validateBankMatch(transactionId: string, invoiceId: string
     reference: transaction.libelle,
     statut: "valide",
   });
-  if (paymentError) throw new Error(paymentError.message);
+  if (paymentError) return fail(paymentError.message);
 
   const { error: invoiceError } = await supabase
     .from("invoices")
     .update({ statut: "payee" })
     .eq("id", invoiceId);
-  if (invoiceError) throw new Error(invoiceError.message);
+  if (invoiceError) return fail(invoiceError.message);
 
   const { error: transactionError } = await supabase
     .from("bank_transactions")
     .update({ statut: "rapproche", invoice_id: invoiceId })
     .eq("id", transactionId);
-  if (transactionError) throw new Error(transactionError.message);
+  if (transactionError) return fail(transactionError.message);
 
   revalidatePath("/admin/bank");
   revalidatePath("/admin/invoices");
+  return ok;
 }
 
-export async function ignoreBankTransaction(transactionId: string) {
+export async function ignoreBankTransaction(transactionId: string): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();
   const { error } = await supabase
     .from("bank_transactions")
     .update({ statut: "ignore" })
     .eq("id", transactionId);
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   revalidatePath("/admin/bank");
+  return ok;
+}
+
+// Rapproche une opération sortante avec une dépense déjà enregistrée.
+export async function linkTransactionToExpense(
+  transactionId: string,
+  expenseId: string
+): Promise<ActionResult> {
+  await requireStaff();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("bank_transactions")
+    .update({ statut: "rapproche", expense_id: expenseId })
+    .eq("id", transactionId);
+  if (error) return fail(error.message);
+  revalidatePath("/admin/bank");
+  revalidatePath("/admin/expenses");
+  revalidatePath("/admin/reports");
+  return ok;
+}
+
+// Crée une dépense directement à partir d'une opération bancaire sortante
+// (montant, date et libellé repris automatiquement), puis la rapproche.
+export async function createExpenseFromTransaction(
+  transactionId: string,
+  categorie: string
+): Promise<ActionResult> {
+  await requireStaff();
+  const supabase = await createClient();
+
+  const { data: transaction } = await supabase
+    .from("bank_transactions")
+    .select("*")
+    .eq("id", transactionId)
+    .single();
+  if (!transaction) return fail("Opération bancaire introuvable.");
+  if (!categorie.trim()) return fail("Catégorie requise.");
+
+  const { data: expense, error: expenseError } = await supabase
+    .from("expenses")
+    .insert({
+      categorie: categorie.trim(),
+      montant: Math.abs(transaction.montant),
+      date_depense: transaction.date_operation,
+      description: transaction.libelle,
+    })
+    .select("id")
+    .single();
+  if (expenseError) return fail(expenseError.message);
+
+  const { error: transactionError } = await supabase
+    .from("bank_transactions")
+    .update({ statut: "rapproche", expense_id: expense.id })
+    .eq("id", transactionId);
+  if (transactionError) return fail(transactionError.message);
+
+  revalidatePath("/admin/bank");
+  revalidatePath("/admin/expenses");
+  revalidatePath("/admin/reports");
+  return ok;
 }

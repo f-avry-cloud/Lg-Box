@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireAdmin, requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { ok, fail, type ActionResult } from "@/lib/actions/result";
 import type { CustomerType } from "@/types/database";
 
 export type CustomerFormState = { error: string | null; success?: boolean; customerId?: string };
@@ -38,12 +39,13 @@ export async function createCustomer(
   return { error: null, success: true, customerId: data.id };
 }
 
-export async function updateCustomerNotes(customerId: string, notes: string) {
+export async function updateCustomerNotes(customerId: string, notes: string): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();
   const { error } = await supabase.from("customers").update({ notes }).eq("id", customerId);
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   revalidatePath(`/admin/customers/${customerId}`);
+  return ok;
 }
 
 export async function recordDocument(input: {
@@ -52,7 +54,7 @@ export async function recordDocument(input: {
   nomFichier: string;
   url: string;
   type: "contrat" | "facture" | "piece_identite" | "autre";
-}) {
+}): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();
   const { error } = await supabase.from("documents").insert({
@@ -62,14 +64,16 @@ export async function recordDocument(input: {
     url: input.url,
     type: input.type,
   });
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   revalidatePath(`/admin/customers/${input.relatedId}`);
+  return ok;
 }
 
-export async function deleteCustomerDocument(documentId: string, customerId: string) {
+export async function deleteCustomerDocument(documentId: string, customerId: string): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createClient();
   const { error } = await supabase.from("documents").delete().eq("id", documentId);
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   revalidatePath(`/admin/customers/${customerId}`);
+  return ok;
 }
