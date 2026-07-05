@@ -369,11 +369,11 @@ begin
     raise exception 'Seul un administrateur peut réinitialiser les données locataires.';
   end if;
 
-  delete from payments;
-  delete from invoices;
+  delete from payments where true;
+  delete from invoices where true;
   delete from documents where related_table in ('customers', 'contracts', 'invoices');
-  delete from contracts;
-  delete from customers;
+  delete from contracts where true;
+  delete from customers where true;
   update units set statut = 'libre' where statut <> 'hors_service';
 
   insert into activity_log (user_id, action, table_concernee, detail)
