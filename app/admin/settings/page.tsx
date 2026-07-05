@@ -3,6 +3,7 @@ import { CompanySettingsForm } from "@/components/settings/company-settings-form
 import { SiteSettingsForm } from "@/components/settings/site-settings-form";
 import { PricingGridEditor } from "@/components/settings/pricing-grid-editor";
 import { EmailTemplatesEditor } from "@/components/settings/email-templates-editor";
+import { SepaMandateForm } from "@/components/settings/sepa-mandate-form";
 import { DangerZone } from "@/components/settings/danger-zone";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -75,6 +76,15 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <EmailTemplatesEditor templates={emailTemplates ?? []} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Mandat de prélèvement SEPA</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SepaMandateForm settings={settings} />
         </CardContent>
       </Card>
 

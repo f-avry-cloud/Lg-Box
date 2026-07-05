@@ -29,6 +29,31 @@ export async function updateCompanySettings(
       contrat_modele: String(formData.get("contrat_modele") ?? "") || null,
       preavis_jours_defaut: Number(formData.get("preavis_jours_defaut") ?? 30),
       jour_prelevement_defaut: Number(formData.get("jour_prelevement_defaut") ?? 1),
+      relance_signature_jours_defaut: Number(formData.get("relance_signature_jours_defaut") ?? 7),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", true);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/settings");
+  return { error: null, success: true };
+}
+
+export async function updateSepaMandateSettings(
+  _prevState: SettingsFormState,
+  formData: FormData
+): Promise<SettingsFormState> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const templateMode = String(formData.get("mandat_sepa_template_mode") ?? "integre");
+
+  const { error } = await supabase
+    .from("company_settings")
+    .update({
+      ics: String(formData.get("ics") ?? "") || null,
+      mandat_sepa_modele: String(formData.get("mandat_sepa_modele") ?? "") || null,
+      mandat_sepa_template_mode: templateMode === "upload" ? "upload" : "integre",
       updated_at: new Date().toISOString(),
     })
     .eq("id", true);

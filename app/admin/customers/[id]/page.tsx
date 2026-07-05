@@ -10,6 +10,9 @@ import {
   ContractStatusBadge,
   InvoiceStatusBadge,
   PaymentStatusBadge,
+  SecurityDepositStatusBadge,
+  SignatureStatusBadge,
+  SepaMandateStatusBadge,
 } from "@/components/status-badge";
 import { DocumentUpload } from "@/components/customers/document-upload";
 import { CustomerNotes } from "@/components/customers/customer-notes";
@@ -24,7 +27,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   const { data: customer } = await supabase.from("customers").select("*").eq("id", id).single();
   if (!customer) notFound();
 
-  const [{ data: contracts }, { data: invoices }, { data: payments }, { data: documents }] =
+  const [{ data: contracts }, { data: invoices }, { data: payments }, { data: documents }, { data: deposits }] =
     await Promise.all([
       supabase.from("contracts").select("*").eq("customer_id", id).order("date_debut", { ascending: false }),
       supabase.from("invoices").select("*").eq("customer_id", id).order("date_emission", { ascending: false }),
@@ -35,6 +38,11 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         .eq("related_table", "customers")
         .eq("related_id", id)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("security_deposits")
+        .select("*")
+        .eq("customer_id", id)
+        .order("created_at", { ascending: false }),
     ]);
 
   const unitIds = [...new Set((contracts ?? []).map((c) => c.unit_id))];
@@ -42,6 +50,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
     ? await supabase.from("units").select("id, numero").in("id", unitIds)
     : { data: [] };
   const unitById = new Map((units ?? []).map((u) => [u.id, u]));
+  const contractById = new Map((contracts ?? []).map((c) => [c.id, c]));
 
   return (
     <div>
@@ -98,6 +107,46 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               <CustomerNotes customerId={customer.id} initialNotes={customer.notes ?? ""} />
             </CardContent>
           </Card>
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle>Dépôts de garantie</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Box</TableHead>
+                    <TableHead>Reçu</TableHead>
+                    <TableHead>Restitué</TableHead>
+                    <TableHead>Statut</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(deposits ?? []).map((d) => (
+                    <TableRow key={d.id}>
+                      <TableCell>
+                        <Link href={`/admin/contracts/${d.contract_id}`} className="font-mono hover:text-primary">
+                          {unitById.get(contractById.get(d.contract_id)?.unit_id ?? "")?.numero ?? "—"}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{d.amount_received ? formatCurrency(d.amount_received) : "—"}</TableCell>
+                      <TableCell>{d.amount_refunded ? formatCurrency(d.amount_refunded) : "—"}</TableCell>
+                      <TableCell>
+                        <SecurityDepositStatusBadge status={d.status} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {(!deposits || deposits.length === 0) && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                        Aucun dépôt de garantie.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="contrats">
@@ -111,6 +160,8 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                     <TableHead>Fin</TableHead>
                     <TableHead>Prix</TableHead>
                     <TableHead>Statut</TableHead>
+                    <TableHead>Signature</TableHead>
+                    <TableHead>Mandat SEPA</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -127,11 +178,17 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                       <TableCell>
                         <ContractStatusBadge status={c.statut} />
                       </TableCell>
+                      <TableCell>
+                        <SignatureStatusBadge status={c.signature_status} />
+                      </TableCell>
+                      <TableCell>
+                        <SepaMandateStatusBadge status={c.sepa_mandate_status} />
+                      </TableCell>
                     </TableRow>
                   ))}
                   {(!contracts || contracts.length === 0) && (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                         Aucun contrat.
                       </TableCell>
                     </TableRow>

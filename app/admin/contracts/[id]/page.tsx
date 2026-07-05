@@ -7,6 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ContractStatusBadge, InvoiceStatusBadge } from "@/components/status-badge";
 import { ContractStatusActions } from "@/components/contracts/contract-status-actions";
 import { ContractPdfSection } from "@/components/contracts/contract-pdf-section";
+import { ContractSignatureSection } from "@/components/contracts/contract-signature-section";
+import { SepaMandateDetailsForm } from "@/components/contracts/sepa-mandate-details-form";
+import { SecurityDepositForm } from "@/components/contracts/security-deposit-form";
+import { SecurityDepositRefundForm } from "@/components/contracts/security-deposit-refund-form";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,11 +21,31 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
   const { data: contract } = await supabase.from("contracts").select("*").eq("id", id).single();
   if (!contract) notFound();
 
-  const [{ data: customer }, { data: unit }, { data: invoices }] = await Promise.all([
-    supabase.from("customers").select("*").eq("id", contract.customer_id).single(),
-    supabase.from("units").select("*").eq("id", contract.unit_id).single(),
-    supabase.from("invoices").select("*").eq("contract_id", id).order("date_emission", { ascending: false }),
-  ]);
+  const [{ data: customer }, { data: unit }, { data: invoices }, { data: signatureRequests }, { data: deposit }] =
+    await Promise.all([
+      supabase.from("customers").select("*").eq("id", contract.customer_id).single(),
+      supabase.from("units").select("*").eq("id", contract.unit_id).single(),
+      supabase.from("invoices").select("*").eq("contract_id", id).order("date_emission", { ascending: false }),
+      supabase
+        .from("signature_requests")
+        .select("*")
+        .eq("contract_id", id)
+        .order("created_at", { ascending: false }),
+      supabase.from("security_deposits").select("*").eq("contract_id", id).maybeSingle(),
+    ]);
+
+  const latestRequest = signatureRequests?.[0] ?? null;
+  const requestIds = (signatureRequests ?? []).map((r) => r.id);
+  const { data: signedDocuments } = requestIds.length
+    ? await supabase.from("signed_documents").select("*").in("signature_request_id", requestIds)
+    : { data: [] };
+
+  const canRefundDeposit =
+    contract.statut === "resilie" &&
+    deposit &&
+    Boolean(deposit.amount_received) &&
+    deposit.status !== "rembourse" &&
+    deposit.status !== "non_demande";
 
   return (
     <div>
@@ -68,6 +92,38 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
         </CardHeader>
         <CardContent>
           <ContractPdfSection contractId={contract.id} pdfPath={contract.contrat_pdf_url} />
+        </CardContent>
+      </Card>
+
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle>Mandat de prélèvement SEPA</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SepaMandateDetailsForm contract={contract} />
+        </CardContent>
+      </Card>
+
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle>Signature électronique</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ContractSignatureSection
+            contract={contract}
+            latestRequest={latestRequest}
+            signedDocuments={signedDocuments ?? []}
+          />
+        </CardContent>
+      </Card>
+
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle>Dépôt de garantie</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <SecurityDepositForm contractId={contract.id} customerId={contract.customer_id} deposit={deposit ?? null} />
+          {canRefundDeposit && deposit && <SecurityDepositRefundForm deposit={deposit} />}
         </CardContent>
       </Card>
 

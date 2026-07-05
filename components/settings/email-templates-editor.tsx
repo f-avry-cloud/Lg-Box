@@ -17,9 +17,18 @@ const LABELS: Record<EmailTemplateKey, string> = {
   "j+7": "J+7 (relance)",
   "j+15": "J+15 (mise en demeure)",
   invoice_ready: "Facture disponible",
+  contract_signature_request: "Contrat à signer",
+  contract_signature_reminder: "Relance de signature",
 };
 
-const VARIABLES = ["{{prenom}}", "{{montant}}", "{{numero_facture}}", "{{date_echeance}}", "{{lien_portail}}"];
+const VARIABLES = [
+  "{{prenom}}",
+  "{{montant}}",
+  "{{numero_facture}}",
+  "{{date_echeance}}",
+  "{{lien_portail}}",
+  "{{lien_signature}}",
+];
 
 function TemplateForm({ template }: { template: EmailTemplate }) {
   const [subject, setSubject] = useState(template.subject);

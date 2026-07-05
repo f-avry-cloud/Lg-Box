@@ -3,7 +3,12 @@ import { Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format";
 import { haversineDistanceKm } from "@/lib/geocoding";
+import { daysUntil } from "@/lib/business/notice";
 import { createClient } from "@/lib/supabase/server";
+
+// Un dépôt reçu mais non restitué depuis plus longtemps que ce seuil, sur un
+// contrat résilié, est considéré comme "en retard" sur la page Rapports.
+const DEPOSIT_REFUND_OVERDUE_DAYS = 30;
 
 export default async function ReportsPage() {
   const supabase = await createClient();
@@ -30,6 +35,27 @@ export default async function ReportsPage() {
     supabase.from("sites").select("latitude, longitude").limit(1).maybeSingle(),
     supabase.from("customers").select("latitude, longitude"),
   ]);
+
+  const { data: openDeposits } = await supabase
+    .from("security_deposits")
+    .select("amount_received, status, contract_id")
+    .in("status", ["recu", "partiellement_rembourse", "demande"]);
+
+  const depositContractIds = [...new Set((openDeposits ?? []).map((d) => d.contract_id))];
+  const { data: depositContracts } = depositContractIds.length
+    ? await supabase.from("contracts").select("id, statut, date_fin").in("id", depositContractIds)
+    : { data: [] };
+  const depositContractById = new Map((depositContracts ?? []).map((c) => [c.id, c]));
+
+  const totalDepositsHeld = (openDeposits ?? [])
+    .filter((d) => d.status === "recu" || d.status === "partiellement_rembourse")
+    .reduce((sum, d) => sum + (d.amount_received ?? 0), 0);
+
+  const overdueDepositRefunds = (openDeposits ?? []).filter((d) => {
+    const contract = depositContractById.get(d.contract_id);
+    if (!contract || contract.statut !== "resilie" || !contract.date_fin) return false;
+    return -daysUntil(new Date(contract.date_fin)) > DEPOSIT_REFUND_OVERDUE_DAYS;
+  }).length;
 
   const caFacture = (invoicedThisMonth ?? []).reduce((sum, i) => sum + i.montant_ttc, 0);
   const caEncaisse = (collectedThisMonth ?? []).reduce((sum, p) => sum + p.montant, 0);
@@ -100,6 +126,20 @@ export default async function ReportsPage() {
               adresses des clients sont géolocalisées automatiquement à la création ou à l&apos;import.
             </p>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Dépôts de garantie en cours</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <Metric label="Total immobilisé" value={formatCurrency(totalDepositsHeld)} />
+          <Metric
+            label={`En attente de restitution (> ${DEPOSIT_REFUND_OVERDUE_DAYS}j)`}
+            value={String(overdueDepositRefunds)}
+            accent={overdueDepositRefunds > 0 ? "text-destructive" : undefined}
+          />
         </CardContent>
       </Card>
 

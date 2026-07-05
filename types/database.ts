@@ -13,6 +13,17 @@ export type ReservationStatus = "nouvelle" | "contactee" | "convertie" | "refuse
 export type DocumentType = "contrat" | "facture" | "piece_identite" | "autre";
 export type UnitFloor = "sous_sol" | "rez_de_chaussee" | "premier_etage";
 export type BankTransactionStatus = "non_rapproche" | "rapproche" | "ignore";
+export type SignatureStatus = "non_requise" | "en_attente" | "signe";
+export type SepaMandateStatus = "non_requis" | "en_attente" | "signe";
+export type SignedDocumentType = "contrat" | "mandat_sepa";
+export type SepaMandateTemplateMode = "integre" | "upload";
+export type SecurityDepositStatus =
+  | "non_demande"
+  | "demande"
+  | "recu"
+  | "partiellement_rembourse"
+  | "rembourse"
+  | "retenu";
 
 export type Profile = {
   id: string;
@@ -88,7 +99,53 @@ export type Contract = {
   date_demande_resiliation: string | null;
   contrat_pdf_url: string | null;
   motif_resiliation: string | null;
+  signature_status: SignatureStatus;
+  sepa_mandate_status: SepaMandateStatus;
+  iban: string | null;
+  bic: string | null;
+  rum: string | null;
   created_at: string;
+};
+
+export type SignatureRequest = {
+  id: string;
+  contract_id: string;
+  customer_id: string;
+  includes_contract: boolean;
+  includes_sepa_mandate: boolean;
+  signer_full_name: string | null;
+  signed_at: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  signature_token: string;
+  token_expires_at: string;
+  token_used_at: string | null;
+  created_at: string;
+};
+
+export type SignedDocument = {
+  id: string;
+  signature_request_id: string;
+  document_type: SignedDocumentType;
+  document_hash: string;
+  signed_document_path: string;
+  created_at: string;
+};
+
+export type SecurityDeposit = {
+  id: string;
+  contract_id: string;
+  customer_id: string;
+  amount_expected: number;
+  amount_received: number | null;
+  payment_method: PaymentMethod | null;
+  received_at: string | null;
+  status: SecurityDepositStatus;
+  amount_refunded: number | null;
+  refunded_at: string | null;
+  refund_reason: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type Invoice = {
@@ -163,6 +220,11 @@ export type CompanySettings = {
   contrat_modele: string | null;
   preavis_jours_defaut: number;
   jour_prelevement_defaut: number;
+  relance_signature_jours_defaut: number;
+  ics: string | null;
+  mandat_sepa_modele: string | null;
+  mandat_sepa_template_mode: SepaMandateTemplateMode;
+  mandat_sepa_upload_path: string | null;
   updated_at: string;
 };
 
@@ -195,7 +257,14 @@ export type BankTransaction = {
   created_at: string;
 };
 
-export type EmailTemplateKey = "j-3" | "j0" | "j+7" | "j+15" | "invoice_ready";
+export type EmailTemplateKey =
+  | "j-3"
+  | "j0"
+  | "j+7"
+  | "j+15"
+  | "invoice_ready"
+  | "contract_signature_request"
+  | "contract_signature_reminder";
 
 export type EmailTemplate = {
   key: EmailTemplateKey;
@@ -229,6 +298,9 @@ export type Database = {
       expenses: Table<Expense>;
       bank_transactions: Table<BankTransaction>;
       email_templates: Table<EmailTemplate, EmailTemplate, Partial<EmailTemplate>>;
+      signature_requests: Table<SignatureRequest>;
+      signed_documents: Table<SignedDocument>;
+      security_deposits: Table<SecurityDeposit>;
     };
     Views: Record<string, never>;
     Functions: {
