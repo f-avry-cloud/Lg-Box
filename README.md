@@ -42,9 +42,10 @@ supabase/seed.sql
 ```
 
 > Si votre projet Supabase a été initialisé **avant** l'ajout du plan visuel par
-> étage, du suivi des frais et du rapprochement bancaire, `schema.sql` contient
-> déjà tout pour une base neuve — mais sur une base existante, exécutez en plus
-> `supabase/migrations/002_v1_1.sql` une seule fois pour rattraper ces tables.
+> étage, du suivi des frais, du rapprochement bancaire, des modèles d'email ou
+> de la distance moyenne des locataires, `schema.sql` contient déjà tout pour
+> une base neuve — mais sur une base existante, exécutez en plus, dans l'ordre,
+> `supabase/migrations/002_v1_1.sql`, `003_v1_2.sql` puis `004_v1_3.sql`.
 
 Récupérez ensuite dans **Project Settings → API** :
 - `Project URL`

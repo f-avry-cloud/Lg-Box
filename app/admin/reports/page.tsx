@@ -1,6 +1,7 @@
 import { Download } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DistanceStatCard } from "@/components/reports/distance-stat-card";
 import { formatCurrency } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
@@ -70,6 +71,10 @@ export default async function ReportsPage() {
           />
         </CardContent>
       </Card>
+
+      <div className="mb-6">
+        <DistanceStatCard />
+      </div>
 
       <Card>
         <CardHeader>

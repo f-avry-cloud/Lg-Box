@@ -7,6 +7,39 @@ import { createClient } from "@/lib/supabase/server";
 import { ok, fail, type ActionResult } from "@/lib/actions/result";
 import type { EmailTemplateKey } from "@/types/database";
 
+export async function updateSiteSettings(
+  _prevState: SettingsFormState,
+  formData: FormData
+): Promise<SettingsFormState> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { data: site } = await supabase.from("sites").select("id").limit(1).single();
+  if (!site) return { error: "Aucun site configuré." };
+
+  const { error } = await supabase
+    .from("sites")
+    .update({
+      nom: String(formData.get("nom") ?? "").trim() || "LG BOX",
+      adresse: String(formData.get("adresse") ?? "") || null,
+      ville: String(formData.get("ville") ?? "") || null,
+      code_postal: String(formData.get("code_postal") ?? "") || null,
+      telephone: String(formData.get("telephone") ?? "") || null,
+      email_contact: String(formData.get("email_contact") ?? "") || null,
+      horaires: String(formData.get("horaires") ?? "") || null,
+      // L'adresse a pu changer : on invalide les coordonnées mises en cache,
+      // elles seront recalculées au prochain calcul de distance moyenne.
+      latitude: null,
+      longitude: null,
+    })
+    .eq("id", site.id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/settings");
+  revalidatePath("/");
+  return { error: null, success: true };
+}
+
 export type SettingsFormState = { error: string | null; success?: boolean };
 
 export async function updateCompanySettings(
