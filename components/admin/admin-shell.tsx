@@ -68,7 +68,7 @@ export function AdminShell({
   }
 
   return (
-    <div className="flex h-screen flex-col md:flex-row">
+    <div className="flex h-screen flex-col overflow-x-hidden md:flex-row">
       {/* Barre mobile */}
       <div className="flex items-center justify-between border-b border-border bg-card p-3 md:hidden">
         <button
@@ -98,8 +98,8 @@ export function AdminShell({
         </div>
       )}
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-6xl p-4 sm:p-6">{children}</div>
+      <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <div className="mx-auto max-w-6xl min-w-0 p-4 sm:p-6">{children}</div>
       </main>
     </div>
   );

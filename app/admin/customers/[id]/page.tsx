@@ -13,6 +13,7 @@ import {
 } from "@/components/status-badge";
 import { DocumentUpload } from "@/components/customers/document-upload";
 import { CustomerNotes } from "@/components/customers/customer-notes";
+import { CustomerEditDialog } from "@/components/customers/customer-edit-dialog";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
@@ -60,9 +61,12 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
             {customer.email} · {customer.telephone ?? "—"}
           </p>
         </div>
-        <Badge variant={customer.type === "professionnel" ? "secondary" : "outline"}>
-          {customer.type === "professionnel" ? "Professionnel" : "Particulier"}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={customer.type === "professionnel" ? "secondary" : "outline"}>
+            {customer.type === "professionnel" ? "Professionnel" : "Particulier"}
+          </Badge>
+          <CustomerEditDialog customer={customer} />
+        </div>
       </div>
 
       <Tabs defaultValue="infos">

@@ -357,6 +357,33 @@ language sql stable security definer set search_path = public as $$
   select id from customers where user_id = auth.uid();
 $$;
 
+-- Réinitialisation des données locataires (clients, contrats, factures,
+-- paiements) — réservée aux administrateurs, exposée via Paramètres avec
+-- confirmation à plusieurs facteurs côté application.
+create or replace function reset_tenant_data()
+returns void
+language plpgsql
+as $$
+begin
+  if not is_admin() then
+    raise exception 'Seul un administrateur peut réinitialiser les données locataires.';
+  end if;
+
+  delete from payments;
+  delete from invoices;
+  delete from documents where related_table in ('customers', 'contracts', 'invoices');
+  delete from contracts;
+  delete from customers;
+  update units set statut = 'libre' where statut <> 'hors_service';
+
+  insert into activity_log (user_id, action, table_concernee, detail)
+  values (auth.uid(), 'reset_tenant_data', 'customers', jsonb_build_object('triggered_at', now()));
+end;
+$$;
+
+revoke all on function reset_tenant_data() from public;
+grant execute on function reset_tenant_data() to authenticated;
+
 -- ============================================================================
 -- Row Level Security
 -- ============================================================================
