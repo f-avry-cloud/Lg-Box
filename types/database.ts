@@ -62,6 +62,7 @@ export type Unit = {
   floor: UnitFloor;
   pos_x: number | null;
   pos_y: number | null;
+  code_acces: string | null;
   created_at: string;
 };
 
@@ -226,6 +227,9 @@ export type CompanySettings = {
   mandat_sepa_template_mode: SepaMandateTemplateMode;
   mandat_sepa_upload_path: string | null;
   signature_image_path: string | null;
+  tva_applicable: boolean;
+  taux_tva: number;
+  facture_mentions_legales: string | null;
   updated_at: string;
 };
 

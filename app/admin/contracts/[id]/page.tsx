@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ContractStatusBadge, InvoiceStatusBadge } from "@/components/status-badge";
 import { ContractStatusActions } from "@/components/contracts/contract-status-actions";
+import { RentEditForm } from "@/components/contracts/rent-edit-form";
 import { ContractPdfSection } from "@/components/contracts/contract-pdf-section";
 import { ContractSignatureSection } from "@/components/contracts/contract-signature-section";
 import { SepaMandateDetailsForm } from "@/components/contracts/sepa-mandate-details-form";
@@ -77,6 +78,13 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
           <CardTitle>Détails</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Loyer mensuel</p>
+            <div className="flex items-center gap-1">
+              <p>{formatCurrency(contract.prix_mensuel)}</p>
+              <RentEditForm contractId={contract.id} currentRent={contract.prix_mensuel} />
+            </div>
+          </div>
           <Info label="Date de début" value={formatDate(contract.date_debut)} />
           <Info label="Date de fin" value={contract.date_fin ? formatDate(contract.date_fin) : "—"} />
           <Info label="Dépôt de garantie" value={formatCurrency(contract.depot_garantie)} />

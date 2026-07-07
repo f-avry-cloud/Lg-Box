@@ -95,6 +95,10 @@ export function UnitCreateDialog() {
               </SelectContent>
             </Select>
           </div>
+          <div className="col-span-1 flex flex-col gap-1.5">
+            <Label htmlFor="code_acces">Code d&apos;accès</Label>
+            <Input id="code_acces" name="code_acces" placeholder="Ex. 4821#" />
+          </div>
           <div className="col-span-2 flex flex-col gap-1.5">
             <Label htmlFor="notes">Notes internes</Label>
             <Input id="notes" name="notes" />

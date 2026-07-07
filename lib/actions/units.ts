@@ -30,6 +30,7 @@ export async function createUnit(
     statut: "libre",
     notes: String(formData.get("notes") ?? "") || null,
     floor: String(formData.get("floor") ?? "rez_de_chaussee") as UnitFloor,
+    code_acces: String(formData.get("code_acces") ?? "") || null,
   });
 
   if (error) return { error: error.message };
@@ -45,6 +46,21 @@ export async function updateUnitStatus(unitId: string, statut: UnitStatus): Prom
   if (error) return fail(error.message);
   revalidatePath("/admin/units");
   revalidatePath(`/admin/units/${unitId}`);
+  return ok;
+}
+
+// Code d'accès au box (digicode, cadenas à combinaison...) — utilisable dans
+// le modèle de contrat via la variable {{box_code}}, voir lib/pdf/contract-template.ts.
+export async function updateUnitAccessCode(unitId: string, codeAcces: string): Promise<ActionResult> {
+  await requireStaff();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("units")
+    .update({ code_acces: codeAcces.trim() || null })
+    .eq("id", unitId);
+  if (error) return fail(error.message);
+  revalidatePath(`/admin/units/${unitId}`);
+  revalidatePath("/admin/contracts");
   return ok;
 }
 
