@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { sendAccessCodeEmail } from "@/lib/actions/access-code-email";
 import { ok, fail, type ActionResult } from "@/lib/actions/result";
 import type { UnitFloor, UnitStatus, UnitType } from "@/types/database";
 
@@ -62,6 +63,48 @@ export async function updateUnitAccessCode(unitId: string, codeAcces: string): P
   revalidatePath(`/admin/units/${unitId}`);
   revalidatePath("/admin/contracts");
   return ok;
+}
+
+// Envoie le code d'accès de ce box au locataire actif (le plus récent
+// contrat en cours), pour l'utiliser depuis la fiche box directement.
+export async function sendUnitBoxAccessCodeEmail(unitId: string): Promise<ActionResult> {
+  await requireStaff();
+  const supabase = await createClient();
+
+  const { data: unit } = await supabase.from("units").select("numero, code_acces").eq("id", unitId).single();
+  if (!unit) return fail("Box introuvable.");
+  if (!unit.code_acces) return fail("Aucun code d'accès renseigné pour ce box.");
+
+  const { data: contract } = await supabase
+    .from("contracts")
+    .select("customer_id")
+    .eq("unit_id", unitId)
+    .in("statut", ["actif", "en_preavis"])
+    .order("date_debut", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!contract) return fail("Aucun locataire actif pour ce box.");
+
+  const { data: customer } = await supabase
+    .from("customers")
+    .select("prenom, email")
+    .eq("id", contract.customer_id)
+    .single();
+  if (!customer) return fail("Client introuvable.");
+
+  const result = await sendAccessCodeEmail("code_acces_box", customer, {
+    code_acces: unit.code_acces,
+    box_numero: unit.numero,
+  });
+  if (result.success) {
+    await supabase.from("activity_log").insert({
+      action: "box_access_code_sent",
+      table_concernee: "units",
+      enregistrement_id: unitId,
+      detail: { customer_id: contract.customer_id },
+    });
+  }
+  return result;
 }
 
 export async function updateUnitNotes(unitId: string, notes: string): Promise<ActionResult> {

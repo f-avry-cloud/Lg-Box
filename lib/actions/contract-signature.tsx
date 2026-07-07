@@ -321,11 +321,18 @@ export async function signDocuments(token: string, signerFullName: string): Prom
         prenom: customer.prenom,
       });
       if (rendered) {
+        // Greffe le code de porte générale si l'option est activée dans les
+        // paramètres — sinon rien n'est ajouté (voir Paramètres > Code de
+        // porte générale du bâtiment).
+        const doorCodeParagraph =
+          request.includes_contract && company.code_porte_generale_active && company.code_porte_generale
+            ? `\n\nCode d'accès de la porte principale du bâtiment : ${company.code_porte_generale}`
+            : "";
         await getResend().emails.send({
           from: FROM_EMAIL,
           to: customer.email,
           subject: rendered.subject,
-          text: rendered.text,
+          text: rendered.text + doorCodeParagraph,
         });
       }
     }

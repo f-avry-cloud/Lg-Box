@@ -11,6 +11,8 @@ export type EmailVars = {
   date_echeance?: string;
   lien_portail?: string;
   lien_signature?: string;
+  code_acces?: string;
+  box_numero?: string;
 };
 
 function interpolate(text: string, vars: EmailVars): string {
@@ -20,6 +22,8 @@ function interpolate(text: string, vars: EmailVars): string {
     date_echeance: "",
     lien_portail: "",
     lien_signature: "",
+    code_acces: "",
+    box_numero: "",
     ...vars,
   };
   return Object.entries(allVars).reduce(

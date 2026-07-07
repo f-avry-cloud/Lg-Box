@@ -8,6 +8,7 @@ import { ContractStatusBadge } from "@/components/status-badge";
 import { UnitStatusSelect } from "@/components/units/unit-status-select";
 import { UnitFloorSelect } from "@/components/units/unit-floor-select";
 import { UnitAccessCodeForm } from "@/components/units/unit-access-code-form";
+import { SendAccessCodeButton } from "@/components/access-codes/send-access-code-button";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
@@ -29,6 +30,7 @@ export default async function UnitDetailPage({ params }: { params: Promise<{ id:
     ? await supabase.from("customers").select("id, prenom, nom").in("id", customerIds)
     : { data: [] };
   const customerById = new Map((customers ?? []).map((c) => [c.id, c]));
+  const hasActiveTenant = (contracts ?? []).some((c) => c.statut === "actif" || c.statut === "en_preavis");
 
   return (
     <div>
@@ -53,11 +55,16 @@ export default async function UnitDetailPage({ params }: { params: Promise<{ id:
         <CardHeader>
           <CardTitle>Code d&apos;accès</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-3">
           <UnitAccessCodeForm unitId={unit.id} initialCode={unit.code_acces ?? ""} />
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Disponible dans le modèle de contrat via la variable {"{{box_code}}"}.
           </p>
+          {unit.code_acces && hasActiveTenant && (
+            <div>
+              <SendAccessCodeButton kind="unit-box" unitId={unit.id} />
+            </div>
+          )}
         </CardContent>
       </Card>
 

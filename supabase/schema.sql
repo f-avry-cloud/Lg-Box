@@ -94,6 +94,7 @@ create table customers (
   notes text,
   latitude numeric(9, 6),
   longitude numeric(9, 6),
+  actif boolean not null default true,
   created_at timestamptz not null default now()
 );
 
@@ -304,6 +305,8 @@ create table company_settings (
   tva_applicable boolean not null default false,
   taux_tva numeric(5, 2) not null default 20,
   facture_mentions_legales text,
+  code_porte_generale_active boolean not null default false,
+  code_porte_generale text,
   updated_at timestamptz not null default now()
 );
 
@@ -356,7 +359,8 @@ create table email_templates (
   key text primary key check (key in (
     'j-3', 'j0', 'j+7', 'j+15', 'invoice_ready',
     'contract_signature_request', 'contract_signature_reminder',
-    'documents_signed_confirmation'
+    'documents_signed_confirmation',
+    'code_porte_generale', 'code_acces_box'
   )),
   subject text not null,
   body text not null,
@@ -429,6 +433,18 @@ L''équipe LG BOX'),
 Nous vous confirmons la bonne réception de votre signature électronique.
 
 Vous pouvez à tout moment retrouver vos documents signés et leur preuve de signature depuis votre espace client : {{lien_portail}}
+
+Bien cordialement,
+L''équipe LG BOX'),
+('code_porte_generale', 'Code d''accès du bâtiment', 'Bonjour {{prenom}},
+
+Voici le code d''accès de la porte principale du bâtiment : {{code_acces}}
+
+Bien cordialement,
+L''équipe LG BOX'),
+('code_acces_box', 'Code d''accès de votre box {{box_numero}}', 'Bonjour {{prenom}},
+
+Voici le code d''accès de votre box n° {{box_numero}} : {{code_acces}}
 
 Bien cordialement,
 L''équipe LG BOX');

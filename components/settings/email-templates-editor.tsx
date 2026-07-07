@@ -20,6 +20,8 @@ const LABELS: Record<EmailTemplateKey, string> = {
   contract_signature_request: "Contrat à signer",
   contract_signature_reminder: "Relance de signature",
   documents_signed_confirmation: "Confirmation de signature",
+  code_porte_generale: "Code de porte générale",
+  code_acces_box: "Code d'accès du box",
 };
 
 const VARIABLES = [
@@ -29,6 +31,8 @@ const VARIABLES = [
   "{{date_echeance}}",
   "{{lien_portail}}",
   "{{lien_signature}}",
+  "{{code_acces}}",
+  "{{box_numero}}",
 ];
 
 function TemplateForm({ template }: { template: EmailTemplate }) {

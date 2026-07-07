@@ -78,6 +78,31 @@ export async function updateInvoiceSettings(
   return { error: null, success: true };
 }
 
+// Code de porte générale du bâtiment — désactivé par défaut (rien ne change
+// tant qu'il n'est pas activé) ; une fois activé, envoyable au locataire
+// depuis la fiche contrat (voir sendGeneralDoorCodeEmail dans lib/actions/contracts.tsx).
+export async function updateGeneralDoorCode(
+  _prevState: SettingsFormState,
+  formData: FormData
+): Promise<SettingsFormState> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("company_settings")
+    .update({
+      code_porte_generale_active: formData.get("code_porte_generale_active") === "on",
+      code_porte_generale: String(formData.get("code_porte_generale") ?? "") || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", true);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/contracts");
+  return { error: null, success: true };
+}
+
 export async function updateSepaMandateSettings(
   _prevState: SettingsFormState,
   formData: FormData

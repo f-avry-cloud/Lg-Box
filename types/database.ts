@@ -82,6 +82,7 @@ export type Customer = {
   notes: string | null;
   latitude: number | null;
   longitude: number | null;
+  actif: boolean;
   created_at: string;
 };
 
@@ -230,6 +231,8 @@ export type CompanySettings = {
   tva_applicable: boolean;
   taux_tva: number;
   facture_mentions_legales: string | null;
+  code_porte_generale_active: boolean;
+  code_porte_generale: string | null;
   updated_at: string;
 };
 
@@ -270,7 +273,9 @@ export type EmailTemplateKey =
   | "invoice_ready"
   | "contract_signature_request"
   | "contract_signature_reminder"
-  | "documents_signed_confirmation";
+  | "documents_signed_confirmation"
+  | "code_porte_generale"
+  | "code_acces_box";
 
 export type EmailTemplate = {
   key: EmailTemplateKey;
