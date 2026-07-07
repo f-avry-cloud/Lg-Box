@@ -67,6 +67,7 @@ create table units (
   floor unit_floor not null default 'rez_de_chaussee',
   pos_x numeric(6, 2),
   pos_y numeric(6, 2),
+  code_acces text,
   created_at timestamptz not null default now(),
   unique (site_id, numero)
 );
@@ -300,6 +301,9 @@ create table company_settings (
     check (mandat_sepa_template_mode in ('integre', 'upload')),
   mandat_sepa_upload_path text,
   signature_image_path text,
+  tva_applicable boolean not null default false,
+  taux_tva numeric(5, 2) not null default 20,
+  facture_mentions_legales text,
   updated_at timestamptz not null default now()
 );
 

@@ -55,6 +55,29 @@ export async function setCompanySignatureImagePath(path: string): Promise<Action
   return ok;
 }
 
+export async function updateInvoiceSettings(
+  _prevState: SettingsFormState,
+  formData: FormData
+): Promise<SettingsFormState> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("company_settings")
+    .update({
+      tva_applicable: formData.get("tva_applicable") === "on",
+      taux_tva: Number(formData.get("taux_tva") ?? 20),
+      facture_mentions_legales: String(formData.get("facture_mentions_legales") ?? "") || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", true);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/invoices");
+  return { error: null, success: true };
+}
+
 export async function updateSepaMandateSettings(
   _prevState: SettingsFormState,
   formData: FormData

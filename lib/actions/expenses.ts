@@ -21,15 +21,31 @@ export async function createExpense(
     return { error: "Catégorie et montant sont obligatoires." };
   }
 
-  const { error } = await supabase.from("expenses").insert({
-    categorie,
-    montant,
-    date_depense: String(formData.get("date_depense") ?? new Date().toISOString().slice(0, 10)),
-    fournisseur: String(formData.get("fournisseur") ?? "") || null,
-    description: String(formData.get("description") ?? "") || null,
-  });
+  const { data: expense, error } = await supabase
+    .from("expenses")
+    .insert({
+      categorie,
+      montant,
+      date_depense: String(formData.get("date_depense") ?? new Date().toISOString().slice(0, 10)),
+      fournisseur: String(formData.get("fournisseur") ?? "") || null,
+      description: String(formData.get("description") ?? "") || null,
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: error.message };
+
+  const justificatif = formData.get("justificatif");
+  if (justificatif instanceof File && justificatif.size > 0) {
+    const ext = justificatif.name.split(".").pop() ?? "pdf";
+    const path = `expenses/${expense.id}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("documents")
+      .upload(path, justificatif, { contentType: justificatif.type, upsert: true });
+    if (!uploadError) {
+      await supabase.from("expenses").update({ justificatif_url: path }).eq("id", expense.id);
+    }
+  }
 
   revalidatePath("/admin/expenses");
   revalidatePath("/admin/reports");

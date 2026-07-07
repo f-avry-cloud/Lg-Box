@@ -9,17 +9,35 @@ import { BulkInvoiceButton } from "@/components/invoices/bulk-invoice-button";
 import { BulkReminderButton } from "@/components/invoices/bulk-reminder-button";
 import { MarkPaidDialog } from "@/components/invoices/mark-paid-dialog";
 import { SendReminderButton } from "@/components/invoices/send-reminder-button";
+import { SearchParamSelect } from "@/components/filters/search-param-select";
+import { InvoiceZipExportButton } from "@/components/invoices/invoice-zip-export-button";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { daysUntil } from "@/lib/business/notice";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function InvoicesPage() {
+export default async function InvoicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ annee?: string }>;
+}) {
+  const { annee } = await searchParams;
   const supabase = await createClient();
 
   const { data: invoices } = await supabase
     .from("invoices")
     .select("*")
     .order("date_emission", { ascending: false });
+
+  const currentYear = new Date().getFullYear();
+  const availableYears = [
+    ...new Set((invoices ?? []).map((i) => new Date(i.date_emission).getFullYear())),
+  ].sort((a, b) => b - a);
+  if (!availableYears.includes(currentYear)) availableYears.unshift(currentYear);
+  const selectedYear = annee ?? String(currentYear);
+  const yearFilteredInvoices =
+    selectedYear === "toutes"
+      ? invoices ?? []
+      : (invoices ?? []).filter((i) => new Date(i.date_emission).getFullYear() === Number(selectedYear));
 
   const { data: activeContracts } = await supabase
     .from("contracts")
@@ -140,6 +158,17 @@ export default async function InvoicesPage() {
         </TabsContent>
 
         <TabsContent value="toutes">
+          <div className="mb-4 flex items-center justify-between">
+            <SearchParamSelect
+              paramName="annee"
+              className="w-40"
+              options={[
+                ...availableYears.map((y) => ({ value: String(y), label: String(y) })),
+                { value: "toutes", label: "Toutes les années" },
+              ]}
+            />
+            <InvoiceZipExportButton year={selectedYear === "toutes" ? currentYear : Number(selectedYear)} />
+          </div>
           <Card>
             <CardContent className="p-0">
               <Table>
@@ -153,7 +182,7 @@ export default async function InvoicesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(invoices ?? []).map((i) => (
+                  {yearFilteredInvoices.map((i) => (
                     <TableRow key={i.id}>
                       <TableCell>
                         <Link href={`/admin/invoices/${i.id}`} className="font-mono hover:text-primary">
@@ -172,6 +201,13 @@ export default async function InvoicesPage() {
                       </TableCell>
                     </TableRow>
                   ))}
+                  {yearFilteredInvoices.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                        Aucune facture pour cette période.
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </CardContent>

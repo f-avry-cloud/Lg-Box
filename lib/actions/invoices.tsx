@@ -5,8 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { generateInvoiceForContract } from "@/lib/business/generate-invoice";
-import { renderPdfBuffer } from "@/lib/pdf/generate";
-import { InvoiceDocument } from "@/lib/pdf/invoice-document";
+import { ensureInvoicePdf } from "@/lib/pdf/render-invoice";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { daysUntil } from "@/lib/business/notice";
 import { getResend, FROM_EMAIL } from "@/lib/email/resend";
@@ -324,16 +323,10 @@ export async function generateInvoicePdf(invoiceId: string): Promise<ActionResul
   const { data: company } = await supabase.from("company_settings").select("*").single();
   if (!customer || !company) return fail("Données manquantes pour générer le PDF.");
 
-  const buffer = await renderPdfBuffer(
-    <InvoiceDocument invoice={invoice} customer={customer} company={company} />
-  );
-
-  const path = `${customer.id}/${invoice.id}.pdf`;
   const service = createServiceClient();
-  const { error: uploadError } = await service.storage
-    .from("invoices")
-    .upload(path, buffer, { contentType: "application/pdf", upsert: true });
-  if (uploadError) return fail(uploadError.message);
+  // On force la régénération (le PDF peut être obsolète après un changement de loyer,
+  // de mentions légales ou de CGV) plutôt que de réutiliser un fichier déjà stocké.
+  const { path } = await ensureInvoicePdf(service, { ...invoice, facture_pdf_url: null }, customer, company);
 
   await supabase.from("invoices").update({ facture_pdf_url: path }).eq("id", invoiceId);
   revalidatePath(`/admin/invoices/${invoiceId}`);

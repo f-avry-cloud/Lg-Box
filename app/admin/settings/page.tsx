@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CompanySettingsForm } from "@/components/settings/company-settings-form";
 import { SiteSettingsForm } from "@/components/settings/site-settings-form";
 import { PricingGridEditor } from "@/components/settings/pricing-grid-editor";
+import { InvoiceSettingsForm } from "@/components/settings/invoice-settings-form";
 import { EmailTemplatesEditor } from "@/components/settings/email-templates-editor";
 import { SepaMandateForm } from "@/components/settings/sepa-mandate-form";
 import { DangerZone } from "@/components/settings/danger-zone";
@@ -67,6 +68,15 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <PricingGridEditor rows={pricing ?? []} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Facturation</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <InvoiceSettingsForm settings={settings} />
         </CardContent>
       </Card>
 

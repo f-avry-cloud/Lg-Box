@@ -90,6 +90,10 @@ export function ExpenseCreateDialog() {
             <Label htmlFor="description">Description</Label>
             <Input id="description" name="description" />
           </div>
+          <div className="col-span-2 flex flex-col gap-1.5">
+            <Label htmlFor="justificatif">Justificatif (facture, reçu...)</Label>
+            <Input id="justificatif" name="justificatif" type="file" accept="application/pdf,image/*" />
+          </div>
           {error && <p className="col-span-2 text-sm text-destructive">{error}</p>}
           <div className="col-span-2 mt-2 flex justify-end">
             <Button type="submit" disabled={pending}>

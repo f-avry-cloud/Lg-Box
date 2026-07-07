@@ -10,6 +10,7 @@ export const CONTRACT_TEMPLATE_VARIABLES = [
   "{{adresse_client}}",
   "{{box_numero}}",
   "{{box_taille}}",
+  "{{box_code}}",
   "{{prix_mensuel}}",
   "{{depot_garantie}}",
   "{{date_debut}}",
@@ -32,6 +33,7 @@ export function interpolateContractTemplate(
     "{{adresse_client}}": [customer.adresse, customer.code_postal, customer.ville].filter(Boolean).join(" "),
     "{{box_numero}}": unit.numero,
     "{{box_taille}}": unit.taille_libelle,
+    "{{box_code}}": unit.code_acces ?? "",
     "{{prix_mensuel}}": formatCurrency(contract.prix_mensuel),
     "{{depot_garantie}}": formatCurrency(contract.depot_garantie),
     "{{date_debut}}": formatDateLong(contract.date_debut),
@@ -48,8 +50,10 @@ export function interpolateContractTemplate(
   );
 }
 
-// Texte par défaut si aucune CGV n'a été renseignée dans les paramètres.
-const DEFAULT_CGV_TEXT = "Conditions générales de location à compléter dans les paramètres du back-office.";
+// Texte par défaut si aucune CGV n'a été renseignée dans les paramètres —
+// aussi réutilisé en page 2 de la facture (lib/pdf/invoice-document.tsx).
+export const DEFAULT_CGV_TEXT =
+  "Conditions générales de location à compléter dans les paramètres du back-office.";
 
 // Corps du contrat (hors CGV), utilisé pour l'affichage principal sur la
 // page de signature publique — les CGV y sont accessibles séparément via un
@@ -81,6 +85,7 @@ export function renderContractBodyText(
     `Loyer mensuel : ${formatCurrency(contract.prix_mensuel)} TTC`,
     `Dépôt de garantie : ${formatCurrency(contract.depot_garantie)}`,
     `Jour de prélèvement mensuel : le ${contract.jour_prelevement_mensuel} de chaque mois`,
+    ...(unit.code_acces ? [`Code d'accès au box : ${unit.code_acces}`] : []),
   ].join("\n");
 }
 

@@ -115,6 +115,38 @@ export async function changeContractStatus(
   return ok;
 }
 
+// Modification du loyer en cours de contrat — les factures déjà émises
+// conservent leur montant (stocké indépendamment sur chaque facture), seules
+// les prochaines générations utiliseront le nouveau montant.
+export async function updateContractRent(contractId: string, formData: FormData): Promise<ActionResult> {
+  await requireStaff();
+  const supabase = await createClient();
+
+  const nouveauPrix = Number(formData.get("prix_mensuel") ?? 0);
+  if (!nouveauPrix || nouveauPrix <= 0) return fail("Montant invalide.");
+  const motif = String(formData.get("motif") ?? "").trim() || null;
+
+  const { data: contract } = await supabase.from("contracts").select("prix_mensuel").eq("id", contractId).single();
+  if (!contract) return fail("Contrat introuvable.");
+
+  const { error } = await supabase
+    .from("contracts")
+    .update({ prix_mensuel: nouveauPrix })
+    .eq("id", contractId);
+  if (error) return fail(error.message);
+
+  await supabase.from("activity_log").insert({
+    action: "contract_rent_changed",
+    table_concernee: "contracts",
+    enregistrement_id: contractId,
+    detail: { ancien_prix_mensuel: contract.prix_mensuel, nouveau_prix_mensuel: nouveauPrix, motif },
+  });
+
+  revalidatePath(`/admin/contracts/${contractId}`);
+  revalidatePath("/admin/contracts");
+  return ok;
+}
+
 export async function generateContractPdf(contractId: string): Promise<ActionResult & { path?: string }> {
   await requireStaff();
   const supabase = await createClient();

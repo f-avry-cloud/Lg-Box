@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ContractStatusBadge } from "@/components/status-badge";
 import { UnitStatusSelect } from "@/components/units/unit-status-select";
 import { UnitFloorSelect } from "@/components/units/unit-floor-select";
+import { UnitAccessCodeForm } from "@/components/units/unit-access-code-form";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
@@ -47,6 +48,18 @@ export default async function UnitDetailPage({ params }: { params: Promise<{ id:
           <UnitStatusSelect unitId={unit.id} status={unit.statut} />
         </div>
       </div>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Code d&apos;accès</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <UnitAccessCodeForm unitId={unit.id} initialCode={unit.code_acces ?? ""} />
+          <p className="mt-2 text-xs text-muted-foreground">
+            Disponible dans le modèle de contrat via la variable {"{{box_code}}"}.
+          </p>
+        </CardContent>
+      </Card>
 
       {unit.notes && (
         <Card className="mb-6">

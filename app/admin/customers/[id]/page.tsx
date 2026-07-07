@@ -17,11 +17,20 @@ import {
 import { DocumentUpload } from "@/components/customers/document-upload";
 import { CustomerNotes } from "@/components/customers/customer-notes";
 import { CustomerEditDialog } from "@/components/customers/customer-edit-dialog";
+import { SearchParamSelect } from "@/components/filters/search-param-select";
+import { InvoiceZipExportButton } from "@/components/invoices/invoice-zip-export-button";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CustomerDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ annee?: string }>;
+}) {
   const { id } = await params;
+  const { annee } = await searchParams;
   const supabase = await createClient();
 
   const { data: customer } = await supabase.from("customers").select("*").eq("id", id).single();
@@ -51,6 +60,17 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
     : { data: [] };
   const unitById = new Map((units ?? []).map((u) => [u.id, u]));
   const contractById = new Map((contracts ?? []).map((c) => [c.id, c]));
+
+  const currentYear = new Date().getFullYear();
+  const invoiceYears = [
+    ...new Set((invoices ?? []).map((i) => new Date(i.date_emission).getFullYear())),
+  ].sort((a, b) => b - a);
+  if (!invoiceYears.includes(currentYear)) invoiceYears.unshift(currentYear);
+  const selectedInvoiceYear = annee ?? String(currentYear);
+  const yearFilteredInvoices =
+    selectedInvoiceYear === "toutes"
+      ? invoices ?? []
+      : (invoices ?? []).filter((i) => new Date(i.date_emission).getFullYear() === Number(selectedInvoiceYear));
 
   return (
     <div>
@@ -200,6 +220,20 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         </TabsContent>
 
         <TabsContent value="factures">
+          <div className="mb-4 flex items-center justify-between">
+            <SearchParamSelect
+              paramName="annee"
+              className="w-40"
+              options={[
+                ...invoiceYears.map((y) => ({ value: String(y), label: String(y) })),
+                { value: "toutes", label: "Toutes les années" },
+              ]}
+            />
+            <InvoiceZipExportButton
+              year={selectedInvoiceYear === "toutes" ? currentYear : Number(selectedInvoiceYear)}
+              customerId={customer.id}
+            />
+          </div>
           <Card>
             <CardContent className="p-0">
               <Table>
@@ -213,7 +247,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(invoices ?? []).map((i) => (
+                  {yearFilteredInvoices.map((i) => (
                     <TableRow key={i.id}>
                       <TableCell>
                         <Link href={`/admin/invoices/${i.id}`} className="font-mono hover:text-primary">
@@ -230,10 +264,10 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                       </TableCell>
                     </TableRow>
                   ))}
-                  {(!invoices || invoices.length === 0) && (
+                  {yearFilteredInvoices.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                        Aucune facture.
+                        Aucune facture pour cette période.
                       </TableCell>
                     </TableRow>
                   )}
