@@ -68,7 +68,7 @@ export default async function InvoicesPage({
     } — Box ${contractUnitById.get(c.unit_id)?.numero ?? ""} (${formatCurrency(c.prix_mensuel)})`,
   }));
 
-  const unpaid = (invoices ?? [])
+  const unpaid = yearFilteredInvoices
     .filter((i) => i.statut === "emise" || i.statut === "en_retard")
     .map((i) => ({ ...i, daysLate: -daysUntil(new Date(i.date_echeance)) }))
     .sort((a, b) => b.daysLate - a.daysLate);
@@ -90,6 +90,18 @@ export default async function InvoicesPage({
           <BulkReminderButton unpaidCount={unpaid.length} />
           <InvoiceCreateDialog contracts={contractOptions} />
         </div>
+      </div>
+
+      <div className="mb-4 flex items-center justify-between">
+        <SearchParamSelect
+          paramName="annee"
+          className="w-40"
+          options={[
+            ...availableYears.map((y) => ({ value: String(y), label: String(y) })),
+            { value: "toutes", label: "Toutes les années" },
+          ]}
+        />
+        <InvoiceZipExportButton year={selectedYear === "toutes" ? currentYear : Number(selectedYear)} />
       </div>
 
       <Tabs defaultValue="impayees">
@@ -158,17 +170,6 @@ export default async function InvoicesPage({
         </TabsContent>
 
         <TabsContent value="toutes">
-          <div className="mb-4 flex items-center justify-between">
-            <SearchParamSelect
-              paramName="annee"
-              className="w-40"
-              options={[
-                ...availableYears.map((y) => ({ value: String(y), label: String(y) })),
-                { value: "toutes", label: "Toutes les années" },
-              ]}
-            />
-            <InvoiceZipExportButton year={selectedYear === "toutes" ? currentYear : Number(selectedYear)} />
-          </div>
           <Card>
             <CardContent className="p-0">
               <Table>

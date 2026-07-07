@@ -9,6 +9,7 @@ import { computeNoticeEndDate } from "@/lib/business/notice";
 import { renderPdfBuffer } from "@/lib/pdf/generate";
 import { ContractDocument } from "@/lib/pdf/contract-document";
 import { loadCompanySignatureImage } from "@/lib/pdf/company-signature";
+import { sendAccessCodeEmail } from "@/lib/actions/access-code-email";
 import { ok, fail, type ActionResult } from "@/lib/actions/result";
 import type { Contract, ContractStatus, CustomerType } from "@/types/database";
 
@@ -145,6 +146,83 @@ export async function updateContractRent(contractId: string, formData: FormData)
   revalidatePath(`/admin/contracts/${contractId}`);
   revalidatePath("/admin/contracts");
   return ok;
+}
+
+// Envoie le code de la porte générale du bâtiment au locataire de ce contrat
+// — n'a d'effet que si l'option est activée dans Paramètres (sinon rien ne
+// se passe, conformément à la demande : le code n'existe pas tant qu'il
+// n'est pas explicitement activé).
+export async function sendGeneralDoorCodeEmail(contractId: string): Promise<ActionResult> {
+  await requireStaff();
+  const supabase = await createClient();
+
+  const { data: contract } = await supabase.from("contracts").select("customer_id").eq("id", contractId).single();
+  if (!contract) return fail("Contrat introuvable.");
+  const { data: customer } = await supabase
+    .from("customers")
+    .select("prenom, email")
+    .eq("id", contract.customer_id)
+    .single();
+  if (!customer) return fail("Client introuvable.");
+  const { data: company } = await supabase
+    .from("company_settings")
+    .select("code_porte_generale_active, code_porte_generale")
+    .single();
+  if (!company?.code_porte_generale_active || !company.code_porte_generale) {
+    return fail("Le code de porte générale n'est pas activé ou renseigné dans les paramètres.");
+  }
+
+  const result = await sendAccessCodeEmail("code_porte_generale", customer, {
+    code_acces: company.code_porte_generale,
+  });
+  if (result.success) {
+    await supabase.from("activity_log").insert({
+      action: "general_door_code_sent",
+      table_concernee: "contracts",
+      enregistrement_id: contractId,
+      detail: { customer_id: contract.customer_id },
+    });
+  }
+  return result;
+}
+
+// Envoie le code d'accès spécifique du box loué à ce contrat.
+export async function sendBoxAccessCodeEmail(contractId: string): Promise<ActionResult> {
+  await requireStaff();
+  const supabase = await createClient();
+
+  const { data: contract } = await supabase
+    .from("contracts")
+    .select("customer_id, unit_id")
+    .eq("id", contractId)
+    .single();
+  if (!contract) return fail("Contrat introuvable.");
+  const { data: customer } = await supabase
+    .from("customers")
+    .select("prenom, email")
+    .eq("id", contract.customer_id)
+    .single();
+  const { data: unit } = await supabase
+    .from("units")
+    .select("numero, code_acces")
+    .eq("id", contract.unit_id)
+    .single();
+  if (!customer || !unit) return fail("Données manquantes.");
+  if (!unit.code_acces) return fail("Aucun code d'accès renseigné pour ce box.");
+
+  const result = await sendAccessCodeEmail("code_acces_box", customer, {
+    code_acces: unit.code_acces,
+    box_numero: unit.numero,
+  });
+  if (result.success) {
+    await supabase.from("activity_log").insert({
+      action: "box_access_code_sent",
+      table_concernee: "contracts",
+      enregistrement_id: contractId,
+      detail: { unit_id: contract.unit_id },
+    });
+  }
+  return result;
 }
 
 export async function generateContractPdf(contractId: string): Promise<ActionResult & { path?: string }> {

@@ -5,6 +5,7 @@ import { PricingGridEditor } from "@/components/settings/pricing-grid-editor";
 import { InvoiceSettingsForm } from "@/components/settings/invoice-settings-form";
 import { EmailTemplatesEditor } from "@/components/settings/email-templates-editor";
 import { SepaMandateForm } from "@/components/settings/sepa-mandate-form";
+import { GeneralDoorCodeForm } from "@/components/settings/general-door-code-form";
 import { DangerZone } from "@/components/settings/danger-zone";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -95,6 +96,15 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <SepaMandateForm settings={settings} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Code de porte générale du bâtiment</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <GeneralDoorCodeForm settings={settings} />
         </CardContent>
       </Card>
 

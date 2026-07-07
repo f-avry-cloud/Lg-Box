@@ -116,10 +116,16 @@ export function ContractCreateDialog({ customers, units }: { customers: Customer
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex min-w-0 flex-col gap-1.5">
               <Label>Date de début</Label>
-              <Input name="date_debut" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} />
+              <Input
+                name="date_debut"
+                type="date"
+                required
+                className="min-w-0"
+                defaultValue={new Date().toISOString().slice(0, 10)}
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Prix mensuel</Label>

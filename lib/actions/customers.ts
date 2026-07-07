@@ -87,6 +87,16 @@ export async function updateCustomer(
   return { error: null, success: true, customerId };
 }
 
+export async function updateCustomerActiveStatus(customerId: string, actif: boolean): Promise<ActionResult> {
+  await requireStaff();
+  const supabase = await createClient();
+  const { error } = await supabase.from("customers").update({ actif }).eq("id", customerId);
+  if (error) return fail(error.message);
+  revalidatePath("/admin/customers");
+  revalidatePath(`/admin/customers/${customerId}`);
+  return ok;
+}
+
 export async function updateCustomerNotes(customerId: string, notes: string): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();

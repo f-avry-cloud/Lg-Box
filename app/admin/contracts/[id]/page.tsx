@@ -12,6 +12,7 @@ import { ContractSignatureSection } from "@/components/contracts/contract-signat
 import { SepaMandateDetailsForm } from "@/components/contracts/sepa-mandate-details-form";
 import { SecurityDepositForm } from "@/components/contracts/security-deposit-form";
 import { SecurityDepositRefundForm } from "@/components/contracts/security-deposit-refund-form";
+import { SendAccessCodeButton } from "@/components/access-codes/send-access-code-button";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
@@ -22,18 +23,25 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
   const { data: contract } = await supabase.from("contracts").select("*").eq("id", id).single();
   if (!contract) notFound();
 
-  const [{ data: customer }, { data: unit }, { data: invoices }, { data: signatureRequests }, { data: deposit }] =
-    await Promise.all([
-      supabase.from("customers").select("*").eq("id", contract.customer_id).single(),
-      supabase.from("units").select("*").eq("id", contract.unit_id).single(),
-      supabase.from("invoices").select("*").eq("contract_id", id).order("date_emission", { ascending: false }),
-      supabase
-        .from("signature_requests")
-        .select("*")
-        .eq("contract_id", id)
-        .order("created_at", { ascending: false }),
-      supabase.from("security_deposits").select("*").eq("contract_id", id).maybeSingle(),
-    ]);
+  const [
+    { data: customer },
+    { data: unit },
+    { data: invoices },
+    { data: signatureRequests },
+    { data: deposit },
+    { data: company },
+  ] = await Promise.all([
+    supabase.from("customers").select("*").eq("id", contract.customer_id).single(),
+    supabase.from("units").select("*").eq("id", contract.unit_id).single(),
+    supabase.from("invoices").select("*").eq("contract_id", id).order("date_emission", { ascending: false }),
+    supabase
+      .from("signature_requests")
+      .select("*")
+      .eq("contract_id", id)
+      .order("created_at", { ascending: false }),
+    supabase.from("security_deposits").select("*").eq("contract_id", id).maybeSingle(),
+    supabase.from("company_settings").select("code_porte_generale_active").single(),
+  ]);
 
   const latestRequest = signatureRequests?.[0] ?? null;
   const requestIds = (signatureRequests ?? []).map((r) => r.id);
@@ -93,6 +101,20 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
           <Info label="Motif de résiliation" value={contract.motif_resiliation ?? "—"} />
         </CardContent>
       </Card>
+
+      {(unit?.code_acces || company?.code_porte_generale_active) && (
+        <Card className="mb-4">
+          <CardHeader>
+            <CardTitle>Codes d&apos;accès</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {unit?.code_acces && <SendAccessCodeButton kind="contract-box" contractId={contract.id} />}
+            {company?.code_porte_generale_active && (
+              <SendAccessCodeButton kind="general-door" contractId={contract.id} />
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="mb-4">
         <CardHeader>
