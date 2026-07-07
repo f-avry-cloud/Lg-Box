@@ -8,8 +8,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireStaff } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/server";
 import { ok, fail, type ActionResult } from "@/lib/actions/result";
-import { renderEmailTemplate, signatureLink } from "@/lib/email/templates";
+import { renderEmailTemplate, signatureLink, portalLoginLink } from "@/lib/email/templates";
 import { getResend, FROM_EMAIL } from "@/lib/email/resend";
+import { provisionPortalAccess } from "@/lib/actions/portal-access";
 import { isSignatureTokenValid, SIGNATURE_TOKEN_TTL_DAYS } from "@/lib/business/contract-signature";
 import { renderContractFullText } from "@/lib/pdf/contract-template";
 import { renderSepaMandatePlainText } from "@/lib/pdf/sepa-mandate-template";
@@ -311,6 +312,16 @@ export async function signDocuments(token: string, signerFullName: string): Prom
     },
   });
 
+  // Provisionne l'accès à l'espace client dès la première signature du
+  // contrat — jusqu'ici aucun mécanisme ne créait de compte, l'espace client
+  // était donc inaccessible dans tous les cas. Le mot de passe est greffé au
+  // mail de confirmation ci-dessous plutôt que d'envoyer un second email.
+  let portalPassword: string | null = null;
+  if (request.includes_contract && !customer.user_id) {
+    const provisioned = await provisionPortalAccess(service, customer, { sendEmail: false });
+    if (provisioned.success) portalPassword = provisioned.password ?? null;
+  }
+
   // Email de confirmation post-signature — best-effort : la signature est déjà
   // actée et les documents stockés, un échec d'envoi ne doit pas faire échouer
   // la démarche. Sert aussi de trace indépendante côté locataire (renforce
@@ -328,11 +339,14 @@ export async function signDocuments(token: string, signerFullName: string): Prom
           request.includes_contract && company.code_porte_generale_active && company.code_porte_generale
             ? `\n\nCode d'accès de la porte principale du bâtiment : ${company.code_porte_generale}`
             : "";
+        const portalCredentialsParagraph = portalPassword
+          ? `\n\nVotre espace client est maintenant accessible :\nEmail : ${customer.email}\nMot de passe temporaire : ${portalPassword}\nConnexion : ${portalLoginLink()}`
+          : "";
         await getResend().emails.send({
           from: FROM_EMAIL,
           to: customer.email,
           subject: rendered.subject,
-          text: rendered.text + doorCodeParagraph,
+          text: rendered.text + doorCodeParagraph + portalCredentialsParagraph,
         });
       }
     }

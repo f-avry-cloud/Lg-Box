@@ -360,7 +360,8 @@ create table email_templates (
     'j-3', 'j0', 'j+7', 'j+15', 'invoice_ready',
     'contract_signature_request', 'contract_signature_reminder',
     'documents_signed_confirmation',
-    'code_porte_generale', 'code_acces_box'
+    'code_porte_generale', 'code_acces_box',
+    'portal_access'
   )),
   subject text not null,
   body text not null,
@@ -445,6 +446,18 @@ L''équipe LG BOX'),
 ('code_acces_box', 'Code d''accès de votre box {{box_numero}}', 'Bonjour {{prenom}},
 
 Voici le code d''accès de votre box n° {{box_numero}} : {{code_acces}}
+
+Bien cordialement,
+L''équipe LG BOX'),
+('portal_access', 'Bienvenue chez LG BOX — votre espace client', 'Bonjour {{prenom}},
+
+Votre espace client est prêt. Vous pouvez y consulter vos factures et documents à tout moment.
+
+Identifiants de connexion :
+Email : {{email}}
+Mot de passe temporaire : {{mot_de_passe}}
+
+Connectez-vous ici : {{lien_connexion}}
 
 Bien cordialement,
 L''équipe LG BOX');

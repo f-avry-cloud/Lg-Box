@@ -13,6 +13,9 @@ export type EmailVars = {
   lien_signature?: string;
   code_acces?: string;
   box_numero?: string;
+  email?: string;
+  mot_de_passe?: string;
+  lien_connexion?: string;
 };
 
 function interpolate(text: string, vars: EmailVars): string {
@@ -24,6 +27,9 @@ function interpolate(text: string, vars: EmailVars): string {
     lien_signature: "",
     code_acces: "",
     box_numero: "",
+    email: "",
+    mot_de_passe: "",
+    lien_connexion: "",
     ...vars,
   };
   return Object.entries(allVars).reduce(
@@ -40,6 +46,11 @@ export function portailLink(): string {
 export function signatureLink(token: string): string {
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "";
   return `${base}/signature/${token}`;
+}
+
+export function portalLoginLink(): string {
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  return `${base}/portail/connexion`;
 }
 
 // Récupère un modèle d'email éditable (Paramètres > Modèles d'email) et

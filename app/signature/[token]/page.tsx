@@ -33,9 +33,9 @@ export default async function SignaturePage({ params }: { params: Promise<{ toke
   const check = isSignatureTokenValid(request);
   if (!check.valid) {
     return (
-      <Message title={check.reason === "used" ? "Documents déjà signés" : "Lien expiré"}>
+      <Message title={check.reason === "used" ? "Merci !" : "Lien expiré"}>
         {check.reason === "used"
-          ? "Ces documents ont déjà été signés avec ce lien."
+          ? "Votre contrat a bien été signé. Bienvenue chez LG BOX !"
           : "Ce lien de signature a expiré. Contactez-nous pour en recevoir un nouveau."}
       </Message>
     );

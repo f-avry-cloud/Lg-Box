@@ -275,7 +275,8 @@ export type EmailTemplateKey =
   | "contract_signature_reminder"
   | "documents_signed_confirmation"
   | "code_porte_generale"
-  | "code_acces_box";
+  | "code_acces_box"
+  | "portal_access";
 
 export type EmailTemplate = {
   key: EmailTemplateKey;
