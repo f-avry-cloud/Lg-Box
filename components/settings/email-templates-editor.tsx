@@ -22,6 +22,7 @@ const LABELS: Record<EmailTemplateKey, string> = {
   documents_signed_confirmation: "Confirmation de signature",
   code_porte_generale: "Code de porte générale",
   code_acces_box: "Code d'accès du box",
+  portal_access: "Activation de l'espace client",
 };
 
 const VARIABLES = [
@@ -33,6 +34,9 @@ const VARIABLES = [
   "{{lien_signature}}",
   "{{code_acces}}",
   "{{box_numero}}",
+  "{{email}}",
+  "{{mot_de_passe}}",
+  "{{lien_connexion}}",
 ];
 
 function TemplateForm({ template }: { template: EmailTemplate }) {

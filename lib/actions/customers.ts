@@ -6,6 +6,7 @@ import { requireAdmin, requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ok, fail, type ActionResult } from "@/lib/actions/result";
 import { geocodeAddress } from "@/lib/geocoding";
+import { provisionPortalAccess } from "@/lib/actions/portal-access";
 import type { CustomerType } from "@/types/database";
 
 export type CustomerFormState = { error: string | null; success?: boolean; customerId?: string };
@@ -95,6 +96,27 @@ export async function updateCustomerActiveStatus(customerId: string, actif: bool
   revalidatePath("/admin/customers");
   revalidatePath(`/admin/customers/${customerId}`);
   return ok;
+}
+
+// Crée ou réinitialise l'accès à l'espace client d'un locataire — pour
+// rattraper les clients déjà signés avant que le provisionnement automatique
+// à la signature n'existe, ou pour réinitialiser un mot de passe perdu.
+export async function resetCustomerPortalAccess(
+  customerId: string
+): Promise<ActionResult & { password?: string; emailSent?: boolean }> {
+  await requireStaff();
+  const supabase = await createClient();
+
+  const { data: customer } = await supabase
+    .from("customers")
+    .select("id, prenom, email, user_id")
+    .eq("id", customerId)
+    .single();
+  if (!customer) return fail("Client introuvable.");
+
+  const result = await provisionPortalAccess(supabase, customer);
+  if (result.success) revalidatePath(`/admin/customers/${customerId}`);
+  return result;
 }
 
 export async function updateCustomerNotes(customerId: string, notes: string): Promise<ActionResult> {

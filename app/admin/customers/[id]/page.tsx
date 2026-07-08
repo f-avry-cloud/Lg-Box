@@ -17,6 +17,7 @@ import {
 import { DocumentUpload } from "@/components/customers/document-upload";
 import { CustomerNotes } from "@/components/customers/customer-notes";
 import { CustomerEditDialog } from "@/components/customers/customer-edit-dialog";
+import { PortalAccessButton } from "@/components/customers/portal-access-button";
 import { SearchParamSelect } from "@/components/filters/search-param-select";
 import { InvoiceZipExportButton } from "@/components/invoices/invoice-zip-export-button";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -117,6 +118,17 @@ export default async function CustomerDetailPage({
               <Info label="Ville" value={[customer.code_postal, customer.ville].filter(Boolean).join(" ")} />
               <Info label="SIRET" value={customer.siret} />
               <Info label="Client depuis" value={formatDate(customer.created_at)} />
+            </CardContent>
+          </Card>
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle>Espace client</CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center gap-3 text-sm">
+              <Badge variant={customer.user_id ? "secondary" : "outline"}>
+                {customer.user_id ? "Activé" : "Non activé"}
+              </Badge>
+              <PortalAccessButton customerId={customer.id} hasAccess={Boolean(customer.user_id)} />
             </CardContent>
           </Card>
           <Card className="mt-4">
