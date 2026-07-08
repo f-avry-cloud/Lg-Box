@@ -8,11 +8,14 @@ import {
 import { PaymentButton } from "@/components/portal/payment-button";
 import { DownloadDocumentButton } from "@/components/documents/download-button";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { requireTenantCustomerId } from "@/lib/auth";
+import { getTenantCustomerId } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function PortailHomePage() {
-  const customerId = await requireTenantCustomerId();
+  const customerId = await getTenantCustomerId();
+  // Le layout (app/portail/layout.tsx) affiche déjà le message adapté et
+  // n'aura pas rendu {children} si customerId est null — rien à faire ici.
+  if (!customerId) return null;
   const supabase = await createClient();
 
   const { data: contract } = await supabase

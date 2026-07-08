@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { LogOut } from "lucide-react";
 
-import { requireTenantCustomerId } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getTenantCustomerId } from "@/lib/auth";
 import { signOutTenant } from "@/lib/actions/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -12,7 +14,37 @@ const NAV = [
 ];
 
 export default async function PortailLayout({ children }: { children: React.ReactNode }) {
-  const customerId = await requireTenantCustomerId();
+  const customerId = await getTenantCustomerId();
+
+  // Session valide mais sans profil locataire associé (ex. un compte staff
+  // connecté à /admin dans le même navigateur, qui n'a pas de fiche client).
+  // On affiche un message avec une déconnexion manuelle plutôt que de
+  // rediriger automatiquement — un redirect() déclenché pendant le rendu
+  // d'un Server Component en streaming n'envoie pas une vraie redirection
+  // HTTP mais insère une balise meta-refresh côté client ; enchaîné avec
+  // d'autres redirections, cela produisait un cycle de rechargements que
+  // le navigateur finissait par abandonner ("this page couldn't load").
+  // Un lien cliqué par l'utilisateur, lui, est une navigation normale.
+  if (!customerId) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <CardTitle className="text-base">Accès non configuré</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 text-sm text-muted-foreground">
+            <p>Ce compte est connecté mais n&apos;est associé à aucun espace client.</p>
+            <form action={signOutTenant}>
+              <Button type="submit" variant="outline" className="w-full">
+                Se déconnecter
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const supabase = await createClient();
   const { data: customer } = await supabase
     .from("customers")
