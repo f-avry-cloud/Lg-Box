@@ -45,6 +45,14 @@ export async function requireTenantCustomerId(): Promise<string> {
     .eq("user_id", user.id)
     .single();
 
-  if (!customer) redirect("/portail/connexion");
+  if (!customer) {
+    // Session valide (ex. compte staff connecté à /admin dans le même
+    // navigateur) mais sans profil locataire associé : on déconnecte avant de
+    // rediriger, sinon le middleware ne fait que vérifier la présence d'une
+    // session et renvoie indéfiniment vers /portail → boucle de redirection
+    // ("this page couldn't load" côté navigateur).
+    await supabase.auth.signOut();
+    redirect("/portail/connexion");
+  }
   return customer.id;
 }
