@@ -2,11 +2,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DownloadDocumentButton } from "@/components/documents/download-button";
 import { formatDate } from "@/lib/format";
-import { requireTenantCustomerId } from "@/lib/auth";
+import { getTenantCustomerId } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function PortailDocumentsPage() {
-  const customerId = await requireTenantCustomerId();
+  const customerId = await getTenantCustomerId();
+  if (!customerId) return null;
   const supabase = await createClient();
 
   const { data: contracts } = await supabase

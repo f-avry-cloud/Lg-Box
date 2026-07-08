@@ -31,7 +31,14 @@ export async function requireAdmin(): Promise<Profile> {
   return profile;
 }
 
-export async function requireTenantCustomerId(): Promise<string> {
+// Ne redirige QUE dans le cas anonyme (aucune session) : c'est un vrai
+// aiguillage terminal pour un visiteur non connecté, sans risque de boucle.
+// Si une session existe mais n'est liée à aucun profil locataire (ex. un
+// compte staff connecté à /admin dans le même navigateur), on ne redirige
+// plus du tout — voir le commentaire détaillé dans app/portail/layout.tsx
+// sur pourquoi cette redirection automatique causait un enchaînement de
+// redirections imprévisible avec ce moteur de rendu.
+export async function getTenantCustomerId(): Promise<string | null> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -45,16 +52,5 @@ export async function requireTenantCustomerId(): Promise<string> {
     .eq("user_id", user.id)
     .single();
 
-  if (!customer) {
-    // Session valide (ex. compte staff connecté à /admin dans le même
-    // navigateur) mais sans profil locataire associé. On ne peut pas
-    // déconnecter ici : les cookies ne sont modifiables que depuis une
-    // Server Action ou un Route Handler, jamais depuis le rendu d'un Server
-    // Component — un appel direct à signOut() échoue silencieusement (voir
-    // lib/supabase/server.ts) et la session reste active, d'où la boucle de
-    // redirection observée entre /portail et /portail/connexion. On redirige
-    // donc vers une route dédiée qui, elle, peut réellement déconnecter.
-    redirect("/portail/deconnexion");
-  }
-  return customer.id;
+  return customer?.id ?? null;
 }

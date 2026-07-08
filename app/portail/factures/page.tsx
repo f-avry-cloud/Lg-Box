@@ -3,11 +3,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { InvoiceStatusBadge } from "@/components/status-badge";
 import { DownloadDocumentButton } from "@/components/documents/download-button";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { requireTenantCustomerId } from "@/lib/auth";
+import { getTenantCustomerId } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function PortailFacturesPage() {
-  const customerId = await requireTenantCustomerId();
+  const customerId = await getTenantCustomerId();
+  if (!customerId) return null;
   const supabase = await createClient();
 
   const { data: invoices } = await supabase
