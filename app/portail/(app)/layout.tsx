@@ -19,12 +19,10 @@ export default async function PortailLayout({ children }: { children: React.Reac
   // Session valide mais sans profil locataire associé (ex. un compte staff
   // connecté à /admin dans le même navigateur, qui n'a pas de fiche client).
   // On affiche un message avec une déconnexion manuelle plutôt que de
-  // rediriger automatiquement — un redirect() déclenché pendant le rendu
-  // d'un Server Component en streaming n'envoie pas une vraie redirection
-  // HTTP mais insère une balise meta-refresh côté client ; enchaîné avec
-  // d'autres redirections, cela produisait un cycle de rechargements que
-  // le navigateur finissait par abandonner ("this page couldn't load").
-  // Un lien cliqué par l'utilisateur, lui, est une navigation normale.
+  // rediriger automatiquement vers /portail/connexion : le middleware
+  // renvoie tout utilisateur déjà authentifié qui arrive sur
+  // /portail/connexion vers /portail, ce qui créerait un aller-retour
+  // infini entre ce layout et le middleware pour ce cas précis.
   if (!customerId) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
