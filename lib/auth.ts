@@ -47,12 +47,14 @@ export async function requireTenantCustomerId(): Promise<string> {
 
   if (!customer) {
     // Session valide (ex. compte staff connecté à /admin dans le même
-    // navigateur) mais sans profil locataire associé : on déconnecte avant de
-    // rediriger, sinon le middleware ne fait que vérifier la présence d'une
-    // session et renvoie indéfiniment vers /portail → boucle de redirection
-    // ("this page couldn't load" côté navigateur).
-    await supabase.auth.signOut();
-    redirect("/portail/connexion");
+    // navigateur) mais sans profil locataire associé. On ne peut pas
+    // déconnecter ici : les cookies ne sont modifiables que depuis une
+    // Server Action ou un Route Handler, jamais depuis le rendu d'un Server
+    // Component — un appel direct à signOut() échoue silencieusement (voir
+    // lib/supabase/server.ts) et la session reste active, d'où la boucle de
+    // redirection observée entre /portail et /portail/connexion. On redirige
+    // donc vers une route dédiée qui, elle, peut réellement déconnecter.
+    redirect("/portail/deconnexion");
   }
   return customer.id;
 }
