@@ -31,13 +31,14 @@ export async function requireAdmin(): Promise<Profile> {
   return profile;
 }
 
-// Ne redirige QUE dans le cas anonyme (aucune session) : c'est un vrai
-// aiguillage terminal pour un visiteur non connecté, sans risque de boucle.
+// Ne redirige QUE dans le cas anonyme (aucune session). Cette fonction n'est
+// appelée que par les pages sous app/portail/(app)/ (protégées par ce
+// groupe de routes) — /portail/connexion, elle, est un sibling en dehors du
+// groupe (app) et n'est donc plus enveloppée par ce layout, ce qui évite
+// toute redirection de /portail/connexion vers elle-même.
 // Si une session existe mais n'est liée à aucun profil locataire (ex. un
 // compte staff connecté à /admin dans le même navigateur), on ne redirige
-// plus du tout — voir le commentaire détaillé dans app/portail/layout.tsx
-// sur pourquoi cette redirection automatique causait un enchaînement de
-// redirections imprévisible avec ce moteur de rendu.
+// pas non plus — voir le commentaire dans app/portail/(app)/layout.tsx.
 export async function getTenantCustomerId(): Promise<string | null> {
   const supabase = await createClient();
   const {
