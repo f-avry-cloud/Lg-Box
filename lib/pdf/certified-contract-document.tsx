@@ -28,6 +28,7 @@ export function CertifiedContractDocument({
         unit={unit}
         company={company}
         signatureImage={signatureImage}
+        tenantSignature={{ fullName: proof.signerFullName, signedAt: proof.signedAt }}
       />
       <SignatureProofPage proof={{ ...proof, documentLabel: "Contrat de location" }} />
     </Document>
