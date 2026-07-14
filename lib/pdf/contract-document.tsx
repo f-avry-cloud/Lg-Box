@@ -2,6 +2,7 @@ import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/render
 
 import { formatCurrency, formatDateLong } from "@/lib/format";
 import { interpolateContractTemplate } from "@/lib/pdf/contract-template";
+import { FormattedLegalText } from "@/lib/pdf/formatted-text";
 import type { CompanySignatureImage } from "@/lib/pdf/company-signature";
 import type { CompanySettings, Contract, Customer, Unit } from "@/types/database";
 
@@ -11,11 +12,17 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 10, color: "#6b7280", marginBottom: 20 },
   section: { marginBottom: 16 },
   sectionTitle: { fontSize: 11, fontWeight: 700, marginBottom: 6, textTransform: "uppercase" },
+  articleTitle: { fontSize: 10, fontWeight: 700, marginBottom: 3 },
   row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 3 },
   label: { color: "#6b7280" },
-  cgv: { fontSize: 9, lineHeight: 1.5, color: "#374151" },
-  body: { fontSize: 10, lineHeight: 1.5, marginBottom: 10 },
+  cgv: { fontSize: 9, lineHeight: 1.5, color: "#374151", textAlign: "justify" },
+  body: { fontSize: 10, lineHeight: 1.5, textAlign: "justify" },
   footer: { position: "absolute", bottom: 30, left: 40, right: 40, fontSize: 8, color: "#9aa0a6" },
+  signatureBox: { width: 220, border: "1pt solid #d1d5db", borderRadius: 4, padding: 10, minHeight: 70 },
+  signatureBoxLabel: { fontSize: 8, color: "#6b7280", textTransform: "uppercase", marginBottom: 8 },
+  signatureName: { fontSize: 14, fontFamily: "Times-Italic" },
+  signatureMeta: { fontSize: 7, color: "#6b7280", marginTop: 4 },
+  signaturePlaceholder: { fontSize: 8, color: "#9aa0a6" },
 });
 
 // Contenu de la page de contrat, séparé de <Document> pour pouvoir être
@@ -27,12 +34,14 @@ export function ContractPageContent({
   unit,
   company,
   signatureImage,
+  tenantSignature,
 }: {
   contract: Contract;
   customer: Customer;
   unit: Unit;
   company: CompanySettings;
   signatureImage?: CompanySignatureImage | null;
+  tenantSignature?: { fullName: string; signedAt: string } | null;
 }) {
   return (
     <Page size="A4" style={styles.page}>
@@ -43,13 +52,11 @@ export function ContractPageContent({
 
       {company.contrat_modele ? (
         <View style={styles.section}>
-          {interpolateContractTemplate(company.contrat_modele, { contract, customer, unit, company })
-            .split(/\n\s*\n/)
-            .map((paragraph, i) => (
-              <Text key={i} style={styles.body}>
-                {paragraph.trim()}
-              </Text>
-            ))}
+          <FormattedLegalText
+            text={interpolateContractTemplate(company.contrat_modele, { contract, customer, unit, company })}
+            bodyStyle={styles.body}
+            headingStyle={styles.articleTitle}
+          />
         </View>
       ) : (
         <>
@@ -100,25 +107,41 @@ export function ContractPageContent({
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Conditions générales</Text>
-        <Text style={styles.cgv}>
-          {company.cgv ?? "Conditions générales de location à compléter dans les paramètres du back-office."}
-        </Text>
+        <FormattedLegalText
+          text={company.cgv ?? "Conditions générales de location à compléter dans les paramètres du back-office."}
+          bodyStyle={styles.cgv}
+          headingStyle={styles.articleTitle}
+        />
       </View>
 
       <View style={styles.section}>
         <Text>Fait le {formatDateLong(contract.date_signature ?? contract.date_debut)}</Text>
         <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 30 }}>
-          <View>
-            <Text>Le Loueur</Text>
-            {signatureImage && (
+          <View style={styles.signatureBox}>
+            <Text style={styles.signatureBoxLabel}>Le Loueur</Text>
+            {signatureImage ? (
               // eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf/renderer Image, not an <img>
               <Image
                 src={{ data: signatureImage.data, format: signatureImage.format }}
-                style={{ width: 100, height: 45, marginTop: 4 }}
+                style={{ width: 100, height: 45 }}
               />
+            ) : (
+              <Text style={styles.signaturePlaceholder}>Signature du Loueur</Text>
             )}
           </View>
-          <Text>Le Locataire</Text>
+          <View style={styles.signatureBox}>
+            <Text style={styles.signatureBoxLabel}>Le Locataire</Text>
+            {tenantSignature ? (
+              <>
+                <Text style={styles.signatureName}>{tenantSignature.fullName}</Text>
+                <Text style={styles.signatureMeta}>
+                  Signé électroniquement le {formatDateLong(tenantSignature.signedAt)}
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.signaturePlaceholder}>En attente de signature</Text>
+            )}
+          </View>
         </View>
       </View>
 
@@ -135,6 +158,7 @@ export function ContractDocument(props: {
   unit: Unit;
   company: CompanySettings;
   signatureImage?: CompanySignatureImage | null;
+  tenantSignature?: { fullName: string; signedAt: string } | null;
 }) {
   return (
     <Document>
