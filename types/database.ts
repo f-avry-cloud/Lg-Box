@@ -62,6 +62,9 @@ export type Unit = {
   floor: UnitFloor;
   pos_x: number | null;
   pos_y: number | null;
+  largeur_cm: number | null;
+  profondeur_cm: number | null;
+  rotation_deg: number;
   code_acces: string | null;
   created_at: string;
 };
