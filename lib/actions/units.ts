@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireStaff } from "@/lib/auth";
+import { requireStaff, requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { sendAccessCodeEmail } from "@/lib/actions/access-code-email";
 import { ok, fail, type ActionResult } from "@/lib/actions/result";
+import { FLOOR_PLAN_COLUMNS, MIN_UNIT_SIZE_CM, type FloorPlanUnit } from "@/lib/units/floor-plan";
 import type { UnitFloor, UnitStatus, UnitType } from "@/types/database";
 
 export type UnitFormState = { error: string | null; success?: boolean };
@@ -119,32 +120,70 @@ export async function updateUnitNotes(unitId: string, notes: string): Promise<Ac
 export async function updateUnitFloor(unitId: string, floor: UnitFloor): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();
-  // On repart d'une position centrale par défaut sur le nouvel étage, l'admin
-  // pourra ensuite glisser le box où il veut.
-  const { error } = await supabase
-    .from("units")
-    .update({ floor, pos_x: 50, pos_y: 50 })
-    .eq("id", unitId);
+  // On ne touche plus à pos_x/pos_y ici : ce sont désormais des coordonnées en
+  // cm (plan interactif), pas des pourcentages — un box changeant de niveau
+  // garde sa position telle quelle, à recaler ensuite dans l'éditeur de plan.
+  const { error } = await supabase.from("units").update({ floor }).eq("id", unitId);
   if (error) return fail(error.message);
   revalidatePath("/admin/units");
   revalidatePath(`/admin/units/${unitId}`);
   return ok;
 }
 
-export async function updateUnitPosition(
-  unitId: string,
-  posX: number,
-  posY: number
-): Promise<ActionResult> {
-  await requireStaff();
+export type UnitPositionUpdate = {
+  id: string;
+  pos_x: number;
+  pos_y: number;
+  largeur_cm: number;
+  profondeur_cm: number;
+  rotation_deg: number;
+};
+
+// Enregistrement groupé des box déplacés/redimensionnés dans le plan
+// interactif — réservé aux admins (contrairement aux autres mutations de
+// cette page, réservées au staff au sens large). taille_m2 n'est jamais
+// écrite ici : elle est recalculée en base par le trigger units_sync_taille_m2,
+// d'où la relecture après écriture pour la rafraîchir côté client.
+export async function saveUnitPositions(
+  updates: UnitPositionUpdate[]
+): Promise<ActionResult & { units?: FloorPlanUnit[] }> {
+  await requireAdmin();
+  if (updates.length === 0) return ok;
+
+  for (const u of updates) {
+    if (u.largeur_cm < MIN_UNIT_SIZE_CM || u.profondeur_cm < MIN_UNIT_SIZE_CM) {
+      return fail(`Le box ${u.id} est en dessous de la taille minimale de ${MIN_UNIT_SIZE_CM} cm.`);
+    }
+  }
+
   const supabase = await createClient();
-  const clampedX = Math.min(100, Math.max(0, posX));
-  const clampedY = Math.min(100, Math.max(0, posY));
-  const { error } = await supabase
+
+  const results = await Promise.all(
+    updates.map((u) =>
+      supabase
+        .from("units")
+        .update({
+          pos_x: u.pos_x,
+          pos_y: u.pos_y,
+          largeur_cm: u.largeur_cm,
+          profondeur_cm: u.profondeur_cm,
+          rotation_deg: u.rotation_deg,
+        })
+        .eq("id", u.id)
+    )
+  );
+  const firstError = results.find((r) => r.error)?.error;
+  if (firstError) return fail(firstError.message);
+
+  const { data, error } = await supabase
     .from("units")
-    .update({ pos_x: clampedX, pos_y: clampedY })
-    .eq("id", unitId);
+    .select(FLOOR_PLAN_COLUMNS)
+    .in(
+      "id",
+      updates.map((u) => u.id)
+    );
   if (error) return fail(error.message);
+
   revalidatePath("/admin/units");
-  return ok;
+  return { ...ok, units: (data ?? []) as FloorPlanUnit[] };
 }

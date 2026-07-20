@@ -319,7 +319,18 @@ export async function signDocuments(token: string, signerFullName: string): Prom
   let portalPassword: string | null = null;
   if (request.includes_contract && !customer.user_id) {
     const provisioned = await provisionPortalAccess(service, customer, { sendEmail: false });
-    if (provisioned.success) portalPassword = provisioned.password ?? null;
+    if (provisioned.success) {
+      portalPassword = provisioned.password ?? null;
+    } else {
+      // Échec silencieux sinon : le contrat est bien signé mais personne ne
+      // saurait jamais que l'espace client n'a pas pu être créé.
+      await service.from("activity_log").insert({
+        action: "portal_access_provisioning_failed",
+        table_concernee: "customers",
+        enregistrement_id: customer.id,
+        detail: { error: provisioned.error, during: "contract_signature", contract_id: contract.id },
+      });
+    }
   }
 
   // Email de confirmation post-signature — best-effort : la signature est déjà

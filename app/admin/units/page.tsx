@@ -3,6 +3,7 @@ import { UnitCreateDialog } from "@/components/units/unit-create-dialog";
 import { CsvImportDialog } from "@/components/import/csv-import-dialog";
 import { importUnitsCsv } from "@/lib/actions/import";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/auth";
 
 const UNIT_IMPORT_FIELDS = [
   { key: "numero", label: "Numéro", required: true },
@@ -18,7 +19,11 @@ const UNIT_IMPORT_FIELDS = [
 
 export default async function UnitsPage() {
   const supabase = await createClient();
-  const { data: units } = await supabase.from("units").select("*").order("numero");
+  const [{ data: units }, profile] = await Promise.all([
+    supabase.from("units").select("*").order("numero"),
+    getCurrentProfile(),
+  ]);
+  const isAdmin = profile?.role === "admin";
 
   return (
     <div>
@@ -41,7 +46,7 @@ export default async function UnitsPage() {
           <UnitCreateDialog />
         </div>
       </div>
-      <UnitsView units={units ?? []} />
+      <UnitsView units={units ?? []} isAdmin={isAdmin} />
     </div>
   );
 }

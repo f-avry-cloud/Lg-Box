@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,9 +9,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UnitStatusBadge } from "@/components/status-badge";
-import { FloorPlanCanvas } from "@/components/units/floor-plan-canvas";
+import { FloorPlan } from "@/components/units/floor-plan";
+import { FloorPlanEditor } from "@/components/units/floor-plan-editor";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { FLOOR_LABELS, FLOOR_ORDER } from "@/lib/units/floor-plan";
 import type { Unit, UnitFloor, UnitStatus } from "@/types/database";
 
 const GRID_COLORS: Record<UnitStatus, string> = {
@@ -20,17 +23,46 @@ const GRID_COLORS: Record<UnitStatus, string> = {
   hors_service: "border-border bg-muted text-muted-foreground",
 };
 
-const FLOOR_LABELS: Record<UnitFloor, string> = {
-  sous_sol: "Sous-sol",
-  rez_de_chaussee: "Rez-de-chaussée",
-  premier_etage: "1er étage",
-};
-
-const FLOOR_ORDER: UnitFloor[] = ["sous_sol", "rez_de_chaussee", "premier_etage"];
-
-export function UnitsView({ units }: { units: Unit[] }) {
+export function UnitsView({ units, isAdmin }: { units: Unit[]; isAdmin: boolean }) {
+  const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<string>("tous");
   const [search, setSearch] = useState("");
+  const [planFloor, setPlanFloor] = useState<UnitFloor>("rez_de_chaussee");
+  // Chaque niveau garde son propre FloorPlanEditor monté (Radix Tabs ne
+  // démonte pas les onglets inactifs) — un dirty par niveau évite qu'un
+  // niveau propre n'efface par erreur l'état "modifié" d'un autre.
+  const [dirtyFloors, setDirtyFloors] = useState<Set<UnitFloor>>(new Set());
+  // Incrémenté par niveau pour forcer un remontage propre (abandon des
+  // modifications non enregistrées) quand l'utilisateur confirme le changement.
+  const [resetTokens, setResetTokens] = useState<Record<string, number>>({});
+
+  function handlePlanFloorChange(next: string) {
+    if (dirtyFloors.has(planFloor)) {
+      if (
+        !window.confirm(
+          "Des modifications de ce niveau ne sont pas enregistrées. Les abandonner et changer de niveau ?"
+        )
+      ) {
+        return;
+      }
+      setResetTokens((prev) => ({ ...prev, [planFloor]: (prev[planFloor] ?? 0) + 1 }));
+      setDirtyFloors((prev) => {
+        const nextSet = new Set(prev);
+        nextSet.delete(planFloor);
+        return nextSet;
+      });
+    }
+    setPlanFloor(next as UnitFloor);
+  }
+
+  function handleFloorDirtyChange(floor: UnitFloor, dirty: boolean) {
+    setDirtyFloors((prev) => {
+      const next = new Set(prev);
+      if (dirty) next.add(floor);
+      else next.delete(floor);
+      return next;
+    });
+  }
 
   const filtered = useMemo(() => {
     return units
@@ -119,7 +151,7 @@ export function UnitsView({ units }: { units: Unit[] }) {
             </div>
           ))}
         </div>
-        <Tabs defaultValue="rez_de_chaussee">
+        <Tabs value={planFloor} onValueChange={handlePlanFloorChange}>
           <TabsList className="mb-3">
             {FLOOR_ORDER.map((floor) => (
               <TabsTrigger key={floor} value={floor}>
@@ -129,11 +161,23 @@ export function UnitsView({ units }: { units: Unit[] }) {
           </TabsList>
           {FLOOR_ORDER.map((floor) => (
             <TabsContent key={floor} value={floor}>
-              <p className="mb-2 text-xs text-muted-foreground">
-                Glissez-déposez un box pour le repositionner. La position est enregistrée automatiquement.
-                Pour déplacer un box vers un autre étage, ouvrez sa fiche détail.
-              </p>
-              <FloorPlanCanvas units={filtered.filter((u) => u.floor === floor)} />
+              {isAdmin ? (
+                <FloorPlanEditor
+                  key={`${floor}-${resetTokens[floor] ?? 0}`}
+                  floor={floor}
+                  units={filtered.filter((u) => u.floor === floor)}
+                  onDirtyChange={(dirty) => handleFloorDirtyChange(floor, dirty)}
+                />
+              ) : (
+                <>
+                  <p className="mb-2 text-xs text-muted-foreground">Cliquez sur un box pour ouvrir sa fiche détail.</p>
+                  <FloorPlan
+                    floor={floor}
+                    units={filtered.filter((u) => u.floor === floor)}
+                    onSelectUnit={(unit) => router.push(`/admin/units/${unit.id}`)}
+                  />
+                </>
+              )}
             </TabsContent>
           ))}
         </Tabs>
