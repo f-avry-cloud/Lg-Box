@@ -8,16 +8,22 @@ import { ContractStatusBadge } from "@/components/status-badge";
 import { UnitStatusSelect } from "@/components/units/unit-status-select";
 import { UnitFloorSelect } from "@/components/units/unit-floor-select";
 import { UnitAccessCodeForm } from "@/components/units/unit-access-code-form";
+import { UnitDeleteButton } from "@/components/units/unit-delete-button";
 import { SendAccessCodeButton } from "@/components/access-codes/send-access-code-button";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/auth";
 
 export default async function UnitDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: unit } = await supabase.from("units").select("*").eq("id", id).single();
+  const [{ data: unit }, profile] = await Promise.all([
+    supabase.from("units").select("*").eq("id", id).single(),
+    getCurrentProfile(),
+  ]);
   if (!unit) notFound();
+  const isAdmin = profile?.role === "admin";
 
   const { data: contracts } = await supabase
     .from("contracts")
@@ -122,6 +128,23 @@ export default async function UnitDetailPage({ params }: { params: Promise<{ id:
           </Table>
         </CardContent>
       </Card>
+
+      {isAdmin && (!contracts || contracts.length === 0) && (
+        <Card className="mt-4 border-destructive/40">
+          <CardHeader>
+            <CardTitle className="text-destructive">Zone dangereuse</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            <p className="text-sm text-muted-foreground">
+              Supprime définitivement ce box. Utile pour nettoyer un box provisoire (zone « À localiser »)
+              devenu inutile après avoir réassigné son contrat au bon box.
+            </p>
+            <div>
+              <UnitDeleteButton unitId={unit.id} unitNumero={unit.numero} />
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

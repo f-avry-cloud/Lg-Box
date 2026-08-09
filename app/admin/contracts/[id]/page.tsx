@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ContractStatusBadge, InvoiceStatusBadge } from "@/components/status-badge";
 import { ContractStatusActions } from "@/components/contracts/contract-status-actions";
 import { RentEditForm } from "@/components/contracts/rent-edit-form";
+import { UnitReassignForm } from "@/components/contracts/unit-reassign-form";
 import { ContractPdfSection } from "@/components/contracts/contract-pdf-section";
 import { ContractSignatureSection } from "@/components/contracts/contract-signature-section";
 import { SepaMandateDetailsForm } from "@/components/contracts/sepa-mandate-details-form";
@@ -30,6 +31,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
     { data: signatureRequests },
     { data: deposit },
     { data: company },
+    { data: allUnits },
   ] = await Promise.all([
     supabase.from("customers").select("*").eq("id", contract.customer_id).single(),
     supabase.from("units").select("*").eq("id", contract.unit_id).single(),
@@ -41,6 +43,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
       .order("created_at", { ascending: false }),
     supabase.from("security_deposits").select("*").eq("contract_id", id).maybeSingle(),
     supabase.from("company_settings").select("code_porte_generale_active").single(),
+    supabase.from("units").select("id, numero, zone, statut").order("zone").order("numero"),
   ]);
 
   const latestRequest = signatureRequests?.[0] ?? null;
@@ -70,8 +73,9 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
           <h1 className="text-lg font-semibold">
             Contrat — {customer?.prenom} {customer?.nom}
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="flex items-center gap-1 text-sm text-muted-foreground">
             Box {unit?.numero} · {formatCurrency(contract.prix_mensuel)}/mois
+            <UnitReassignForm contractId={contract.id} currentUnitId={contract.unit_id} units={allUnits ?? []} />
           </p>
         </div>
         <ContractStatusBadge status={contract.statut} />

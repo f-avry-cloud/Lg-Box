@@ -117,6 +117,31 @@ export async function updateUnitNotes(unitId: string, notes: string): Promise<Ac
   return ok;
 }
 
+// Suppression définitive d'un box — réservée aux admins (contrats:unit_id
+// est en ON DELETE RESTRICT, donc ça échouerait de toute façon si un contrat
+// y fait encore référence ; on le vérifie ici pour un message clair plutôt
+// que l'erreur Postgres brute).
+export async function deleteUnit(unitId: string): Promise<ActionResult> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { data: contract } = await supabase
+    .from("contracts")
+    .select("id")
+    .eq("unit_id", unitId)
+    .limit(1)
+    .maybeSingle();
+  if (contract) {
+    return fail("Impossible de supprimer ce box : au moins un contrat (actif ou passé) y fait encore référence.");
+  }
+
+  const { error } = await supabase.from("units").delete().eq("id", unitId);
+  if (error) return fail(error.message);
+
+  revalidatePath("/admin/units");
+  return ok;
+}
+
 export async function updateUnitFloor(unitId: string, floor: UnitFloor): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();
