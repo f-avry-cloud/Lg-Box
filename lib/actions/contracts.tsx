@@ -148,6 +148,65 @@ export async function updateContractRent(contractId: string, formData: FormData)
   return ok;
 }
 
+// Change le box associé à un contrat — utilisé notamment pour remplacer un
+// box provisoire (importé sans localisation connue, zone "À localiser") par
+// le vrai box une fois identifié. L'ancien box est libéré (statut "libre")
+// s'il n'est plus référencé par un autre contrat actif ; il peut ensuite être
+// supprimé depuis sa fiche si c'était un box provisoire devenu inutile.
+export async function updateContractUnit(contractId: string, newUnitId: string): Promise<ActionResult> {
+  await requireStaff();
+  const supabase = await createClient();
+
+  if (!newUnitId) return fail("Sélectionnez un box.");
+
+  const { data: contract } = await supabase.from("contracts").select("unit_id").eq("id", contractId).single();
+  if (!contract) return fail("Contrat introuvable.");
+  if (contract.unit_id === newUnitId) return ok;
+
+  const { data: newUnit } = await supabase.from("units").select("id").eq("id", newUnitId).single();
+  if (!newUnit) return fail("Box introuvable.");
+
+  const { data: conflicting } = await supabase
+    .from("contracts")
+    .select("id")
+    .eq("unit_id", newUnitId)
+    .neq("id", contractId)
+    .in("statut", ["actif", "en_preavis"])
+    .maybeSingle();
+  if (conflicting) return fail("Ce box est déjà occupé par un autre contrat actif.");
+
+  const oldUnitId = contract.unit_id;
+
+  const { error } = await supabase.from("contracts").update({ unit_id: newUnitId }).eq("id", contractId);
+  if (error) return fail(error.message);
+
+  await supabase.from("units").update({ statut: "loue" }).eq("id", newUnitId);
+
+  const { data: stillUsed } = await supabase
+    .from("contracts")
+    .select("id")
+    .eq("unit_id", oldUnitId)
+    .in("statut", ["actif", "en_preavis"])
+    .maybeSingle();
+  if (!stillUsed) {
+    await supabase.from("units").update({ statut: "libre" }).eq("id", oldUnitId);
+  }
+
+  await supabase.from("activity_log").insert({
+    action: "contract_unit_changed",
+    table_concernee: "contracts",
+    enregistrement_id: contractId,
+    detail: { old_unit_id: oldUnitId, new_unit_id: newUnitId },
+  });
+
+  revalidatePath(`/admin/contracts/${contractId}`);
+  revalidatePath("/admin/contracts");
+  revalidatePath("/admin/units");
+  revalidatePath(`/admin/units/${oldUnitId}`);
+  revalidatePath(`/admin/units/${newUnitId}`);
+  return ok;
+}
+
 // Envoie le code de la porte générale du bâtiment au locataire de ce contrat
 // — n'a d'effet que si l'option est activée dans Paramètres (sinon rien ne
 // se passe, conformément à la demande : le code n'existe pas tant qu'il
