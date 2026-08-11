@@ -142,13 +142,67 @@ export async function deleteUnit(unitId: string): Promise<ActionResult> {
   return ok;
 }
 
-export async function updateUnitFloor(unitId: string, floor: UnitFloor): Promise<ActionResult> {
+// Les 6 espaces identifiés par le vendeur — remplace le choix d'étage
+// (technique, sans signification pour le staff) par le bâtiment réel. Le
+// floor sous-jacent (utilisé par le plan interactif) est dérivé
+// automatiquement de ce choix plutôt que sélectionné séparément.
+export const KNOWN_ZONES: { value: string; floor: UnitFloor }[] = [
+  { value: "Bâtiment 1", floor: "rez_de_chaussee" },
+  { value: "Bâtiment 2", floor: "rez_de_chaussee" },
+  { value: "Bâtiment 3", floor: "rez_de_chaussee" },
+  { value: "Bâtiment 4", floor: "rez_de_chaussee" },
+  { value: "Rez-de-jardin", floor: "sous_sol" },
+  { value: "Étage", floor: "premier_etage" },
+];
+
+export async function updateUnitZone(unitId: string, zone: string): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();
-  // On ne touche plus à pos_x/pos_y ici : ce sont désormais des coordonnées en
-  // cm (plan interactif), pas des pourcentages — un box changeant de niveau
-  // garde sa position telle quelle, à recaler ensuite dans l'éditeur de plan.
-  const { error } = await supabase.from("units").update({ floor }).eq("id", unitId);
+  const known = KNOWN_ZONES.find((z) => z.value === zone);
+  if (!known) return fail("Bâtiment inconnu.");
+  const { error } = await supabase.from("units").update({ zone: known.value, floor: known.floor }).eq("id", unitId);
+  if (error) return fail(error.message);
+  revalidatePath("/admin/units");
+  revalidatePath(`/admin/units/${unitId}`);
+  return ok;
+}
+
+export async function updateUnitNumero(unitId: string, numero: string): Promise<ActionResult> {
+  await requireStaff();
+  const supabase = await createClient();
+  const trimmed = numero.trim();
+  if (!trimmed) return fail("Le numéro ne peut pas être vide.");
+  const { error } = await supabase.from("units").update({ numero: trimmed }).eq("id", unitId);
+  if (error) {
+    if (error.code === "23505") return fail("Ce numéro est déjà utilisé dans ce bâtiment.");
+    return fail(error.message);
+  }
+  revalidatePath("/admin/units");
+  revalidatePath(`/admin/units/${unitId}`);
+  return ok;
+}
+
+export async function updateUnitSize(
+  unitId: string,
+  { tailleLibelle, tailleM2 }: { tailleLibelle: string; tailleM2: number | null }
+): Promise<ActionResult> {
+  await requireStaff();
+  const supabase = await createClient();
+  const trimmed = tailleLibelle.trim();
+  if (!trimmed) return fail("Le libellé de taille ne peut pas être vide.");
+
+  const { data: unit } = await supabase.from("units").select("largeur_cm, profondeur_cm").eq("id", unitId).single();
+  if (!unit) return fail("Box introuvable.");
+
+  // Si le box a des dimensions physiques posées (plan interactif),
+  // taille_m2 est recalculée automatiquement par le trigger
+  // units_sync_taille_m2 — on ne l'écrase pas ici pour ne pas créer
+  // d'incohérence silencieuse avec largeur_cm/profondeur_cm.
+  const hasPhysicalDimensions = unit.largeur_cm !== null && unit.profondeur_cm !== null;
+  const update: { taille_libelle: string; taille_m2?: number | null } = { taille_libelle: trimmed };
+  if (!hasPhysicalDimensions) update.taille_m2 = tailleM2;
+
+  const { error } = await supabase.from("units").update(update).eq("id", unitId);
   if (error) return fail(error.message);
   revalidatePath("/admin/units");
   revalidatePath(`/admin/units/${unitId}`);

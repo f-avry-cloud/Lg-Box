@@ -3,18 +3,44 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Columns3 } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { UnitStatusBadge } from "@/components/status-badge";
 import { FloorPlan } from "@/components/units/floor-plan";
 import { FloorPlanEditor } from "@/components/units/floor-plan-editor";
+import { UnitSizeEditForm } from "@/components/units/unit-size-edit-form";
+import { UnitNumeroEditForm } from "@/components/units/unit-numero-edit-form";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { FLOOR_LABELS, FLOOR_ORDER } from "@/lib/units/floor-plan";
 import type { Unit, UnitFloor, UnitStatus } from "@/types/database";
+
+type ColumnKey = "batiment" | "taille" | "type" | "etage" | "prix" | "statut";
+
+const COLUMN_LABELS: Record<ColumnKey, string> = {
+  batiment: "Bâtiment",
+  taille: "Taille",
+  type: "Type",
+  etage: "Étage",
+  prix: "Prix / mois",
+  statut: "Statut",
+};
+
+// Type et Étage n'apportent plus grand-chose au quotidien (bâtiment suffit) —
+// masqués par défaut, mais restent disponibles via le filtre de colonnes.
+const DEFAULT_VISIBLE_COLUMNS: ColumnKey[] = ["batiment", "taille", "prix", "statut"];
 
 const GRID_COLORS: Record<UnitStatus, string> = {
   libre: "border-success/40 bg-success/10 text-success",
@@ -27,6 +53,17 @@ export function UnitsView({ units, isAdmin }: { units: Unit[]; isAdmin: boolean 
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<string>("tous");
   const [search, setSearch] = useState("");
+  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(new Set(DEFAULT_VISIBLE_COLUMNS));
+  const [columnsOpen, setColumnsOpen] = useState(false);
+
+  function toggleColumn(key: ColumnKey) {
+    setVisibleColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
   const [planFloor, setPlanFloor] = useState<UnitFloor>("rez_de_chaussee");
   // Chaque niveau garde son propre FloorPlanEditor monté (Radix Tabs ne
   // démonte pas les onglets inactifs) — un dirty par niveau évite qu'un
@@ -97,44 +134,85 @@ export function UnitsView({ units, isAdmin }: { units: Unit[]; isAdmin: boolean 
               <SelectItem value="hors_service">Hors service</SelectItem>
             </SelectContent>
           </Select>
+          <Dialog open={columnsOpen} onOpenChange={setColumnsOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="icon" title="Colonnes affichées">
+                <Columns3 className="size-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Colonnes affichées</DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col gap-2 text-sm">
+                {(Object.keys(COLUMN_LABELS) as ColumnKey[]).map((key) => (
+                  <label key={key} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={visibleColumns.has(key)}
+                      onChange={() => toggleColumn(key)}
+                    />
+                    {COLUMN_LABELS[key]}
+                  </label>
+                ))}
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
       <TabsContent value="liste">
-        <div className="rounded-xl border border-border bg-card">
+        <div className="overflow-x-auto rounded-xl border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Numéro</TableHead>
-                <TableHead>Bâtiment</TableHead>
-                <TableHead>Taille</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Étage</TableHead>
-                <TableHead>Prix / mois</TableHead>
-                <TableHead>Statut</TableHead>
+                {visibleColumns.has("batiment") && <TableHead>Bâtiment</TableHead>}
+                {visibleColumns.has("taille") && <TableHead>Taille</TableHead>}
+                {visibleColumns.has("type") && <TableHead>Type</TableHead>}
+                {visibleColumns.has("etage") && <TableHead>Étage</TableHead>}
+                {visibleColumns.has("prix") && <TableHead>Prix / mois</TableHead>}
+                {visibleColumns.has("statut") && <TableHead>Statut</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map((unit) => (
                 <TableRow key={unit.id}>
                   <TableCell>
-                    <Link href={`/admin/units/${unit.id}`} className="font-mono font-medium hover:text-primary">
-                      {unit.numero}
-                    </Link>
+                    <span className="flex items-center gap-1">
+                      <Link href={`/admin/units/${unit.id}`} className="font-mono font-medium hover:text-primary">
+                        {unit.numero}
+                      </Link>
+                      <UnitNumeroEditForm unitId={unit.id} numero={unit.numero} />
+                    </span>
                   </TableCell>
-                  <TableCell>{unit.zone ?? "—"}</TableCell>
-                  <TableCell>{unit.taille_libelle}</TableCell>
-                  <TableCell className="capitalize">{unit.type}</TableCell>
-                  <TableCell>{FLOOR_LABELS[unit.floor]}</TableCell>
-                  <TableCell>{formatCurrency(unit.prix_mensuel_standard)}</TableCell>
-                  <TableCell>
-                    <UnitStatusBadge status={unit.statut} />
-                  </TableCell>
+                  {visibleColumns.has("batiment") && <TableCell>{unit.zone ?? "—"}</TableCell>}
+                  {visibleColumns.has("taille") && (
+                    <TableCell>
+                      <span className="flex items-center gap-1">
+                        {unit.taille_libelle}
+                        <UnitSizeEditForm
+                          unitId={unit.id}
+                          tailleLibelle={unit.taille_libelle}
+                          tailleM2={unit.taille_m2}
+                          hasPhysicalDimensions={unit.largeur_cm !== null && unit.profondeur_cm !== null}
+                        />
+                      </span>
+                    </TableCell>
+                  )}
+                  {visibleColumns.has("type") && <TableCell className="capitalize">{unit.type}</TableCell>}
+                  {visibleColumns.has("etage") && <TableCell>{FLOOR_LABELS[unit.floor]}</TableCell>}
+                  {visibleColumns.has("prix") && <TableCell>{formatCurrency(unit.prix_mensuel_standard)}</TableCell>}
+                  {visibleColumns.has("statut") && (
+                    <TableCell>
+                      <UnitStatusBadge status={unit.statut} />
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={visibleColumns.size + 1} className="py-8 text-center text-muted-foreground">
                     Aucun box ne correspond à ces filtres.
                   </TableCell>
                 </TableRow>

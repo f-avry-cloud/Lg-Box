@@ -6,9 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ContractStatusBadge } from "@/components/status-badge";
 import { UnitStatusSelect } from "@/components/units/unit-status-select";
-import { UnitFloorSelect } from "@/components/units/unit-floor-select";
+import { UnitZoneSelect } from "@/components/units/unit-zone-select";
 import { UnitAccessCodeForm } from "@/components/units/unit-access-code-form";
 import { UnitDeleteButton } from "@/components/units/unit-delete-button";
+import { UnitSizeEditForm } from "@/components/units/unit-size-edit-form";
+import { UnitNumeroEditForm } from "@/components/units/unit-numero-edit-form";
 import { SendAccessCodeButton } from "@/components/access-codes/send-access-code-button";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
@@ -46,13 +48,23 @@ export default async function UnitDetailPage({ params }: { params: Promise<{ id:
 
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="font-mono text-lg font-semibold">Box {unit.numero}</h1>
-          <p className="text-sm text-muted-foreground">
-            {unit.taille_libelle} · {unit.type} · {unit.zone} · {formatCurrency(unit.prix_mensuel_standard)}/mois
+          <h1 className="flex items-center gap-1 font-mono text-lg font-semibold">
+            Box {unit.numero}
+            <UnitNumeroEditForm unitId={unit.id} numero={unit.numero} />
+          </h1>
+          <p className="flex items-center gap-1 text-sm text-muted-foreground">
+            {unit.taille_libelle}
+            <UnitSizeEditForm
+              unitId={unit.id}
+              tailleLibelle={unit.taille_libelle}
+              tailleM2={unit.taille_m2}
+              hasPhysicalDimensions={unit.largeur_cm !== null && unit.profondeur_cm !== null}
+            />
+            · {unit.type} · {unit.zone} · {formatCurrency(unit.prix_mensuel_standard)}/mois
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <UnitFloorSelect unitId={unit.id} floor={unit.floor} />
+          <UnitZoneSelect unitId={unit.id} zone={unit.zone} />
           <UnitStatusSelect unitId={unit.id} status={unit.statut} />
         </div>
       </div>
