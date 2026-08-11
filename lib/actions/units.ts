@@ -6,7 +6,7 @@ import { requireStaff, requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { sendAccessCodeEmail } from "@/lib/actions/access-code-email";
 import { ok, fail, type ActionResult } from "@/lib/actions/result";
-import { FLOOR_PLAN_COLUMNS, MIN_UNIT_SIZE_CM, type FloorPlanUnit } from "@/lib/units/floor-plan";
+import { FLOOR_PLAN_COLUMNS, KNOWN_ZONES, MIN_UNIT_SIZE_CM, type FloorPlanUnit } from "@/lib/units/floor-plan";
 import type { UnitFloor, UnitStatus, UnitType } from "@/types/database";
 
 export type UnitFormState = { error: string | null; success?: boolean };
@@ -141,19 +141,6 @@ export async function deleteUnit(unitId: string): Promise<ActionResult> {
   revalidatePath("/admin/units");
   return ok;
 }
-
-// Les 6 espaces identifiés par le vendeur — remplace le choix d'étage
-// (technique, sans signification pour le staff) par le bâtiment réel. Le
-// floor sous-jacent (utilisé par le plan interactif) est dérivé
-// automatiquement de ce choix plutôt que sélectionné séparément.
-export const KNOWN_ZONES: { value: string; floor: UnitFloor }[] = [
-  { value: "Bâtiment 1", floor: "rez_de_chaussee" },
-  { value: "Bâtiment 2", floor: "rez_de_chaussee" },
-  { value: "Bâtiment 3", floor: "rez_de_chaussee" },
-  { value: "Bâtiment 4", floor: "rez_de_chaussee" },
-  { value: "Rez-de-jardin", floor: "sous_sol" },
-  { value: "Étage", floor: "premier_etage" },
-];
 
 export async function updateUnitZone(unitId: string, zone: string): Promise<ActionResult> {
   await requireStaff();

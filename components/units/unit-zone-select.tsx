@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { updateUnitZone, KNOWN_ZONES } from "@/lib/actions/units";
+import { updateUnitZone } from "@/lib/actions/units";
+import { KNOWN_ZONES } from "@/lib/units/floor-plan";
 
 export function UnitZoneSelect({ unitId, zone }: { unitId: string; zone: string | null }) {
   const [pending, startTransition] = useTransition();
