@@ -90,3 +90,16 @@ export const FLOOR_LABELS: Record<UnitFloor, string> = {
 };
 
 export const FLOOR_ORDER: UnitFloor[] = ["sous_sol", "rez_de_chaussee", "premier_etage"];
+
+// Les 6 espaces identifiés par le vendeur — remplace le choix d'étage
+// (technique, sans signification pour le staff) par le bâtiment réel. Le
+// floor sous-jacent (utilisé par le plan interactif) est dérivé
+// automatiquement de ce choix plutôt que sélectionné séparément.
+export const KNOWN_ZONES: { value: string; floor: UnitFloor }[] = [
+  { value: "Bâtiment 1", floor: "rez_de_chaussee" },
+  { value: "Bâtiment 2", floor: "rez_de_chaussee" },
+  { value: "Bâtiment 3", floor: "rez_de_chaussee" },
+  { value: "Bâtiment 4", floor: "rez_de_chaussee" },
+  { value: "Rez-de-jardin", floor: "sous_sol" },
+  { value: "Étage", floor: "premier_etage" },
+];
