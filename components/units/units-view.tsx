@@ -106,6 +106,7 @@ export function UnitsView({ units, isAdmin }: { units: Unit[]; isAdmin: boolean 
             <TableHeader>
               <TableRow>
                 <TableHead>Numéro</TableHead>
+                <TableHead>Bâtiment</TableHead>
                 <TableHead>Taille</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Étage</TableHead>
@@ -121,6 +122,7 @@ export function UnitsView({ units, isAdmin }: { units: Unit[]; isAdmin: boolean 
                       {unit.numero}
                     </Link>
                   </TableCell>
+                  <TableCell>{unit.zone ?? "—"}</TableCell>
                   <TableCell>{unit.taille_libelle}</TableCell>
                   <TableCell className="capitalize">{unit.type}</TableCell>
                   <TableCell>{FLOOR_LABELS[unit.floor]}</TableCell>
@@ -132,7 +134,7 @@ export function UnitsView({ units, isAdmin }: { units: Unit[]; isAdmin: boolean 
               ))}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                     Aucun box ne correspond à ces filtres.
                   </TableCell>
                 </TableRow>
