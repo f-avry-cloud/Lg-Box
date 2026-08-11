@@ -76,12 +76,13 @@ export function UnitSizeEditForm({
               step="0.1"
               min="0"
               defaultValue={tailleM2 ?? ""}
-              disabled={hasPhysicalDimensions}
+              required={hasPhysicalDimensions}
             />
             {hasPhysicalDimensions && (
               <p className="text-xs text-muted-foreground">
-                Calculée automatiquement depuis les dimensions posées sur le plan interactif — modifie-les
-                plutôt depuis l&apos;onglet Plan si la surface réelle a changé.
+                Ce box est positionné sur le plan interactif : changer la surface ici ajuste ses dimensions
+                (largeur/profondeur) en conservant ses proportions actuelles, et se répercute donc aussi sur le
+                plan.
               </p>
             )}
           </div>
