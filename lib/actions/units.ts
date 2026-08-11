@@ -182,28 +182,53 @@ export async function updateUnitNumero(unitId: string, numero: string): Promise<
   return ok;
 }
 
+// Le trigger units_sync_taille_m2 recalcule taille_m2 à partir de
+// largeur_cm/profondeur_cm à CHAQUE update dès que ces deux champs sont
+// renseignés — écrire taille_m2 directement pour un box positionné sur le
+// plan serait donc immédiatement écrasé. Pour qu'un seul champ « Surface
+// (m²) » reste éditable partout (liste, fiche box) sans avoir à jongler
+// avec des cm, on dérive ici de nouvelles largeur/profondeur en conservant
+// les proportions actuelles du box quand il est positionné sur le plan.
 export async function updateUnitSize(
   unitId: string,
-  { tailleLibelle, tailleM2 }: { tailleLibelle: string; tailleM2: number | null }
+  params: { tailleLibelle: string; tailleM2: number | null }
 ): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();
-  const trimmed = tailleLibelle.trim();
+  const trimmed = params.tailleLibelle.trim();
   if (!trimmed) return fail("Le libellé de taille ne peut pas être vide.");
 
-  const { data: unit } = await supabase.from("units").select("largeur_cm, profondeur_cm").eq("id", unitId).single();
-  if (!unit) return fail("Box introuvable.");
+  const { data: current, error: fetchError } = await supabase
+    .from("units")
+    .select("largeur_cm, profondeur_cm")
+    .eq("id", unitId)
+    .single();
+  if (fetchError || !current) return fail(fetchError?.message ?? "Box introuvable.");
 
-  // Si le box a des dimensions physiques posées (plan interactif),
-  // taille_m2 est recalculée automatiquement par le trigger
-  // units_sync_taille_m2 — on ne l'écrase pas ici pour ne pas créer
-  // d'incohérence silencieuse avec largeur_cm/profondeur_cm.
-  const hasPhysicalDimensions = unit.largeur_cm !== null && unit.profondeur_cm !== null;
-  const update: { taille_libelle: string; taille_m2?: number | null } = { taille_libelle: trimmed };
-  if (!hasPhysicalDimensions) update.taille_m2 = tailleM2;
+  if (current.largeur_cm !== null && current.profondeur_cm !== null) {
+    if (params.tailleM2 === null || params.tailleM2 <= 0) {
+      return fail("La surface doit être un nombre positif.");
+    }
+    const currentM2 = (current.largeur_cm * current.profondeur_cm) / 10000;
+    const scale = Math.sqrt(params.tailleM2 / currentM2);
+    const largeurCm = Math.round(current.largeur_cm * scale);
+    const profondeurCm = Math.round(current.profondeur_cm * scale);
+    if (largeurCm < MIN_UNIT_SIZE_CM || profondeurCm < MIN_UNIT_SIZE_CM) {
+      return fail(`Cette surface est trop petite pour ce box (dimensions minimales ${MIN_UNIT_SIZE_CM} cm).`);
+    }
+    const { error } = await supabase
+      .from("units")
+      .update({ taille_libelle: trimmed, largeur_cm: largeurCm, profondeur_cm: profondeurCm })
+      .eq("id", unitId);
+    if (error) return fail(error.message);
+  } else {
+    const { error } = await supabase
+      .from("units")
+      .update({ taille_libelle: trimmed, taille_m2: params.tailleM2 })
+      .eq("id", unitId);
+    if (error) return fail(error.message);
+  }
 
-  const { error } = await supabase.from("units").update(update).eq("id", unitId);
-  if (error) return fail(error.message);
   revalidatePath("/admin/units");
   revalidatePath(`/admin/units/${unitId}`);
   return ok;
