@@ -193,7 +193,6 @@ export function UnitsView({ units, isAdmin }: { units: Unit[]; isAdmin: boolean 
                         {unit.taille_libelle}
                         <UnitSizeEditForm
                           unitId={unit.id}
-                          tailleLibelle={unit.taille_libelle}
                           tailleM2={unit.taille_m2}
                           hasPhysicalDimensions={unit.largeur_cm !== null && unit.profondeur_cm !== null}
                         />

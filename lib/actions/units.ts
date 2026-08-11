@@ -182,6 +182,15 @@ export async function updateUnitNumero(unitId: string, numero: string): Promise<
   return ok;
 }
 
+// taille_libelle n'est qu'un affichage textuel de taille_m2 (cf. schema.sql:
+// "taille_libelle text not null, -- ex 5m²") — le laisser saisir librement
+// en plus de la surface produit un doublon qui part en désync avec le temps
+// (ex. libellé "7.50 m2" pour un box dont la surface réelle vaut 9.36 après
+// une correction). Il est donc dérivé ici, jamais saisi séparément.
+function formatTailleLibelle(m2: number): string {
+  return `${Number(m2.toFixed(2))} m²`;
+}
+
 // Le trigger units_sync_taille_m2 recalcule taille_m2 à partir de
 // largeur_cm/profondeur_cm à CHAQUE update dès que ces deux champs sont
 // renseignés — écrire taille_m2 directement pour un box positionné sur le
@@ -189,14 +198,12 @@ export async function updateUnitNumero(unitId: string, numero: string): Promise<
 // (m²) » reste éditable partout (liste, fiche box) sans avoir à jongler
 // avec des cm, on dérive ici de nouvelles largeur/profondeur en conservant
 // les proportions actuelles du box quand il est positionné sur le plan.
-export async function updateUnitSize(
-  unitId: string,
-  params: { tailleLibelle: string; tailleM2: number | null }
-): Promise<ActionResult> {
+export async function updateUnitSize(unitId: string, params: { tailleM2: number | null }): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();
-  const trimmed = params.tailleLibelle.trim();
-  if (!trimmed) return fail("Le libellé de taille ne peut pas être vide.");
+  if (params.tailleM2 === null || params.tailleM2 <= 0) {
+    return fail("La surface doit être un nombre positif.");
+  }
 
   const { data: current, error: fetchError } = await supabase
     .from("units")
@@ -206,9 +213,6 @@ export async function updateUnitSize(
   if (fetchError || !current) return fail(fetchError?.message ?? "Box introuvable.");
 
   if (current.largeur_cm !== null && current.profondeur_cm !== null) {
-    if (params.tailleM2 === null || params.tailleM2 <= 0) {
-      return fail("La surface doit être un nombre positif.");
-    }
     const currentM2 = (current.largeur_cm * current.profondeur_cm) / 10000;
     const scale = Math.sqrt(params.tailleM2 / currentM2);
     const largeurCm = Math.round(current.largeur_cm * scale);
@@ -216,15 +220,18 @@ export async function updateUnitSize(
     if (largeurCm < MIN_UNIT_SIZE_CM || profondeurCm < MIN_UNIT_SIZE_CM) {
       return fail(`Cette surface est trop petite pour ce box (dimensions minimales ${MIN_UNIT_SIZE_CM} cm).`);
     }
+    // round(..., 2) : reproduit exactement l'arrondi du trigger, pour que le
+    // libellé écrit ici corresponde au taille_m2 qu'il va recalculer.
+    const finalM2 = Math.round(((largeurCm * profondeurCm) / 10000) * 100) / 100;
     const { error } = await supabase
       .from("units")
-      .update({ taille_libelle: trimmed, largeur_cm: largeurCm, profondeur_cm: profondeurCm })
+      .update({ taille_libelle: formatTailleLibelle(finalM2), largeur_cm: largeurCm, profondeur_cm: profondeurCm })
       .eq("id", unitId);
     if (error) return fail(error.message);
   } else {
     const { error } = await supabase
       .from("units")
-      .update({ taille_libelle: trimmed, taille_m2: params.tailleM2 })
+      .update({ taille_libelle: formatTailleLibelle(params.tailleM2), taille_m2: params.tailleM2 })
       .eq("id", unitId);
     if (error) return fail(error.message);
   }
