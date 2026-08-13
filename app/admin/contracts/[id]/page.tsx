@@ -96,6 +96,11 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
               <p>{formatCurrency(contract.prix_mensuel)}</p>
               <RentEditForm contractId={contract.id} currentRent={contract.prix_mensuel} />
             </div>
+            {unit && contract.prix_mensuel !== unit.prix_mensuel_standard && (
+              <p className="mt-0.5 text-xs text-warning">
+                ≠ prix standard du box ({formatCurrency(unit.prix_mensuel_standard)})
+              </p>
+            )}
           </div>
           <Info label="Date de début" value={formatDate(contract.date_debut)} />
           <Info label="Date de fin" value={contract.date_fin ? formatDate(contract.date_fin) : "—"} />

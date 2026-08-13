@@ -22,6 +22,7 @@ import { FloorPlan } from "@/components/units/floor-plan";
 import { FloorPlanEditor } from "@/components/units/floor-plan-editor";
 import { UnitSizeEditForm } from "@/components/units/unit-size-edit-form";
 import { UnitNumeroEditForm } from "@/components/units/unit-numero-edit-form";
+import { UnitPriceEditForm } from "@/components/units/unit-price-edit-form";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { FLOOR_LABELS, FLOOR_ORDER } from "@/lib/units/floor-plan";
@@ -201,7 +202,14 @@ export function UnitsView({ units, isAdmin }: { units: Unit[]; isAdmin: boolean 
                   )}
                   {visibleColumns.has("type") && <TableCell className="capitalize">{unit.type}</TableCell>}
                   {visibleColumns.has("etage") && <TableCell>{FLOOR_LABELS[unit.floor]}</TableCell>}
-                  {visibleColumns.has("prix") && <TableCell>{formatCurrency(unit.prix_mensuel_standard)}</TableCell>}
+                  {visibleColumns.has("prix") && (
+                    <TableCell>
+                      <span className="flex items-center gap-1">
+                        {formatCurrency(unit.prix_mensuel_standard)}
+                        <UnitPriceEditForm unitId={unit.id} prixMensuelStandard={unit.prix_mensuel_standard} />
+                      </span>
+                    </TableCell>
+                  )}
                   {visibleColumns.has("statut") && (
                     <TableCell>
                       <UnitStatusBadge status={unit.statut} />
