@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { deleteUnit } from "@/lib/actions/units";
 
 export function UnitDeleteButton({ unitId, unitNumero }: { unitId: string; unitNumero: string }) {
@@ -12,21 +13,33 @@ export function UnitDeleteButton({ unitId, unitNumero }: { unitId: string; unitN
   const [pending, startTransition] = useTransition();
 
   function handleDelete() {
-    if (!window.confirm(`Supprimer définitivement le box ${unitNumero} ? Cette action est irréversible.`)) return;
-    startTransition(async () => {
-      const result = await deleteUnit(unitId);
-      if (!result.success) {
-        toast.error(result.error ?? "Erreur.");
-        return;
-      }
-      toast.success("Box supprimé.");
-      router.push("/admin/units");
+    return new Promise<void>((resolve) => {
+      startTransition(async () => {
+        const result = await deleteUnit(unitId);
+        if (!result.success) {
+          toast.error(result.error ?? "Erreur.");
+          resolve();
+          return;
+        }
+        toast.success("Box supprimé.");
+        router.push("/admin/units");
+        resolve();
+      });
     });
   }
 
   return (
-    <Button variant="destructive" size="sm" onClick={handleDelete} disabled={pending}>
-      {pending ? "Suppression..." : "Supprimer ce box"}
-    </Button>
+    <ConfirmDialog
+      trigger={
+        <Button variant="destructive" size="sm" disabled={pending}>
+          Supprimer ce box
+        </Button>
+      }
+      title={`Supprimer le box ${unitNumero} ?`}
+      description="Cette action est irréversible. Le box ne pourra plus être réattribué à un contrat."
+      confirmLabel="Supprimer définitivement"
+      pendingLabel="Suppression..."
+      onConfirm={handleDelete}
+    />
   );
 }

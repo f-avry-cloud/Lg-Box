@@ -16,17 +16,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { updateUnitSize } from "@/lib/actions/units";
+import { updateUnitPrice } from "@/lib/actions/units";
 
-export function UnitSizeEditForm({
-  unitId,
-  tailleM2,
-  hasPhysicalDimensions,
-}: {
-  unitId: string;
-  tailleM2: number | null;
-  hasPhysicalDimensions: boolean;
-}) {
+export function UnitPriceEditForm({ unitId, prixMensuelStandard }: { unitId: string; prixMensuelStandard: number }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -34,15 +26,14 @@ export function UnitSizeEditForm({
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const m2Raw = formData.get("taille_m2");
-    const m2 = m2Raw && String(m2Raw).trim() ? Number(m2Raw) : null;
+    const value = Number(formData.get("prix_mensuel_standard"));
     startTransition(async () => {
-      const result = await updateUnitSize(unitId, { tailleM2: m2 });
+      const result = await updateUnitPrice(unitId, value);
       if (!result.success) {
         toast.error(result.error ?? "Erreur.");
         return;
       }
-      toast.success("Surface mise à jour.");
+      toast.success("Prix mis à jour.");
       setOpen(false);
       router.refresh();
     });
@@ -57,24 +48,23 @@ export function UnitSizeEditForm({
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Modifier la surface du box</DialogTitle>
+          <DialogTitle>Modifier le prix standard du box</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="taille_m2">Surface (m²)</Label>
+            <Label htmlFor="prix_mensuel_standard">Prix mensuel standard</Label>
             <Input
-              id="taille_m2"
-              name="taille_m2"
+              id="prix_mensuel_standard"
+              name="prix_mensuel_standard"
               type="number"
-              step="0.1"
+              step="0.01"
               min="0"
-              defaultValue={tailleM2 ?? ""}
+              defaultValue={prixMensuelStandard}
               required
             />
             <p className="text-xs text-muted-foreground">
-              Le libellé affiché reprend automatiquement cette valeur.
-              {hasPhysicalDimensions &&
-                " Ce box est positionné sur le plan : ses dimensions (largeur/profondeur) sont ajustées en conservant ses proportions actuelles."}
+              Le prix affiché quand le box est libre. Le loyer d&apos;un contrat en cours se modifie séparément,
+              depuis la fiche contrat.
             </p>
           </div>
           <DialogFooter>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LogOut, Menu, X } from "lucide-react";
+import { LogOut, Menu, Search, X } from "lucide-react";
 
 import { SidebarNav } from "@/components/admin/sidebar-nav";
 import { signOut } from "@/lib/actions/auth";
@@ -38,6 +38,17 @@ export function AdminShell({
             <X className="size-5" />
           </button>
         </div>
+        <form action="/admin/recherche" className="border-b border-border p-3" onSubmit={onNavigate}>
+          <label className="relative block">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="search"
+              name="q"
+              placeholder="Rechercher un client ou un box..."
+              className="h-9 w-full rounded-md border border-input bg-transparent pl-8 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </label>
+        </form>
         <SidebarNav role={role} onNavigate={onNavigate} />
         <div className="border-t border-border p-3 text-xs text-muted-foreground">
           <div className="flex justify-between">

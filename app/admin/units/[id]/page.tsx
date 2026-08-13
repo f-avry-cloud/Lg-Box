@@ -11,6 +11,7 @@ import { UnitAccessCodeForm } from "@/components/units/unit-access-code-form";
 import { UnitDeleteButton } from "@/components/units/unit-delete-button";
 import { UnitSizeEditForm } from "@/components/units/unit-size-edit-form";
 import { UnitNumeroEditForm } from "@/components/units/unit-numero-edit-form";
+import { UnitPriceEditForm } from "@/components/units/unit-price-edit-form";
 import { SendAccessCodeButton } from "@/components/access-codes/send-access-code-button";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
@@ -60,6 +61,7 @@ export default async function UnitDetailPage({ params }: { params: Promise<{ id:
               hasPhysicalDimensions={unit.largeur_cm !== null && unit.profondeur_cm !== null}
             />
             · {unit.type} · {unit.zone} · {formatCurrency(unit.prix_mensuel_standard)}/mois
+            <UnitPriceEditForm unitId={unit.id} prixMensuelStandard={unit.prix_mensuel_standard} />
           </p>
         </div>
         <div className="flex items-center gap-2">

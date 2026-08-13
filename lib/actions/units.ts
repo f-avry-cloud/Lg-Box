@@ -108,6 +108,25 @@ export async function sendUnitBoxAccessCodeEmail(unitId: string): Promise<Action
   return result;
 }
 
+// Prix "vitrine" du box quand il est libre — distinct du prix_mensuel du
+// contrat (le montant réellement facturé, qui peut avoir été négocié).
+// Jusqu'ici uniquement modifiable à la création du box.
+export async function updateUnitPrice(unitId: string, prixMensuelStandard: number): Promise<ActionResult> {
+  await requireStaff();
+  const supabase = await createClient();
+  if (!Number.isFinite(prixMensuelStandard) || prixMensuelStandard < 0) {
+    return fail("Le prix doit être un nombre positif.");
+  }
+  const { error } = await supabase
+    .from("units")
+    .update({ prix_mensuel_standard: prixMensuelStandard })
+    .eq("id", unitId);
+  if (error) return fail(error.message);
+  revalidatePath("/admin/units");
+  revalidatePath(`/admin/units/${unitId}`);
+  return ok;
+}
+
 export async function updateUnitNotes(unitId: string, notes: string): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();

@@ -42,8 +42,8 @@ export function RentEditForm({ contractId, currentRent }: { contractId: string; 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="icon" variant="ghost" className="size-6">
-          <Pencil className="size-3.5" />
+        <Button size="icon" variant="ghost" className="size-11 sm:size-6">
+          <Pencil className="size-5 sm:size-3.5" />
         </Button>
       </DialogTrigger>
       <DialogContent>
