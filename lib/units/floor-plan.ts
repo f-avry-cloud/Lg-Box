@@ -1,6 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { Database, Unit, UnitFloor, UnitStatus } from "@/types/database";
+import type { ContractStatus, Database, Unit, UnitFloor, UnitStatus } from "@/types/database";
+
+// Locataire actuel d'un box (contrat actif ou en préavis) — construit côté
+// page (app/admin/units/page.tsx) à partir d'une jointure contrats+clients en
+// mémoire, sur le même principe que les autres Map id->info du projet.
+// Affiché dans le panneau d'info du plan interactif (UnitInfoPanel).
+export type UnitTenantInfo = {
+  contractId: string;
+  customerId: string;
+  customerName: string;
+  prixMensuel: number;
+  statut: ContractStatus;
+};
 
 // Colonnes strictement nécessaires au plan interactif — un Unit complet (liste
 // des box, fiche détail...) en est un sur-ensemble structurel compatible.

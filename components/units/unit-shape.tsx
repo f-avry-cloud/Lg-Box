@@ -34,7 +34,7 @@ export function UnitShape({
       data-unit-id={unit.id}
       transform={`rotate(${unit.rotation_deg} ${unit.pos_x} ${unit.pos_y})`}
       onClick={onClick}
-      className={onClick ? "cursor-pointer" : undefined}
+      className={cn(onClick && "cursor-pointer", onClick && "group")}
     >
       <rect
         ref={rectRef}
@@ -48,7 +48,13 @@ export function UnitShape({
         vectorEffect="non-scaling-stroke"
         strokeWidth={selected ? 3 : dirty ? 2.5 : 1.5}
         strokeDasharray={dirty && !selected ? "6 4" : undefined}
-        className={cn(style.fill, style.stroke, selected && "stroke-foreground")}
+        className={cn(
+          style.fill,
+          style.stroke,
+          selected && "stroke-foreground",
+          "transition-[filter,stroke-width] duration-150",
+          onClick && "group-hover:brightness-95"
+        )}
       />
       <text
         x={cx}

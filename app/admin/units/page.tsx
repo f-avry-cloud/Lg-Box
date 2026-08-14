@@ -4,6 +4,7 @@ import { CsvImportDialog } from "@/components/import/csv-import-dialog";
 import { importUnitsCsv } from "@/lib/actions/import";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth";
+import type { UnitTenantInfo } from "@/lib/units/floor-plan";
 
 const UNIT_IMPORT_FIELDS = [
   { key: "numero", label: "Numéro", required: true },
@@ -19,11 +20,33 @@ const UNIT_IMPORT_FIELDS = [
 
 export default async function UnitsPage() {
   const supabase = await createClient();
-  const [{ data: units }, profile] = await Promise.all([
+  const [{ data: units }, profile, { data: activeContracts }] = await Promise.all([
     supabase.from("units").select("*").order("numero"),
     getCurrentProfile(),
+    supabase.from("contracts").select("id, unit_id, customer_id, prix_mensuel, statut").in("statut", ["actif", "en_preavis"]),
   ]);
   const isAdmin = profile?.role === "admin";
+
+  // Locataire actuel par box — permet au plan interactif d'afficher qui
+  // occupe un box sans devoir naviguer vers sa fiche pour le savoir.
+  const tenantCustomerIds = [...new Set((activeContracts ?? []).map((c) => c.customer_id))];
+  const { data: tenantCustomers } = tenantCustomerIds.length
+    ? await supabase.from("customers").select("id, prenom, nom").in("id", tenantCustomerIds)
+    : { data: [] };
+  const tenantCustomerById = new Map((tenantCustomers ?? []).map((c) => [c.id, c]));
+
+  const tenantsByUnit: Record<string, UnitTenantInfo> = {};
+  for (const c of activeContracts ?? []) {
+    const cust = tenantCustomerById.get(c.customer_id);
+    if (!cust) continue;
+    tenantsByUnit[c.unit_id] = {
+      contractId: c.id,
+      customerId: c.customer_id,
+      customerName: `${cust.prenom} ${cust.nom}`.trim(),
+      prixMensuel: c.prix_mensuel,
+      statut: c.statut,
+    };
+  }
 
   return (
     <div>
@@ -46,7 +69,7 @@ export default async function UnitsPage() {
           <UnitCreateDialog />
         </div>
       </div>
-      <UnitsView units={units ?? []} isAdmin={isAdmin} />
+      <UnitsView units={units ?? []} isAdmin={isAdmin} tenantsByUnit={tenantsByUnit} />
     </div>
   );
 }
