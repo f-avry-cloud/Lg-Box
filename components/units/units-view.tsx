@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Columns3 } from "lucide-react";
 
@@ -23,9 +22,10 @@ import { FloorPlanEditor } from "@/components/units/floor-plan-editor";
 import { UnitSizeEditForm } from "@/components/units/unit-size-edit-form";
 import { UnitNumeroEditForm } from "@/components/units/unit-numero-edit-form";
 import { UnitPriceEditForm } from "@/components/units/unit-price-edit-form";
+import { UnitInfoPanel } from "@/components/units/unit-info-panel";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { FLOOR_LABELS, FLOOR_ORDER } from "@/lib/units/floor-plan";
+import { FLOOR_LABELS, FLOOR_ORDER, type UnitTenantInfo } from "@/lib/units/floor-plan";
 import type { Unit, UnitFloor, UnitStatus } from "@/types/database";
 
 type ColumnKey = "batiment" | "taille" | "type" | "etage" | "prix" | "statut";
@@ -50,8 +50,15 @@ const GRID_COLORS: Record<UnitStatus, string> = {
   hors_service: "border-border bg-muted text-muted-foreground",
 };
 
-export function UnitsView({ units, isAdmin }: { units: Unit[]; isAdmin: boolean }) {
-  const router = useRouter();
+export function UnitsView({
+  units,
+  isAdmin,
+  tenantsByUnit,
+}: {
+  units: Unit[];
+  isAdmin: boolean;
+  tenantsByUnit: Record<string, UnitTenantInfo>;
+}) {
   const [statusFilter, setStatusFilter] = useState<string>("tous");
   const [search, setSearch] = useState("");
   const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(new Set(DEFAULT_VISIBLE_COLUMNS));
@@ -66,6 +73,7 @@ export function UnitsView({ units, isAdmin }: { units: Unit[]; isAdmin: boolean 
     });
   }
   const [planFloor, setPlanFloor] = useState<UnitFloor>("rez_de_chaussee");
+  const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
   // Chaque niveau garde son propre FloorPlanEditor monté (Radix Tabs ne
   // démonte pas les onglets inactifs) — un dirty par niveau évite qu'un
   // niveau propre n'efface par erreur l'état "modifié" d'un autre.
@@ -91,6 +99,7 @@ export function UnitsView({ units, isAdmin }: { units: Unit[]; isAdmin: boolean 
       });
     }
     setPlanFloor(next as UnitFloor);
+    setSelectedUnit(null);
   }
 
   function handleFloorDirtyChange(floor: UnitFloor, dirty: boolean) {
@@ -108,6 +117,12 @@ export function UnitsView({ units, isAdmin }: { units: Unit[]; isAdmin: boolean 
       .filter((u) => u.numero.toLowerCase().includes(search.toLowerCase()))
       .sort((a, b) => a.numero.localeCompare(b.numero));
   }, [units, statusFilter, search]);
+
+  const unitsById = useMemo(() => new Map(units.map((u) => [u.id, u])), [units]);
+
+  function handleSelectUnit(unit: { id: string }) {
+    setSelectedUnit(unitsById.get(unit.id) ?? null);
+  }
 
   return (
     <Tabs defaultValue="liste">
@@ -246,27 +261,48 @@ export function UnitsView({ units, isAdmin }: { units: Unit[]; isAdmin: boolean 
               </TabsTrigger>
             ))}
           </TabsList>
-          {FLOOR_ORDER.map((floor) => (
-            <TabsContent key={floor} value={floor}>
-              {isAdmin ? (
-                <FloorPlanEditor
-                  key={`${floor}-${resetTokens[floor] ?? 0}`}
-                  floor={floor}
-                  units={filtered.filter((u) => u.floor === floor)}
-                  onDirtyChange={(dirty) => handleFloorDirtyChange(floor, dirty)}
-                />
-              ) : (
-                <>
-                  <p className="mb-2 text-xs text-muted-foreground">Cliquez sur un box pour ouvrir sa fiche détail.</p>
-                  <FloorPlan
-                    floor={floor}
-                    units={filtered.filter((u) => u.floor === floor)}
-                    onSelectUnit={(unit) => router.push(`/admin/units/${unit.id}`)}
-                  />
-                </>
-              )}
-            </TabsContent>
-          ))}
+          {FLOOR_ORDER.map((floor) => {
+            const floorSelectedUnit = selectedUnit?.floor === floor ? selectedUnit : null;
+            return (
+              <TabsContent key={floor} value={floor}>
+                <p className="mb-2 text-xs text-muted-foreground">
+                  {isAdmin
+                    ? "Glissez un box pour le déplacer, cliquez pour voir qui l'occupe."
+                    : "Cliquez sur un box pour voir qui l'occupe."}
+                </p>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+                  <div className="min-w-0 flex-1">
+                    {isAdmin ? (
+                      <FloorPlanEditor
+                        key={`${floor}-${resetTokens[floor] ?? 0}`}
+                        floor={floor}
+                        units={filtered.filter((u) => u.floor === floor)}
+                        onDirtyChange={(dirty) => handleFloorDirtyChange(floor, dirty)}
+                        onSelectUnit={handleSelectUnit}
+                      />
+                    ) : (
+                      <FloorPlan
+                        floor={floor}
+                        units={filtered.filter((u) => u.floor === floor)}
+                        onSelectUnit={handleSelectUnit}
+                        selectedUnitId={floorSelectedUnit?.id ?? null}
+                      />
+                    )}
+                  </div>
+                  {floorSelectedUnit && (
+                    <div className="w-full shrink-0 lg:w-80">
+                      <UnitInfoPanel
+                        key={floorSelectedUnit.id}
+                        unit={floorSelectedUnit}
+                        tenant={tenantsByUnit[floorSelectedUnit.id]}
+                        onClose={() => setSelectedUnit(null)}
+                      />
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            );
+          })}
         </Tabs>
       </TabsContent>
     </Tabs>

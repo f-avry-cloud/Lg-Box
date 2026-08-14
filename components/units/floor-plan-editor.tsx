@@ -33,10 +33,12 @@ export function FloorPlanEditor({
   floor,
   units,
   onDirtyChange,
+  onSelectUnit,
 }: {
   floor: UnitFloor;
   units: FloorPlanUnit[];
   onDirtyChange?: (dirty: boolean) => void;
+  onSelectUnit?: (unit: FloorPlanUnit) => void;
 }) {
   const [unitsMap, setUnitsMap] = useState<Map<string, FloorPlanUnit>>(() => new Map(units.map((u) => [u.id, u])));
   const [dirtyIds, setDirtyIds] = useState<Set<string>>(new Set());
@@ -48,6 +50,8 @@ export function FloorPlanEditor({
   const rectRefs = useRef<Map<string, SVGRectElement>>(new Map());
   const viewBoxRef = useRef(viewBox);
   const selectedIdRef = useRef<string | null>(null);
+  const onSelectUnitRef = useRef(onSelectUnit);
+  const unitsRef = useRef(units);
 
   useEffect(() => {
     viewBoxRef.current = viewBox;
@@ -56,6 +60,14 @@ export function FloorPlanEditor({
   useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
+
+  useEffect(() => {
+    onSelectUnitRef.current = onSelectUnit;
+  }, [onSelectUnit]);
+
+  useEffect(() => {
+    unitsRef.current = units;
+  }, [units]);
 
   useEffect(() => {
     onDirtyChange?.(dirtyIds.size > 0);
@@ -139,7 +151,11 @@ export function FloorPlanEditor({
             },
           },
         })
-        .on("tap", () => setSelectedId(id));
+        .on("tap", () => {
+          setSelectedId(id);
+          const unit = unitsRef.current.find((u) => u.id === id);
+          if (unit) onSelectUnitRef.current?.(unit);
+        });
     });
 
     return () => {
