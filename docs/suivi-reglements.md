@@ -46,6 +46,14 @@ npm run suivi:demo-data   # régénère lib/suivi/demo-data.ts
 
 ## Brancher la vraie base
 
+> **État au 15 août 2026 — déjà fait sur le projet `hesuunwaputjlvyensfx`.**
+> Les tables `sr_*` sont créées (migration `suivi_reglements_tables`) et le CSV
+> est importé : 62 locataires, 39 box, 63 contrats, 8 710 € de loyers mensuels,
+> 0 règlement (le carnet démarre vide, ce qui est l'état attendu).
+> Le back-office est inchangé — 68 clients, 137 box, 71 contrats avant comme
+> après. Les sections ci-dessous restent la marche à suivre pour une autre
+> base, ou pour rejouer l'import après mise à jour du CSV.
+
 ### 1. Créer les tables
 
 Dans le SQL Editor Supabase, exécuter **une fois** :
@@ -128,6 +136,10 @@ back-office, et la synchronisation devient possible **dans les deux sens** :
   relié peut alimenter un `payments` et solder la facture correspondante — la
   logique existe déjà dans `markInvoicePaid()` (`lib/actions/invoices.tsx`).
 
+À ce jour aucune liaison n'est renseignée (les trois colonnes sont à `null`
+sur les 63 contrats importés) : les deux référentiels cohabitent sans se
+gêner, exactement comme prévu.
+
 Le rapprochement lui-même n'est pas automatisé : les colonnes sont posées, la
 correspondance nom-à-nom entre l'export CSV et les 68 clients du back-office
 demande une passe de vérification humaine qu'aucune heuristique ne remplace
@@ -180,6 +192,27 @@ dédiée plutôt que par `app/manifest.ts`, pour que `start_url` pointe sur
 `/suivi` et non sur la vitrine du site.
 
 Icônes : `public/suivi/` — régénérables par `npm run suivi:icones`.
+
+## Contrôles effectués sur la base de production
+
+Après application de la migration et de l'import :
+
+| Contrôle | Résultat |
+|---|---|
+| Totaux importés | 62 locataires, 39 box, 63 contrats, 8 710 €, 24 sans box |
+| Idempotence | 63 contrats pour 63 clés `(locataire, box)` distinctes → un ré-import n'insère rien |
+| Back-office intact | 68 / 137 / 71 / 0 / 0 / 61 avant **et** après |
+| RLS `anon` | 0 ligne visible sur `sr_locataires` |
+| RLS `authenticated` sans profil staff | 0 ligne visible |
+| RLS `postgres` | 62 lignes — les policies filtrent bien, elles ne bloquent pas tout |
+| Unicité `(contrat_id, periode)` | doublon rejeté |
+| Contrainte de période | `2026-13` rejeté |
+| Jointures PostgREST | un seul chemin de clé étrangère par relation, aucun embed ambigu |
+| Advisors Supabase | aucun nouvel avertissement lié aux tables `sr_*` |
+
+Reste à valider par vous, faute d'accès réseau à `supabase.co` depuis
+l'environnement de développement : le rendu des écrans branchés sur la vraie
+base, avec une session `admin` ou `employee`.
 
 ## Vie privée
 
