@@ -288,6 +288,61 @@ export type EmailTemplate = {
   updated_at: string;
 };
 
+// ---------------------------------------------------------------------------
+// Application compagnon « Suivi des règlements » (tables sr_*).
+// Les types métier vivent dans lib/suivi/types.ts ; on ne décrit ici que les
+// lignes telles que Supabase les renvoie, colonnes de liaison comprises.
+// ---------------------------------------------------------------------------
+
+export type SrLocataire = {
+  id: string;
+  nom: string;
+  societe: string | null;
+  telephone: string | null;
+  email: string | null;
+  date_entree: string | null;
+  actif: boolean;
+  observations: string | null;
+  observations_updated_at: string | null;
+  customer_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SrBox = {
+  id: string;
+  numero: string;
+  batiment: string;
+  surface_m2: number | null;
+  unit_id: string | null;
+  created_at: string;
+};
+
+export type SrContrat = {
+  id: string;
+  locataire_id: string;
+  box_id: string | null;
+  loyer_mensuel_eur: number;
+  date_debut: string | null;
+  date_fin: string | null;
+  remarque: string | null;
+  contract_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SrReglement = {
+  id: string;
+  contrat_id: string;
+  periode: string;
+  statut: "attendu" | "paye" | "partiel" | "retard";
+  montant_encaisse_eur: number;
+  date_encaissement: string | null;
+  moyen: "virement" | "cheque" | "especes" | "CB" | "autre" | null;
+  note: string | null;
+  updated_at: string;
+};
+
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row;
   Insert: Insert;
@@ -316,6 +371,10 @@ export type Database = {
       signature_requests: Table<SignatureRequest>;
       signed_documents: Table<SignedDocument>;
       security_deposits: Table<SecurityDeposit>;
+      sr_locataires: Table<SrLocataire>;
+      sr_box: Table<SrBox>;
+      sr_contrats: Table<SrContrat>;
+      sr_reglements: Table<SrReglement>;
     };
     Views: Record<string, never>;
     Functions: {

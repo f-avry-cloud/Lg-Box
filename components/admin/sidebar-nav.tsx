@@ -13,6 +13,7 @@ import {
   Settings,
   Wallet,
   Landmark,
+  CheckCircle2,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -30,6 +31,11 @@ const NAV = [
   { href: "/admin/reports", label: "Rapports", icon: Download, adminOnly: false },
   { href: "/admin/settings", label: "Paramètres", icon: Settings, adminOnly: true },
 ];
+
+// L'app compagnon « Suivi des règlements » n'est pas une page du back-office :
+// c'est une PWA autonome, avec sa propre mise en page plein écran. On la
+// pointe donc à part, hors de la navigation principale.
+const APP_COMPAGNON = { href: "/suivi", label: "Suivi des règlements", icon: CheckCircle2 };
 
 export function SidebarNav({ role, onNavigate }: { role: UserRole; onNavigate?: () => void }) {
   const pathname = usePathname();
@@ -53,6 +59,15 @@ export function SidebarNav({ role, onNavigate }: { role: UserRole; onNavigate?: 
           </Link>
         );
       })}
+
+      <a
+        href={APP_COMPAGNON.href}
+        onClick={onNavigate}
+        className="mt-2 flex items-center gap-2 rounded-md border border-dashed border-border px-2.5 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+      >
+        <APP_COMPAGNON.icon className="size-4" />
+        {APP_COMPAGNON.label}
+      </a>
     </nav>
   );
 }

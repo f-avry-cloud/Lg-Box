@@ -145,11 +145,32 @@ Les demandes envoyées depuis l'iframe créent une ligne dans
 `reservation_requests` et vous envoient un email, exactement comme depuis la
 page publique `/` — aucune différence côté back-office.
 
+## Application compagnon « Suivi des règlements » (`/suivi`)
+
+Une PWA mobile, installable sur l'écran d'accueil iOS, dédiée à un seul geste :
+pointer les loyers encaissés mois par mois. Elle vit dans le même dépôt et la
+même base que le back-office, mais dans ses propres tables `sr_*`, reliées aux
+tables du back-office par des colonnes de liaison nullables.
+
+```bash
+SUIVI_DEMO=1 npm run dev     # tourne sans Supabase, sur les données du CSV
+npm run suivi:import          # peuple les tables sr_* depuis data/locataires_seed.csv
+```
+
+Documentation complète — modèle de données, connexion au back-office, règles
+métier, installation iOS : **[`docs/suivi-reglements.md`](docs/suivi-reglements.md)**.
+
+> ⚠️ Ce dépôt est public. Le fichier `data/locataires_seed.csv` (noms,
+> téléphones et e-mails de locataires réels) est volontairement **non
+> versionné** ; un jeu pseudonymisé de structure identique le remplace pour la
+> démonstration. Voir [`data/README.md`](data/README.md).
+
 ## Structure du projet
 
 ```
 app/
   admin/          # Back-office (protégé, rôle admin/employee)
+  suivi/          # App compagnon « Suivi des règlements » (PWA, protégée)
   portail/        # Espace client (protégé, rôle tenant)
   api/cron/       # Jobs planifiés (facturation, relances)
   api/export/     # Export CSV (staff uniquement)
@@ -159,10 +180,13 @@ components/
   admin/ units/ customers/ contracts/ invoices/ ...
 lib/
   supabase/       # Clients Supabase (navigateur, serveur, service role)
+  suivi/          # Modèle, périodes, totaux et accès données de l'app compagnon
   actions/        # Server Actions (mutations)
   business/       # Logique métier pure (préavis, numérotation, statuts...)
   pdf/            # Génération de PDF (contrats, factures)
   email/          # Templates et envoi Resend
+scripts/          # Import CSV, génération du jeu de démo et des icônes PWA
+data/             # CSV de départ de l'app compagnon (le fichier réel est gitignoré)
 supabase/
   schema.sql      # Schéma complet + RLS
   storage.sql     # Buckets + policies de stockage

@@ -1,0 +1,211 @@
+// Accès aux données de l'application « Suivi des règlements ».
+//
+// Deux implémentations derrière la même interface :
+//  - Supabase, sur les tables sr_* de la base du back-office ;
+//  - un magasin en mémoire alimenté par le CSV, pour tourner en local sans base.
+//
+// C'est ici, et uniquement ici, que se décide laquelle est utilisée : les
+// écrans et les Server Actions ne connaissent que cette interface.
+
+import { createClient } from "@/lib/supabase/server";
+import {
+  demoContrat,
+  demoEnregistreObservations,
+  demoFiche,
+  demoLignesMois,
+  demoSupprimeReglement,
+  demoUpsertReglement,
+} from "@/lib/suivi/demo-store";
+import type {
+  Box,
+  Contrat,
+  FicheLocataire,
+  LigneMois,
+  Locataire,
+  Reglement,
+} from "@/lib/suivi/types";
+
+/**
+ * Mode démo si Supabase n'est pas configuré, ou si on le force via
+ * SUIVI_DEMO=1 (utile pour montrer l'app sans toucher aux données réelles).
+ */
+export function estModeDemo(): boolean {
+  if (process.env.SUIVI_DEMO === "1") return true;
+  return !process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+}
+
+// Formes renvoyées par les jointures Supabase, avant aplatissement.
+type ContratJoint = Contrat & {
+  sr_locataires: Pick<Locataire, "id" | "nom" | "societe"> | null;
+  sr_box: Pick<Box, "numero" | "batiment"> | null;
+};
+
+export async function lignesDuMois(periode: string): Promise<LigneMois[]> {
+  if (estModeDemo()) return demoLignesMois(periode);
+
+  const supabase = await createClient();
+
+  // Deux requêtes plutôt qu'une jointure sur les règlements : on veut TOUS les
+  // contrats, y compris ceux sans ligne pour la période (= « attendu »), et un
+  // left join filtré sur la période est plus fragile à écrire côté PostgREST.
+  const [contratsRes, reglementsRes] = await Promise.all([
+    supabase
+      .from("sr_contrats")
+      .select(
+        "id, locataire_id, box_id, loyer_mensuel_eur, date_debut, date_fin, remarque, sr_locataires (id, nom, societe), sr_box (numero, batiment)"
+      )
+      .is("date_fin", null),
+    supabase.from("sr_reglements").select("*").eq("periode", periode),
+  ]);
+
+  if (contratsRes.error) throw new Error(contratsRes.error.message);
+  if (reglementsRes.error) throw new Error(reglementsRes.error.message);
+
+  const parContrat = new Map<string, Reglement>();
+  for (const r of (reglementsRes.data ?? []) as Reglement[]) {
+    parContrat.set(r.contrat_id, r);
+  }
+
+  return ((contratsRes.data ?? []) as unknown as ContratJoint[])
+    .filter((c) => c.sr_locataires !== null)
+    .map((c) => ({
+      contrat_id: c.id,
+      locataire_id: c.sr_locataires!.id,
+      nom: c.sr_locataires!.nom,
+      societe: c.sr_locataires!.societe,
+      box_numero: c.sr_box?.numero ?? null,
+      batiment: c.sr_box?.batiment ?? null,
+      loyer_mensuel_eur: c.loyer_mensuel_eur,
+      reglement: parContrat.get(c.id) ?? null,
+    }));
+}
+
+export async function ficheLocataire(locataireId: string): Promise<FicheLocataire | null> {
+  if (estModeDemo()) return demoFiche(locataireId);
+
+  const supabase = await createClient();
+
+  const { data: locataire, error } = await supabase
+    .from("sr_locataires")
+    .select("*")
+    .eq("id", locataireId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!locataire) return null;
+
+  const { data: contrats, error: erreurContrats } = await supabase
+    .from("sr_contrats")
+    .select(
+      "id, locataire_id, box_id, loyer_mensuel_eur, date_debut, date_fin, remarque, sr_box (id, numero, batiment, surface_m2)"
+    )
+    .eq("locataire_id", locataireId);
+
+  if (erreurContrats) throw new Error(erreurContrats.message);
+
+  const lignes = (contrats ?? []) as unknown as Array<Contrat & { sr_box: Box | null }>;
+  const ids = lignes.map((c) => c.id);
+
+  let reglements: Reglement[] = [];
+  if (ids.length > 0) {
+    const { data, error: erreurReglements } = await supabase
+      .from("sr_reglements")
+      .select("*")
+      .in("contrat_id", ids);
+    if (erreurReglements) throw new Error(erreurReglements.message);
+    reglements = (data ?? []) as Reglement[];
+  }
+
+  return {
+    locataire: locataire as Locataire,
+    contrats: lignes.map(({ sr_box, ...contrat }) => ({ ...contrat, box: sr_box })),
+    reglements,
+  };
+}
+
+export async function contratParId(contratId: string): Promise<Contrat | null> {
+  if (estModeDemo()) return demoContrat(contratId);
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("sr_contrats")
+    .select("id, locataire_id, box_id, loyer_mensuel_eur, date_debut, date_fin, remarque")
+    .eq("id", contratId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return (data as Contrat | null) ?? null;
+}
+
+export type PatchReglement = Partial<Omit<Reglement, "id" | "contrat_id" | "periode">>;
+
+export async function enregistreReglement(
+  contratId: string,
+  periode: string,
+  patch: PatchReglement
+): Promise<void> {
+  if (estModeDemo()) {
+    demoUpsertReglement(contratId, periode, patch);
+    return;
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("sr_reglements").upsert(
+    {
+      contrat_id: contratId,
+      periode,
+      statut: patch.statut ?? "paye",
+      montant_encaisse_eur: patch.montant_encaisse_eur ?? 0,
+      date_encaissement: patch.date_encaissement ?? null,
+      moyen: patch.moyen ?? null,
+      note: patch.note ?? null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "contrat_id,periode" }
+  );
+
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Annuler un règlement supprime la ligne au lieu de la passer à « attendu » :
+ * l'absence de ligne EST l'état attendu, garder une ligne vide encombrerait la
+ * table de 63 enregistrements inutiles par mois.
+ */
+export async function annuleReglement(contratId: string, periode: string): Promise<void> {
+  if (estModeDemo()) {
+    demoSupprimeReglement(contratId, periode);
+    return;
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("sr_reglements")
+    .delete()
+    .eq("contrat_id", contratId)
+    .eq("periode", periode);
+
+  if (error) throw new Error(error.message);
+}
+
+export async function enregistreObservations(
+  locataireId: string,
+  observations: string
+): Promise<void> {
+  if (estModeDemo()) {
+    demoEnregistreObservations(locataireId, observations);
+    return;
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("sr_locataires")
+    .update({
+      observations: observations.trim() === "" ? null : observations,
+      observations_updated_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", locataireId);
+
+  if (error) throw new Error(error.message);
+}

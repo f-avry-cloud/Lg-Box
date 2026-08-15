@@ -1,0 +1,69 @@
+/*
+ * Feuille propre à l'application « Suivi des règlements ».
+ *
+ * Elle ne redéfinit pas la charte (les jetons de couleur viennent de
+ * app/globals.css) : elle n'ajoute que ce que Tailwind ne sait pas exprimer —
+ * les zones de sécurité iOS et quelques contraintes tactiles.
+ */
+
+.suivi-app {
+  /* Hauteurs des barres collantes, réutilisées pour les marges internes. */
+  --suivi-header-h: 7.5rem;
+  --suivi-totaux-h: 4.75rem;
+
+  /* Contrastes francs : l'app doit rester lisible en plein soleil. */
+  --suivi-vert: #1f7a45;
+  --suivi-orange: #b5580d;
+  --suivi-gris: #6d6559;
+
+  min-height: 100dvh;
+  background: var(--background);
+  /* Empêche le rebond élastique iOS de décoller les barres collantes. */
+  overscroll-behavior-y: contain;
+}
+
+/* Zones de sécurité : encoche en haut, barre d'accueil en bas. */
+.suivi-safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.suivi-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Le corps de liste laisse la place aux deux barres collantes. */
+.suivi-scroll {
+  padding-bottom: calc(var(--suivi-totaux-h) + env(safe-area-inset-bottom, 0px) + 1rem);
+}
+
+/*
+ * Le bouton d'encaissement et la ligne sont deux cibles tactiles voisines :
+ * on coupe la sélection de texte et le surlignage bleu iOS pour qu'un appui
+ * long sur le bouton ouvre la feuille au lieu de sélectionner le nom.
+ */
+.suivi-tap {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+/* Feuille modale montant du bas. */
+@keyframes suivi-monte {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.suivi-feuille {
+  animation: suivi-monte 180ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .suivi-feuille {
+    animation: none;
+  }
+}
