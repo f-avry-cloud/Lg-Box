@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { groupeParBatiment } from "@/lib/suivi/box";
+import { groupeParBatiment, parseBoxReferenceCsv } from "@/lib/suivi/box";
+import { BOX_REFERENCE_CSV } from "@/lib/suivi/box-reference";
 import { BATIMENT_A_LOCALISER, BATIMENT_NON_PRECISE, type BoxListe } from "@/lib/suivi/types";
 
 function box(
@@ -17,6 +18,7 @@ function box(
     statut: "libre",
     prix_mensuel_standard: 0,
     locataire: null,
+    contrat_id: null,
     ...extra,
   };
 }
@@ -99,5 +101,42 @@ describe("groupeParBatiment", () => {
 
   it("rend une liste vide sans box", () => {
     expect(groupeParBatiment([])).toEqual([]);
+  });
+});
+
+describe("parseBoxReferenceCsv", () => {
+  it("lit le référentiel fourni par l'exploitant", () => {
+    const ref = parseBoxReferenceCsv(BOX_REFERENCE_CSV);
+    expect(ref).toHaveLength(67);
+    expect(ref.filter((b) => b.surface_m2 !== null)).toHaveLength(41);
+  });
+
+  it("traite une surface vide comme inconnue, jamais comme zéro", () => {
+    const ref = parseBoxReferenceCsv("batiment,numero,surface_m2\nBât I,1,\nBât I,2,12");
+    expect(ref[0].surface_m2).toBeNull();
+    expect(ref[1].surface_m2).toBe(12);
+  });
+
+  it("reproduit les effectifs par bâtiment du site", () => {
+    const parBatiment = new Map<string, number>();
+    for (const b of parseBoxReferenceCsv(BOX_REFERENCE_CSV)) {
+      parBatiment.set(b.batiment, (parBatiment.get(b.batiment) ?? 0) + 1);
+    }
+    expect(Object.fromEntries(parBatiment)).toEqual({
+      "Bât I": 15,
+      "Bât II": 9,
+      "Bât III": 9,
+      "Bât IV": 9,
+      RDJ: 6,
+      Étage: 19,
+    });
+  });
+
+  it("totalise 467 m² de surface connue", () => {
+    const total = parseBoxReferenceCsv(BOX_REFERENCE_CSV).reduce(
+      (s, b) => s + (b.surface_m2 ?? 0),
+      0
+    );
+    expect(total).toBe(467);
   });
 });

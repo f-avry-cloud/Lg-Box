@@ -48,3 +48,32 @@ export function groupeParBatiment(box: BoxListe[]): GroupeBatiment[] {
       return a.batiment.localeCompare(b.batiment, "fr", { numeric: true });
     });
 }
+
+export type BoxReference = {
+  batiment: string;
+  numero: string;
+  /** null quand la surface n'est pas connue — un état fréquent et légitime. */
+  surface_m2: number | null;
+};
+
+/**
+ * Lit le référentiel de box fourni par l'exploitant
+ * (`batiment,numero,surface_m2`). Une surface vide vaut « inconnue », jamais 0 :
+ * additionner des zéros donnerait une surface totale fausse mais crédible.
+ */
+export function parseBoxReferenceCsv(contenu: string): BoxReference[] {
+  const lignes = contenu.trim().split("\n");
+  const resultat: BoxReference[] = [];
+
+  for (const ligne of lignes.slice(1)) {
+    const [batiment, numero, surface] = ligne.split(",").map((c) => (c ?? "").trim());
+    if (!batiment || !numero) continue;
+    resultat.push({
+      batiment,
+      numero,
+      surface_m2: surface === "" ? null : Number(surface),
+    });
+  }
+
+  return resultat;
+}

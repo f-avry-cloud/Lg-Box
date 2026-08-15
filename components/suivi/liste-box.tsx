@@ -5,7 +5,12 @@ import { Pencil, Plus, Search } from "lucide-react";
 
 import { FeuilleBox } from "@/components/suivi/feuille-box";
 import { couleurPastille } from "@/lib/suivi/totals";
-import { estBatimentATraiter, type BoxListe, type GroupeBatiment } from "@/lib/suivi/types";
+import {
+  estBatimentATraiter,
+  type BoxListe,
+  type ContratSansBox,
+  type GroupeBatiment,
+} from "@/lib/suivi/types";
 import { cn } from "@/lib/utils";
 
 const LIBELLE_STATUT: Record<BoxListe["statut"], string> = {
@@ -31,10 +36,12 @@ export function ListeBox({
   groupes,
   modifiable,
   batiments,
+  contratsSansBox,
 }: {
   groupes: GroupeBatiment[];
   modifiable: boolean;
   batiments: string[];
+  contratsSansBox: ContratSansBox[];
 }) {
   const [recherche, setRecherche] = useState("");
   const [boxEnEdition, setBoxEnEdition] = useState<BoxListe | null>(null);
@@ -107,6 +114,24 @@ export function ListeBox({
       {!modifiable && (
         <p className="border-b border-[var(--suivi-orange)]/30 bg-[var(--suivi-orange)]/10 px-4 py-2 text-sm font-medium text-[var(--suivi-orange)]">
           Mode démo — liste reconstituée depuis le CSV, édition indisponible.
+        </p>
+      )}
+
+      {/*
+        Le rapprochement locataire ↔ box était invisible : il fallait deviner
+        qu'il se cachait dans la fiche d'un locataire. On annonce le travail
+        restant là où il se fait, sur l'écran Box.
+      */}
+      {contratsSansBox.length > 0 && (
+        <p className="border-b border-[var(--suivi-orange)]/30 bg-[var(--suivi-orange)]/10 px-4 py-2 text-sm font-medium text-[var(--suivi-orange)]">
+          {/*
+            Phrase construite en une seule expression : coupée sur plusieurs
+            lignes de JSX, l'espace de début de ligne est supprimé et « s » se
+            collait à « sans » (« 24 locatairessans box »).
+          */}
+          {`${contratsSansBox.length} locataire${
+            contratsSansBox.length > 1 ? "s" : ""
+          } sans box — ouvrez un box pour l'affecter.`}
         </p>
       )}
 
@@ -206,6 +231,7 @@ export function ListeBox({
           box={boxEnEdition}
           creation={creation}
           batiments={batiments}
+          contratsSansBox={contratsSansBox}
           onFermer={() => {
             setBoxEnEdition(null);
             setCreation(false);

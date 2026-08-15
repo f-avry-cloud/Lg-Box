@@ -111,6 +111,8 @@ export type BoxListe = {
   prix_mensuel_standard: number;
   /** Locataire en place, quand le box est loué. */
   locataire: string | null;
+  /** Contrat qui occupe ce box — nécessaire pour l'en détacher. */
+  contrat_id: string | null;
 };
 
 export type GroupeBatiment = {
@@ -165,4 +167,13 @@ export type BoxRattachable = {
   surface_m2: number | null;
   /** Nom du locataire déjà rattaché à ce box, le cas échéant. */
   dejaRattacheA: string | null;
+};
+
+/** Un contrat encore sans box, proposé à l'affectation depuis l'écran Box. */
+export type ContratSansBox = {
+  contrat_id: string;
+  locataire_id: string;
+  nom: string;
+  societe: string | null;
+  loyer_mensuel_eur: number;
 };

@@ -8,7 +8,8 @@ import { FeuilleModale } from "@/components/suivi/feuille-modale";
 import { vibre } from "@/components/suivi/bouton-encaissement";
 import { Button } from "@/components/ui/button";
 import { creeBox, modifieBox, supprimeBox } from "@/lib/actions/suivi-box";
-import type { BoxListe } from "@/lib/suivi/types";
+import { detacheBoxDuContrat, rattacheBoxAuContrat } from "@/lib/actions/suivi";
+import type { BoxListe, ContratSansBox } from "@/lib/suivi/types";
 import { cn } from "@/lib/utils";
 
 /**
@@ -23,12 +24,14 @@ export function FeuilleBox({
   box,
   creation,
   batiments,
+  contratsSansBox,
   onFermer,
 }: {
   /** Box à modifier, ou null en création. */
   box: BoxListe | null;
   creation: boolean;
   batiments: string[];
+  contratsSansBox: ContratSansBox[];
   onFermer: () => void;
 }) {
   const router = useRouter();
@@ -38,6 +41,8 @@ export function FeuilleBox({
   const [nouveauBatiment, setNouveauBatiment] = useState(false);
   const [initialisePour, setInitialisePour] = useState<string | null>(null);
   const [confirmeSuppression, setConfirmeSuppression] = useState(false);
+  const [choixLocataire, setChoixLocataire] = useState(false);
+  const [rechercheLocataire, setRechercheLocataire] = useState("");
   const [enCours, demarreTransition] = useTransition();
 
   const cle = creation ? "creation" : box?.id ?? null;
@@ -49,6 +54,8 @@ export function FeuilleBox({
     setBatiment(box?.batiment ?? batiments[0] ?? "");
     setNouveauBatiment(false);
     setConfirmeSuppression(false);
+    setChoixLocataire(false);
+    setRechercheLocataire("");
   }
 
   if (!creation && !box) return null;
@@ -180,6 +187,115 @@ export function FeuilleBox({
           >
             Autre…
           </button>
+        </div>
+      )}
+
+      {/*
+        Affectation dans le sens box → locataire : c'est ainsi que l'exploitant
+        raisonne quand il identifie un box sur le terrain. Le sens inverse
+        existe aussi, depuis la fiche du locataire.
+      */}
+      {!creation && box && (
+        <div className="mb-4 rounded-xl border border-border bg-secondary/40 p-3">
+          <span className="mb-1 block text-sm font-medium">Locataire</span>
+
+          {box.locataire ? (
+            <div className="flex items-center justify-between gap-2">
+              <span className="min-w-0 flex-1 truncate text-base font-bold">{box.locataire}</span>
+              <button
+                type="button"
+                disabled={enCours}
+                onClick={() => {
+                  demarreTransition(async () => {
+                    const resultat = await detacheBoxDuContrat(box.contrat_id!);
+                    if (!resultat.success) {
+                      vibre(60);
+                      toast.error(resultat.error ?? "Détachement impossible.");
+                      return;
+                    }
+                    vibre();
+                    toast.success("Locataire détaché.");
+                    onFermer();
+                    router.refresh();
+                  });
+                }}
+                className="suivi-tap min-h-11 shrink-0 rounded-lg px-3 text-sm font-semibold text-destructive active:bg-secondary"
+              >
+                Détacher
+              </button>
+            </div>
+          ) : choixLocataire ? (
+            <>
+              <input
+                type="search"
+                value={rechercheLocataire}
+                onChange={(e) => setRechercheLocataire(e.target.value)}
+                placeholder="Nom du locataire"
+                aria-label="Rechercher un locataire"
+                className="mb-2 h-12 w-full rounded-xl border border-input bg-background px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <div className="max-h-64 overflow-y-auto">
+                {contratsSansBox
+                  .filter((c) =>
+                    `${c.nom} ${c.societe ?? ""}`
+                      .toLocaleLowerCase("fr")
+                      .includes(rechercheLocataire.trim().toLocaleLowerCase("fr"))
+                  )
+                  .map((c) => (
+                    <button
+                      key={c.contrat_id}
+                      type="button"
+                      disabled={enCours}
+                      onClick={() => {
+                        demarreTransition(async () => {
+                          const resultat = await rattacheBoxAuContrat(c.contrat_id, box.id);
+                          if (!resultat.success) {
+                            vibre(60);
+                            toast.error(resultat.error ?? "Affectation impossible.");
+                            return;
+                          }
+                          vibre();
+                          toast.success(`${c.nom} rattaché au box ${box.numero}.`);
+                          onFermer();
+                          router.refresh();
+                        });
+                      }}
+                      className="suivi-tap flex min-h-14 w-full items-center justify-between gap-2 border-b border-border/70 px-1 text-left last:border-0 active:bg-secondary"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-base font-semibold">{c.nom}</span>
+                        {c.societe && (
+                          <span className="block truncate text-sm text-[var(--suivi-gris)]">
+                            {c.societe}
+                          </span>
+                        )}
+                      </span>
+                      <span className="shrink-0 text-sm font-semibold tabular-nums">
+                        {c.loyer_mensuel_eur} €
+                      </span>
+                    </button>
+                  ))}
+
+                {contratsSansBox.length === 0 && (
+                  <p className="py-3 text-center text-sm text-[var(--suivi-gris)]">
+                    Tous les locataires ont déjà un box.
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-12 w-full text-base"
+              disabled={contratsSansBox.length === 0}
+              onClick={() => setChoixLocataire(true)}
+            >
+              {contratsSansBox.length === 0
+                ? "Aucun locataire en attente"
+                : `Affecter un locataire (${contratsSansBox.length} en attente)`}
+            </Button>
+          )}
         </div>
       )}
 

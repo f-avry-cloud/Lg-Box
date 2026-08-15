@@ -18,7 +18,9 @@ import {
   demoUpsertReglement,
 } from "@/lib/suivi/demo-store";
 import { calculeTotaux } from "@/lib/suivi/totals";
-import { groupeParBatiment } from "@/lib/suivi/box";
+import { groupeParBatiment, parseBoxReferenceCsv } from "@/lib/suivi/box";
+import { BOX_REFERENCE_CSV } from "@/lib/suivi/box-reference";
+import { periodeCourante } from "@/lib/suivi/period";
 import {
   type Box,
   type BoxListe,
@@ -28,6 +30,7 @@ import {
   type LigneMois,
   type Locataire,
   type BoxRattachable,
+  type ContratSansBox,
   type Reglement,
   type StatsTableauDeBord,
 } from "@/lib/suivi/types";
@@ -243,7 +246,7 @@ export async function listeBox(): Promise<GroupeBatiment[]> {
     supabase.from("sr_box").select("id, numero, batiment, surface_m2, unit_id"),
     supabase
       .from("sr_contrats")
-      .select("box_id, sr_locataires (nom)")
+      .select("id, box_id, sr_locataires (nom)")
       .not("box_id", "is", null)
       .is("date_fin", null),
   ]);
@@ -252,26 +255,30 @@ export async function listeBox(): Promise<GroupeBatiment[]> {
   if (contratsRes.error) throw new Error(contratsRes.error.message);
 
   type ContratJointNom = {
+    id: string;
     box_id: string | null;
     sr_locataires: { nom: string } | null;
   };
 
-  const locataireParBox = new Map<string, string>();
+  const occupantParBox = new Map<string, { nom: string; contratId: string }>();
   for (const c of (contratsRes.data ?? []) as unknown as ContratJointNom[]) {
-    if (c.box_id && c.sr_locataires?.nom) locataireParBox.set(c.box_id, c.sr_locataires.nom);
+    if (c.box_id && c.sr_locataires?.nom) {
+      occupantParBox.set(c.box_id, { nom: c.sr_locataires.nom, contratId: c.id });
+    }
   }
 
   const box: BoxListe[] = (boxRes.data ?? []).map((b) => {
-    const locataire = locataireParBox.get(b.id) ?? null;
+    const occupant = occupantParBox.get(b.id) ?? null;
     return {
       id: b.id,
       numero: b.numero,
       batiment: b.batiment,
       surface_m2: b.surface_m2,
       // Le carnet ne connaît que deux états : occupé par un locataire, ou non.
-      statut: locataire ? ("loue" as const) : ("libre" as const),
+      statut: occupant ? ("loue" as const) : ("libre" as const),
       prix_mensuel_standard: 0,
-      locataire,
+      locataire: occupant?.nom ?? null,
+      contrat_id: occupant?.contratId ?? null,
     };
   });
 
@@ -285,7 +292,11 @@ export function boxModifiables(): boolean {
 
 /** Les bâtiments déjà utilisés, proposés à la saisie d'un nouveau box. */
 export async function batimentsConnus(): Promise<string[]> {
-  if (estModeDemo()) return [];
+  if (estModeDemo()) {
+    return [...new Set(parseBoxReferenceCsv(BOX_REFERENCE_CSV).map((b) => b.batiment))].sort(
+      (a, b) => a.localeCompare(b, "fr", { numeric: true })
+    );
+  }
   const supabase = await createClient();
   const { data, error } = await supabase.from("sr_box").select("batiment");
   if (error) throw new Error(error.message);
@@ -294,18 +305,50 @@ export async function batimentsConnus(): Promise<string[]> {
   );
 }
 
+/**
+ * Comparaison de bâtiments tolérante aux accents et à la casse : le carnet
+ * d'encaissement écrit « Bat I » et « Etage », le référentiel « Bât I » et
+ * « Étage ». Utilisée uniquement par le mode démo, pour rapprocher les deux
+ * jeux de fichiers ; en base, c'est `box_id` qui fait foi.
+ */
+function normaliseBatiment(valeur: string | null): string {
+  return (valeur ?? "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase("fr")
+    .trim();
+}
+
 function demoBoxListe(): BoxListe[] {
-  // Le mode démo n'a pas de table units : on reconstitue la liste depuis les
-  // box du CSV, surface comprise, avec le loyer du contrat associé comme prix.
-  return demoBoxAvecOccupant().map(({ box, locataire, loyer }) => ({
-    id: box.id,
-    numero: box.numero,
-    batiment: box.batiment,
-    surface_m2: box.surface_m2,
-    statut: locataire ? ("loue" as const) : ("libre" as const),
-    prix_mensuel_standard: loyer,
-    locataire,
-  }));
+  // Le mode démo part du référentiel fourni par l'exploitant (67 box), et non
+  // des seuls box déduits du carnet : sans cela, tous les box seraient occupés
+  // et l'affectation d'un locataire n'aurait aucune cible.
+  const occupants = new Map<string, { nom: string; loyer: number }>();
+  for (const { box, locataire, loyer } of demoBoxAvecOccupant()) {
+    if (locataire) {
+      occupants.set(`${normaliseBatiment(box.batiment)}|${box.numero.toLowerCase()}`, {
+        nom: locataire,
+        loyer,
+      });
+    }
+  }
+
+  const reference = parseBoxReferenceCsv(BOX_REFERENCE_CSV);
+
+  return reference.map((b) => {
+    const occupant =
+      occupants.get(`${normaliseBatiment(b.batiment)}|${b.numero.toLowerCase()}`) ?? null;
+    return {
+      id: `${b.batiment}|${b.numero}`,
+      numero: b.numero,
+      batiment: b.batiment,
+      surface_m2: b.surface_m2,
+      statut: occupant ? ("loue" as const) : ("libre" as const),
+      prix_mensuel_standard: occupant?.loyer ?? 0,
+      locataire: occupant?.nom ?? null,
+      contrat_id: null,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -418,4 +461,53 @@ export async function boxRattachables(): Promise<BoxRattachable[]> {
     surface_m2: b.surface_m2,
     dejaRattacheA: occupantParBox.get(b.id) ?? null,
   }));
+}
+
+
+/**
+ * Les contrats du carnet qui attendent encore leur box (24 aujourd'hui).
+ *
+ * Sert à l'affectation dans le sens box → locataire, celui dans lequel
+ * l'exploitant raisonne : il ouvre un box qu'il vient d'identifier sur le
+ * terrain et lui donne son occupant.
+ */
+export async function contratsSansBox(): Promise<ContratSansBox[]> {
+  if (estModeDemo()) {
+    return demoLignesMois(periodeCourante())
+      .filter((l) => l.box_numero === null)
+      .map((l) => ({
+        contrat_id: l.contrat_id,
+        locataire_id: l.locataire_id,
+        nom: l.nom,
+        societe: l.societe,
+        loyer_mensuel_eur: l.loyer_mensuel_eur,
+      }))
+      .sort((a, b) => a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }));
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("sr_contrats")
+    .select("id, loyer_mensuel_eur, sr_locataires (id, nom, societe)")
+    .is("box_id", null)
+    .is("date_fin", null);
+
+  if (error) throw new Error(error.message);
+
+  type Joint = {
+    id: string;
+    loyer_mensuel_eur: number;
+    sr_locataires: { id: string; nom: string; societe: string | null } | null;
+  };
+
+  return ((data ?? []) as unknown as Joint[])
+    .filter((c) => c.sr_locataires !== null)
+    .map((c) => ({
+      contrat_id: c.id,
+      locataire_id: c.sr_locataires!.id,
+      nom: c.sr_locataires!.nom,
+      societe: c.sr_locataires!.societe,
+      loyer_mensuel_eur: c.loyer_mensuel_eur,
+    }))
+    .sort((a, b) => a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }));
 }

@@ -1,9 +1,26 @@
 import { ListeBox } from "@/components/suivi/liste-box";
-import { batimentsConnus, boxModifiables, listeBox } from "@/lib/suivi/repository";
+import {
+  batimentsConnus,
+  boxModifiables,
+  contratsSansBox,
+  listeBox,
+} from "@/lib/suivi/repository";
 
 export const dynamic = "force-dynamic";
 
 export default async function BoxPage() {
-  const [groupes, batiments] = await Promise.all([listeBox(), batimentsConnus()]);
-  return <ListeBox groupes={groupes} modifiable={boxModifiables()} batiments={batiments} />;
+  const [groupes, batiments, enAttente] = await Promise.all([
+    listeBox(),
+    batimentsConnus(),
+    contratsSansBox(),
+  ]);
+
+  return (
+    <ListeBox
+      groupes={groupes}
+      modifiable={boxModifiables()}
+      batiments={batiments}
+      contratsSansBox={enAttente}
+    />
+  );
 }
