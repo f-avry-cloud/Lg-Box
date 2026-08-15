@@ -157,13 +157,12 @@ export type StatsTableauDeBord = {
 // Rapprochement box ↔ locataire
 // ---------------------------------------------------------------------------
 
-/** Un box du back-office proposé au rattachement, avec ce qui l'occupe déjà. */
+/** Un box du référentiel mobile proposé au rattachement à un locataire. */
 export type BoxRattachable = {
-  unit_id: string;
+  box_id: string;
   numero: string;
   batiment: string | null;
   surface_m2: number | null;
-  statut: "libre" | "loue" | "reserve" | "hors_service";
-  /** Nom du locataire du carnet déjà rattaché à ce box, le cas échéant. */
+  /** Nom du locataire déjà rattaché à ce box, le cas échéant. */
   dejaRattacheA: string | null;
 };

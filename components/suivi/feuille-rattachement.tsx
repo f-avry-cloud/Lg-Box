@@ -12,7 +12,7 @@ import { estBatimentATraiter, type BoxRattachable } from "@/lib/suivi/types";
 import { cn } from "@/lib/utils";
 
 /**
- * Choix d'un box du back-office à rattacher à un contrat du carnet.
+ * Choix d'un box à rattacher à un contrat, dans le référentiel de l'app.
  *
  * Les box déjà pris restent visibles mais non sélectionnables : les masquer
  * ferait chercher en vain un box qu'on croit libre. On dit qui l'occupe.
@@ -65,7 +65,7 @@ export function FeuilleRattachement({
 
   const rattache = (box: BoxRattachable) => {
     demarreTransition(async () => {
-      const resultat = await rattacheBoxAuContrat(contratId, box.unit_id);
+      const resultat = await rattacheBoxAuContrat(contratId, box.box_id);
       if (!resultat.success) {
         vibre(60);
         toast.error(resultat.error ?? "Rattachement impossible.");
@@ -118,7 +118,7 @@ export function FeuilleRattachement({
               const pris = box.dejaRattacheA !== null;
               return (
                 <button
-                  key={box.unit_id}
+                  key={box.box_id}
                   type="button"
                   disabled={pris || enCours}
                   onClick={() => rattache(box)}
@@ -146,7 +146,7 @@ export function FeuilleRattachement({
       ))}
 
       <p className="mt-2 text-center text-sm text-[var(--suivi-gris)]">
-        Le box choisi est celui du back-office : le rattachement relie les deux fiches.
+        Le rattachement ne touche que les données de l&apos;application.
       </p>
     </FeuilleModale>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Pencil, Search } from "lucide-react";
+import { Pencil, Plus, Search } from "lucide-react";
 
 import { FeuilleBox } from "@/components/suivi/feuille-box";
 import { couleurPastille } from "@/lib/suivi/totals";
@@ -30,12 +30,15 @@ function couleurStatut(statut: BoxListe["statut"]): string {
 export function ListeBox({
   groupes,
   modifiable,
+  batiments,
 }: {
   groupes: GroupeBatiment[];
   modifiable: boolean;
+  batiments: string[];
 }) {
   const [recherche, setRecherche] = useState("");
   const [boxEnEdition, setBoxEnEdition] = useState<BoxListe | null>(null);
+  const [creation, setCreation] = useState(false);
 
   const affiches = useMemo(() => {
     const terme = recherche.trim().toLocaleLowerCase("fr");
@@ -87,6 +90,19 @@ export function ListeBox({
           />
         </div>
       </header>
+
+      {modifiable && (
+        // Bouton flottant plutôt qu'en tête d'écran : ajouter un box est un
+        // geste occasionnel, mais il doit rester atteignable au pouce.
+        <button
+          type="button"
+          onClick={() => setCreation(true)}
+          aria-label="Ajouter un box"
+          className="suivi-tap fixed bottom-[calc(var(--suivi-onglets-h)+env(safe-area-inset-bottom,0px)+1rem)] right-4 z-30 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg"
+        >
+          <Plus className="size-7" />
+        </button>
+      )}
 
       {!modifiable && (
         <p className="border-b border-[var(--suivi-orange)]/30 bg-[var(--suivi-orange)]/10 px-4 py-2 text-sm font-medium text-[var(--suivi-orange)]">
@@ -185,7 +201,17 @@ export function ListeBox({
         )}
       </div>
 
-      <FeuilleBox box={boxEnEdition} onFermer={() => setBoxEnEdition(null)} />
+      {(boxEnEdition || creation) && (
+        <FeuilleBox
+          box={boxEnEdition}
+          creation={creation}
+          batiments={batiments}
+          onFermer={() => {
+            setBoxEnEdition(null);
+            setCreation(false);
+          }}
+        />
+      )}
     </div>
   );
 }

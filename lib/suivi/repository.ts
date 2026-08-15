@@ -236,48 +236,62 @@ export async function listeBox(): Promise<GroupeBatiment[]> {
 
   const supabase = await createClient();
 
-  const [unitsRes, contratsRes] = await Promise.all([
+  // Le référentiel de l'app est `sr_box`, pas `units` : corriger un numéro ou
+  // une surface depuis le téléphone ne doit rien changer au back-office.
+  // `unit_id` reste le pont, renseigné au rapprochement, jamais écrit ici.
+  const [boxRes, contratsRes] = await Promise.all([
+    supabase.from("sr_box").select("id, numero, batiment, surface_m2, unit_id"),
     supabase
-      .from("units")
-      .select("id, numero, zone, taille_m2, statut, prix_mensuel_standard")
-      .order("numero", { ascending: true }),
-    supabase
-      .from("contracts")
-      .select("unit_id, customers (prenom, nom)")
-      .in("statut", ["actif", "en_preavis"]),
+      .from("sr_contrats")
+      .select("box_id, sr_locataires (nom)")
+      .not("box_id", "is", null)
+      .is("date_fin", null),
   ]);
 
-  if (unitsRes.error) throw new Error(unitsRes.error.message);
+  if (boxRes.error) throw new Error(boxRes.error.message);
   if (contratsRes.error) throw new Error(contratsRes.error.message);
 
-  type ContratJointClient = {
-    unit_id: string;
-    customers: { prenom: string | null; nom: string | null } | null;
+  type ContratJointNom = {
+    box_id: string | null;
+    sr_locataires: { nom: string } | null;
   };
 
   const locataireParBox = new Map<string, string>();
-  for (const c of (contratsRes.data ?? []) as unknown as ContratJointClient[]) {
-    const client = c.customers;
-    if (!client) continue;
-    locataireParBox.set(c.unit_id, [client.prenom, client.nom].filter(Boolean).join(" ").trim());
+  for (const c of (contratsRes.data ?? []) as unknown as ContratJointNom[]) {
+    if (c.box_id && c.sr_locataires?.nom) locataireParBox.set(c.box_id, c.sr_locataires.nom);
   }
 
-  const box: BoxListe[] = (unitsRes.data ?? []).map((u) => ({
-    id: u.id,
-    numero: u.numero,
-    batiment: u.zone,
-    surface_m2: u.taille_m2,
-    statut: u.statut,
-    prix_mensuel_standard: u.prix_mensuel_standard,
-    locataire: locataireParBox.get(u.id) ?? null,
-  }));
+  const box: BoxListe[] = (boxRes.data ?? []).map((b) => {
+    const locataire = locataireParBox.get(b.id) ?? null;
+    return {
+      id: b.id,
+      numero: b.numero,
+      batiment: b.batiment,
+      surface_m2: b.surface_m2,
+      // Le carnet ne connaît que deux états : occupé par un locataire, ou non.
+      statut: locataire ? ("loue" as const) : ("libre" as const),
+      prix_mensuel_standard: 0,
+      locataire,
+    };
+  });
 
   return groupeParBatiment(box);
 }
 
-/** L'édition écrit dans `units` : impossible sans base. */
+/** L'édition écrit dans `sr_box` : impossible sans base. */
 export function boxModifiables(): boolean {
   return !estModeDemo();
+}
+
+/** Les bâtiments déjà utilisés, proposés à la saisie d'un nouveau box. */
+export async function batimentsConnus(): Promise<string[]> {
+  if (estModeDemo()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("sr_box").select("batiment");
+  if (error) throw new Error(error.message);
+  return [...new Set((data ?? []).map((b) => b.batiment))].sort((a, b) =>
+    a.localeCompare(b, "fr", { numeric: true })
+  );
 }
 
 function demoBoxListe(): BoxListe[] {
@@ -327,9 +341,16 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
 
   const supabase = await createClient();
 
+  // L'occupation se lit sur le référentiel de l'app (67 box réels), pas sur
+  // `units` : celle-ci contient encore 70 lignes « À localiser » issues d'un
+  // import, qui gonfleraient le total et écraseraient le taux.
   const [total, loues, impayes, preavis, demandes] = await Promise.all([
-    supabase.from("units").select("id", { count: "exact", head: true }),
-    supabase.from("units").select("id", { count: "exact", head: true }).eq("statut", "loue"),
+    supabase.from("sr_box").select("id", { count: "exact", head: true }),
+    supabase
+      .from("sr_contrats")
+      .select("id", { count: "exact", head: true })
+      .not("box_id", "is", null)
+      .is("date_fin", null),
     supabase.from("invoices").select("montant_ttc, customer_id").in("statut", ["emise", "en_retard"]),
     supabase.from("contracts").select("id", { count: "exact", head: true }).eq("statut", "en_preavis"),
     supabase
@@ -372,38 +393,29 @@ export async function boxRattachables(): Promise<BoxRattachable[]> {
 
   const supabase = await createClient();
 
-  const [unitsRes, srBoxRes] = await Promise.all([
+  const [boxRes, contratsRes] = await Promise.all([
+    supabase.from("sr_box").select("id, numero, batiment, surface_m2"),
     supabase
-      .from("units")
-      .select("id, numero, zone, taille_m2, statut")
-      .order("numero", { ascending: true }),
-    supabase
-      .from("sr_box")
-      .select("id, unit_id, sr_contrats (sr_locataires (nom))")
-      .not("unit_id", "is", null),
+      .from("sr_contrats")
+      .select("box_id, sr_locataires (nom)")
+      .not("box_id", "is", null),
   ]);
 
-  if (unitsRes.error) throw new Error(unitsRes.error.message);
-  if (srBoxRes.error) throw new Error(srBoxRes.error.message);
+  if (boxRes.error) throw new Error(boxRes.error.message);
+  if (contratsRes.error) throw new Error(contratsRes.error.message);
 
-  type SrBoxJoint = {
-    unit_id: string | null;
-    sr_contrats: Array<{ sr_locataires: { nom: string } | null }> | null;
-  };
+  type ContratJointNom = { box_id: string | null; sr_locataires: { nom: string } | null };
 
-  const occupantParUnit = new Map<string, string>();
-  for (const b of (srBoxRes.data ?? []) as unknown as SrBoxJoint[]) {
-    if (!b.unit_id) continue;
-    const nom = b.sr_contrats?.[0]?.sr_locataires?.nom;
-    if (nom) occupantParUnit.set(b.unit_id, nom);
+  const occupantParBox = new Map<string, string>();
+  for (const c of (contratsRes.data ?? []) as unknown as ContratJointNom[]) {
+    if (c.box_id && c.sr_locataires?.nom) occupantParBox.set(c.box_id, c.sr_locataires.nom);
   }
 
-  return (unitsRes.data ?? []).map((u) => ({
-    unit_id: u.id,
-    numero: u.numero,
-    batiment: u.zone,
-    surface_m2: u.taille_m2,
-    statut: u.statut,
-    dejaRattacheA: occupantParUnit.get(u.id) ?? null,
+  return (boxRes.data ?? []).map((b) => ({
+    box_id: b.id,
+    numero: b.numero,
+    batiment: b.batiment,
+    surface_m2: b.surface_m2,
+    dejaRattacheA: occupantParBox.get(b.id) ?? null,
   }));
 }
