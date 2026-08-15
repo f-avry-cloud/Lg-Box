@@ -191,7 +191,10 @@ Manifeste : `app/suivi/manifest.webmanifest/route.ts` — servi par une route
 dédiée plutôt que par `app/manifest.ts`, pour que `start_url` pointe sur
 `/suivi` et non sur la vitrine du site.
 
-Icônes : `public/suivi/` — régénérables par `npm run suivi:icones`.
+Icônes : `public/suivi/`. La source vectorielle est `icone.svg` (coche
+blanche sur le teal LG BOX) ; les PNG en sont dérivés et versionnés. Aucune
+dépendance de génération d'image n'est installée dans le projet — refaire les
+PNG depuis le SVG avec l'outil de votre choix si la charte change.
 
 ## Contrôles effectués sur la base de production
 
