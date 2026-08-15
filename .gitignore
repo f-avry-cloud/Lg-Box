@@ -40,3 +40,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Données réelles de l'application Suivi des règlements : le dépôt est public,
+# ce fichier contient noms, téléphones et e-mails de locataires réels.
+# Placez-le en local pour l'import et le mode démo « vraies données ».
+/data/locataires_seed.csv
