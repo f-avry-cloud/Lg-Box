@@ -36,7 +36,15 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
   // L'app compagnon /suivi manipule les mêmes données que le back-office :
   // elle est réservée au personnel, avec la même page de connexion.
-  const isAdminArea = pathname.startsWith("/admin") || pathname.startsWith("/suivi");
+  //
+  // Son manifeste fait exception : il ne contient que le nom, les couleurs et
+  // les icônes de l'app, et le navigateur doit pouvoir le lire pour proposer
+  // l'installation sur l'écran d'accueil. Le renvoyer vers la page de
+  // connexion rendrait une page HTML là où iOS attend du JSON. (Les icônes,
+  // elles, sont déjà hors du champ du proxy : voir le matcher de proxy.ts.)
+  const isManifesteSuivi = pathname === "/suivi/manifest.webmanifest";
+  const isAdminArea =
+    pathname.startsWith("/admin") || (pathname.startsWith("/suivi") && !isManifesteSuivi);
   const isPortalArea = pathname.startsWith("/portail") && pathname !== "/portail/connexion";
 
   if (!user && (isAdminArea || isPortalArea)) {
