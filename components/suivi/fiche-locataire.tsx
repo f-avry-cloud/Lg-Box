@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Mail, MessageSquare, Phone } from "lucide-react";
+import { ArrowLeft, Copy, Mail, MessageSquare, Phone } from "lucide-react";
 import { toast } from "sonner";
 
 import { vibre } from "@/components/suivi/bouton-encaissement";
@@ -11,6 +11,7 @@ import {
   FeuilleEncaissement,
   type SaisieEncaissement,
 } from "@/components/suivi/feuille-encaissement";
+import { FeuilleRattachement } from "@/components/suivi/feuille-rattachement";
 import { Button } from "@/components/ui/button";
 import {
   basculeReglement,
@@ -23,6 +24,7 @@ import { couleurPastille, initiales } from "@/lib/suivi/totals";
 import {
   BOX_A_IDENTIFIER,
   MOYEN_LABELS,
+  type BoxRattachable,
   type FicheLocataire,
   type LigneMois,
   type Reglement,
@@ -47,15 +49,18 @@ function couleurStatut(statut: ReglementStatut): string {
 export function FicheLocataireVue({
   fiche,
   periode,
+  boxRattachables = [],
 }: {
   fiche: FicheLocataire;
   periode: string;
+  boxRattachables?: BoxRattachable[];
 }) {
   const router = useRouter();
   const [reglements, setReglements] = useState<Reglement[]>(fiche.reglements);
   const [observations, setObservations] = useState(fiche.locataire.observations ?? "");
   const [horodatage, setHorodatage] = useState(fiche.locataire.observations_updated_at);
   const [contratEnSaisie, setContratEnSaisie] = useState<string | null>(null);
+  const [contratARattacher, setContratARattacher] = useState<string | null>(null);
   const [, demarreTransition] = useTransition();
 
   const parContratEtPeriode = useMemo(() => {
@@ -265,6 +270,18 @@ export function FicheLocataireVue({
                 {contrat.remarque && (
                   <p className="mt-1 text-sm text-[var(--suivi-orange)]">{contrat.remarque}</p>
                 )}
+
+                {/* Le geste qui résout les « box à identifier » du carnet. */}
+                {!contrat.box && boxRattachables.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-3 h-12 w-full text-base"
+                    onClick={() => setContratARattacher(contrat.id)}
+                  >
+                    Rattacher un box
+                  </Button>
+                )}
               </div>
             );
           })}
@@ -277,23 +294,35 @@ export function FicheLocataireVue({
           Contacter
         </h2>
         {locataire.telephone || locataire.email ? (
-          <div className="grid grid-cols-3 gap-2">
-            <BoutonContact
-              href={locataire.telephone ? `tel:${locataire.telephone}` : null}
-              icone={<Phone className="size-6" />}
-              libelle="Appeler"
-            />
-            <BoutonContact
-              href={locataire.telephone ? `sms:${locataire.telephone}` : null}
-              icone={<MessageSquare className="size-6" />}
-              libelle="SMS"
-            />
-            <BoutonContact
-              href={locataire.email ? `mailto:${locataire.email}` : null}
-              icone={<Mail className="size-6" />}
-              libelle="E-mail"
-            />
-          </div>
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              <BoutonContact
+                href={locataire.telephone ? `tel:${locataire.telephone}` : null}
+                icone={<Phone className="size-6" />}
+                libelle="Appeler"
+              />
+              <BoutonContact
+                href={locataire.telephone ? `sms:${locataire.telephone}` : null}
+                icone={<MessageSquare className="size-6" />}
+                libelle="SMS"
+              />
+              <BoutonContact
+                href={locataire.email ? `mailto:${locataire.email}` : null}
+                icone={<Mail className="size-6" />}
+                libelle="E-mail"
+              />
+            </div>
+
+            {/*
+              iOS réserve les liens tel: et sms: à l'app d'appel par défaut du
+              système (Réglages → Apps → Apps par défaut). Aucune page web ne
+              peut forcer une autre app. Copier le numéro reste donc le repli
+              fiable quand on veut composer depuis une app de second numéro.
+            */}
+            {locataire.telephone && (
+              <BoutonCopier valeur={locataire.telephone} libelle="Copier le numéro" />
+            )}
+          </>
         ) : (
           <p className="rounded-xl border border-dashed border-border p-3 text-sm text-[var(--suivi-gris)]">
             Aucune coordonnée renseignée.
@@ -433,6 +462,12 @@ export function FicheLocataireVue({
         </div>
       </section>
 
+      <FeuilleRattachement
+        contratId={contratARattacher}
+        boxDisponibles={boxRattachables}
+        onFermer={() => setContratARattacher(null)}
+      />
+
       {contratEnSaisie && (
         <FeuilleEncaissement
           ligne={ligneDuContrat(
@@ -450,6 +485,33 @@ export function FicheLocataireVue({
         />
       )}
     </div>
+  );
+}
+
+/** Copie dans le presse-papier, avec repli sur les navigateurs sans API. */
+function BoutonCopier({ valeur, libelle }: { valeur: string; libelle: string }) {
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(valeur);
+          } else {
+            // Safari hors contexte sécurisé : pas de presse-papier moderne.
+            throw new Error("presse-papier indisponible");
+          }
+          vibre();
+          toast.success(`${valeur} copié.`);
+        } catch {
+          toast.error("Copie impossible — sélectionnez le numéro à la main.");
+        }
+      }}
+      className="suivi-tap mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card text-sm font-semibold text-foreground active:bg-secondary"
+    >
+      <Copy className="size-4" aria-hidden />
+      {libelle}
+    </button>
   );
 }
 

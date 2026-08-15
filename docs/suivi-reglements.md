@@ -136,16 +136,42 @@ back-office, et la synchronisation devient possible **dans les deux sens** :
   relié peut alimenter un `payments` et solder la facture correspondante — la
   logique existe déjà dans `markInvoicePaid()` (`lib/actions/invoices.tsx`).
 
-À ce jour aucune liaison n'est renseignée (les trois colonnes sont à `null`
-sur les 63 contrats importés) : les deux référentiels cohabitent sans se
-gêner, exactement comme prévu.
+### État du rapprochement
 
-Le rapprochement lui-même n'est pas automatisé : les colonnes sont posées, la
-correspondance nom-à-nom entre l'export CSV et les 68 clients du back-office
-demande une passe de vérification humaine qu'aucune heuristique ne remplace
-sans risque de rattacher un règlement au mauvais client. Les index uniques
-partiels sur ces trois colonnes garantissent qu'un client, une unité ou un
-contrat du back-office ne peut être rattaché qu'à une seule ligne du carnet.
+- **`sr_box.unit_id` : 36 des 39 box du carnet sont reliés.** Les deux
+  référentiels n'écrivent pas les bâtiments pareil — `Bat I` / `Etage` / `RDJ`
+  côté carnet (issu du CSV), `Bâtiment 1` / `Étage` / `Rez-de-jardin` côté
+  back-office. La correspondance a été vérifiée sur les numéros (36 couples
+  retrouvés à l'identique) puis **appliquée une fois comme donnée**, avec un
+  garde-fou n'appariant que les couples strictement 1-à-1. Les 3 restants
+  (`Bat I / 2A`, `Bat I / 2C`, `Bat IV / 4C`) sont des sous-numéros qui
+  n'existent pas dans `units`.
+
+  Le code ne contient donc **aucune table de correspondance de libellés** : il
+  cherche sur `unit_id`. Comparer les libellés ne trouverait jamais rien et
+  créerait un doublon à chaque rattachement.
+
+- **`sr_locataires.customer_id` et `sr_contrats.contract_id` : non renseignés.**
+  La correspondance nom-à-nom entre l'export CSV et les 68 clients du
+  back-office demande une vérification humaine qu'aucune heuristique ne
+  remplace sans risque de rattacher un règlement au mauvais client.
+
+Les index uniques partiels sur ces trois colonnes garantissent qu'un client,
+une unité ou un contrat du back-office ne peut être rattaché qu'à une seule
+ligne du carnet.
+
+### Rattacher un box depuis le téléphone
+
+Les 24 contrats encore en « box à identifier » se résolvent depuis la fiche
+locataire : un bouton **Rattacher un box** ouvre la liste des box du
+back-office, groupée par bâtiment. Le box choisi crée (ou réutilise) la ligne
+`sr_box` correspondante **avec son `unit_id`**, puis renseigne
+`sr_contrats.box_id`. Les box déjà rattachés restent visibles, marqués
+« pris » et non sélectionnables : les masquer ferait chercher en vain un box
+qu'on croit libre.
+
+Limite connue : la détection « déjà pris » repose sur `unit_id`. Les trois box
+du carnet non reliés (voir plus haut) échappent donc à cette détection.
 
 ## Règles métier
 

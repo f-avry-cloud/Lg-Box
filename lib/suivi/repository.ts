@@ -27,6 +27,7 @@ import {
   type GroupeBatiment,
   type LigneMois,
   type Locataire,
+  type BoxRattachable,
   type Reglement,
   type StatsTableauDeBord,
 } from "@/lib/suivi/types";
@@ -352,4 +353,57 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
     contratsEnPreavis: preavis.count ?? 0,
     demandesNouvelles: demandes.count ?? 0,
   };
+}
+
+
+// ---------------------------------------------------------------------------
+// Rapprochement box ↔ locataire
+// ---------------------------------------------------------------------------
+
+/**
+ * Les box du back-office proposés au rattachement d'un contrat du carnet.
+ *
+ * On ne masque pas ceux déjà rattachés : l'exploitant doit voir qu'un box est
+ * pris, et par qui, plutôt que de le chercher en vain dans une liste amputée.
+ * C'est le bouton de rattachement qui est neutralisé côté interface.
+ */
+export async function boxRattachables(): Promise<BoxRattachable[]> {
+  if (estModeDemo()) return [];
+
+  const supabase = await createClient();
+
+  const [unitsRes, srBoxRes] = await Promise.all([
+    supabase
+      .from("units")
+      .select("id, numero, zone, taille_m2, statut")
+      .order("numero", { ascending: true }),
+    supabase
+      .from("sr_box")
+      .select("id, unit_id, sr_contrats (sr_locataires (nom))")
+      .not("unit_id", "is", null),
+  ]);
+
+  if (unitsRes.error) throw new Error(unitsRes.error.message);
+  if (srBoxRes.error) throw new Error(srBoxRes.error.message);
+
+  type SrBoxJoint = {
+    unit_id: string | null;
+    sr_contrats: Array<{ sr_locataires: { nom: string } | null }> | null;
+  };
+
+  const occupantParUnit = new Map<string, string>();
+  for (const b of (srBoxRes.data ?? []) as unknown as SrBoxJoint[]) {
+    if (!b.unit_id) continue;
+    const nom = b.sr_contrats?.[0]?.sr_locataires?.nom;
+    if (nom) occupantParUnit.set(b.unit_id, nom);
+  }
+
+  return (unitsRes.data ?? []).map((u) => ({
+    unit_id: u.id,
+    numero: u.numero,
+    batiment: u.zone,
+    surface_m2: u.taille_m2,
+    statut: u.statut,
+    dejaRattacheA: occupantParUnit.get(u.id) ?? null,
+  }));
 }

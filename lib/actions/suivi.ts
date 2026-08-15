@@ -10,6 +10,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireStaff } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { fail, ok, type ActionResult } from "@/lib/actions/result";
 import { isPeriode } from "@/lib/suivi/period";
 import {
@@ -137,5 +138,130 @@ export async function sauvegardeObservations(
     return ok;
   } catch (erreur) {
     return fail(erreur instanceof Error ? erreur.message : "Enregistrement impossible.");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rapprochement box ↔ locataire
+// ---------------------------------------------------------------------------
+
+/**
+ * Rattache un box du back-office (`units`) à un contrat du carnet.
+ *
+ * C'est ce geste qui matérialise la connexion des deux bases, box par box :
+ * la ligne `sr_box` créée porte `unit_id`, la colonne de liaison. Faire ce
+ * rapprochement automatiquement par correspondance de numéro serait risqué —
+ * plusieurs bâtiments réutilisent les mêmes numéros — d'où ce choix explicite,
+ * fait par quelqu'un qui connaît le site.
+ *
+ * Le back-office n'est jamais modifié : on lit `units`, on n'y écrit pas.
+ */
+export async function rattacheBoxAuContrat(
+  contratId: string,
+  unitId: string
+): Promise<ActionResult> {
+  try {
+    await autorise();
+    if (estModeDemo()) return fail("Rattachement indisponible en mode démo.");
+
+    const supabase = await createClient();
+
+    const { data: unit, error: erreurUnit } = await supabase
+      .from("units")
+      .select("id, numero, zone, taille_m2")
+      .eq("id", unitId)
+      .maybeSingle();
+
+    if (erreurUnit) return fail(erreurUnit.message);
+    if (!unit) return fail("Box introuvable dans le back-office.");
+
+    // Le box du carnet peut déjà exister sans qu'on doive le recréer. On le
+    // cherche d'abord sur `unit_id`, la colonne de liaison — et pas sur le
+    // libellé de bâtiment : les deux référentiels ne les écrivent pas pareil
+    // (« Bat I » côté carnet issu du CSV, « Bâtiment 1 » côté back-office),
+    // si bien qu'une comparaison de libellés ne trouverait jamais rien et
+    // créerait un doublon à chaque rattachement.
+    const batiment = unit.zone?.trim() || "Non précisé";
+
+    const { data: parLiaison, error: erreurLiaison } = await supabase
+      .from("sr_box")
+      .select("id")
+      .eq("unit_id", unit.id)
+      .maybeSingle();
+
+    if (erreurLiaison) return fail(erreurLiaison.message);
+
+    // À défaut, une ligne créée depuis l'app porte déjà le libellé
+    // back-office : elle se retrouve sur sa clé naturelle.
+    const { data: parLibelle, error: erreurLecture } =
+      parLiaison
+        ? { data: null, error: null }
+        : await supabase
+            .from("sr_box")
+            .select("id")
+            .eq("batiment", batiment)
+            .eq("numero", unit.numero)
+            .maybeSingle();
+
+    if (erreurLecture) return fail(erreurLecture.message);
+
+    const existant = parLiaison ?? parLibelle;
+
+    let boxId = existant?.id ?? null;
+
+    if (boxId) {
+      const { error } = await supabase
+        .from("sr_box")
+        .update({ unit_id: unit.id, surface_m2: unit.taille_m2 })
+        .eq("id", boxId);
+      if (error) return fail(error.message);
+    } else {
+      const { data, error } = await supabase
+        .from("sr_box")
+        .insert({
+          numero: unit.numero,
+          batiment,
+          surface_m2: unit.taille_m2,
+          unit_id: unit.id,
+        })
+        .select("id")
+        .single();
+      if (error) return fail(error.message);
+      boxId = data.id;
+    }
+
+    const { error: erreurContrat } = await supabase
+      .from("sr_contrats")
+      .update({ box_id: boxId, updated_at: new Date().toISOString() })
+      .eq("id", contratId);
+
+    if (erreurContrat) return fail(erreurContrat.message);
+
+    revalidatePath("/suivi");
+    revalidatePath("/suivi/box");
+    return ok;
+  } catch (erreur) {
+    return fail(erreur instanceof Error ? erreur.message : "Rattachement impossible.");
+  }
+}
+
+/** Détache le box d'un contrat : la ligne repasse en « box à identifier ». */
+export async function detacheBoxDuContrat(contratId: string): Promise<ActionResult> {
+  try {
+    await autorise();
+    if (estModeDemo()) return fail("Détachement indisponible en mode démo.");
+
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("sr_contrats")
+      .update({ box_id: null, updated_at: new Date().toISOString() })
+      .eq("id", contratId);
+
+    if (error) return fail(error.message);
+
+    revalidatePath("/suivi");
+    return ok;
+  } catch (erreur) {
+    return fail(erreur instanceof Error ? erreur.message : "Détachement impossible.");
   }
 }

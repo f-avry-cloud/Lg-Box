@@ -152,3 +152,18 @@ export type StatsTableauDeBord = {
   contratsEnPreavis: number;
   demandesNouvelles: number;
 };
+
+// ---------------------------------------------------------------------------
+// Rapprochement box ↔ locataire
+// ---------------------------------------------------------------------------
+
+/** Un box du back-office proposé au rattachement, avec ce qui l'occupe déjà. */
+export type BoxRattachable = {
+  unit_id: string;
+  numero: string;
+  batiment: string | null;
+  surface_m2: number | null;
+  statut: "libre" | "loue" | "reserve" | "hors_service";
+  /** Nom du locataire du carnet déjà rattaché à ce box, le cas échéant. */
+  dejaRattacheA: string | null;
+};
