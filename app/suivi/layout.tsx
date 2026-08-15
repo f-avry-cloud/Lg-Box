@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 
+import { BarreOnglets } from "@/components/suivi/barre-onglets";
+
 import "./suivi.css";
 
 // PWA installable sur l'écran d'accueil iOS. Le manifeste est servi par une
@@ -8,12 +10,12 @@ import "./suivi.css";
 // c'est bien l'app compagnon — et elle seule — qui doit s'installer avec
 // /suivi comme point de départ.
 export const metadata: Metadata = {
-  title: "Règlements — LG BOX",
-  description: "Pointage des loyers encaissés, mois par mois.",
+  title: "LG BOX — Mobile",
+  description: "Gestion LG BOX au format téléphone : tableau de bord, box, règlements.",
   manifest: "/suivi/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "Règlements",
+    title: "LG BOX",
     statusBarStyle: "default",
   },
   // Un carnet d'encaissement n'a rien à faire dans un index de moteur de
@@ -35,5 +37,10 @@ export const viewport: Viewport = {
 };
 
 export default function SuiviLayout({ children }: { children: React.ReactNode }) {
-  return <div className="suivi-app">{children}</div>;
+  return (
+    <div className="suivi-app">
+      {children}
+      <BarreOnglets />
+    </div>
+  );
 }

@@ -10,6 +10,7 @@
   /* Hauteurs des barres collantes, réutilisées pour les marges internes. */
   --suivi-header-h: 7.5rem;
   --suivi-totaux-h: 4.75rem;
+  --suivi-onglets-h: 3.5rem;
 
   /* Contrastes francs : l'app doit rester lisible en plein soleil. */
   --suivi-vert: #1f7a45;
@@ -31,9 +32,22 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Le corps de liste laisse la place aux deux barres collantes. */
+/* Le corps de liste laisse la place aux barres collantes du bas : totaux
+   (écran Règlements uniquement) puis onglets, plus la barre d'accueil iOS. */
 .suivi-scroll {
-  padding-bottom: calc(var(--suivi-totaux-h) + env(safe-area-inset-bottom, 0px) + 1rem);
+  padding-bottom: calc(
+    var(--suivi-totaux-h) + var(--suivi-onglets-h) + env(safe-area-inset-bottom, 0px) + 1rem
+  );
+}
+
+/* Écrans sans barre de totaux : seuls les onglets sont à dégager. */
+.suivi-scroll-simple {
+  padding-bottom: calc(var(--suivi-onglets-h) + env(safe-area-inset-bottom, 0px) + 1rem);
+}
+
+/* La barre de totaux se cale juste au-dessus des onglets. */
+.suivi-totaux {
+  bottom: calc(var(--suivi-onglets-h) + env(safe-area-inset-bottom, 0px));
 }
 
 /*

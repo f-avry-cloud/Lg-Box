@@ -6,9 +6,9 @@ import type { MetadataRoute } from "next";
  * ouvrir le carnet d'encaissement, pas la page vitrine du site.
  */
 const manifest: MetadataRoute.Manifest = {
-  name: "LG BOX — Règlements",
-  short_name: "Règlements",
-  description: "Pointage des loyers encaissés, mois par mois.",
+  name: "LG BOX — Mobile",
+  short_name: "LG BOX",
+  description: "Gestion LG BOX au format téléphone : tableau de bord, box, règlements.",
   start_url: "/suivi",
   scope: "/suivi",
   display: "standalone",

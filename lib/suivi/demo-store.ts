@@ -182,3 +182,30 @@ export function demoEnregistreObservations(locataireId: string, observations: st
 export function demoContrat(contratId: string): Contrat | null {
   return store().contrats.get(contratId) ?? null;
 }
+
+/**
+ * Les box du CSV, avec leur surface et le locataire en place — de quoi
+ * alimenter l'écran Box en mode démo. `demoLignesMois` ne suffisait pas :
+ * une ligne de mois ne porte pas la surface.
+ */
+export function demoBoxAvecOccupant(): Array<{
+  box: Box;
+  locataire: string | null;
+  loyer: number;
+}> {
+  const s = store();
+  const contratParBox = new Map<string, Contrat>();
+  for (const c of s.contrats.values()) {
+    if (c.box_id && !contratParBox.has(c.box_id)) contratParBox.set(c.box_id, c);
+  }
+
+  return [...s.box.values()].map((box) => {
+    const contrat = contratParBox.get(box.id);
+    const locataire = contrat ? s.locataires.get(contrat.locataire_id) ?? null : null;
+    return {
+      box,
+      locataire: locataire?.nom ?? null,
+      loyer: contrat?.loyer_mensuel_eur ?? 0,
+    };
+  });
+}

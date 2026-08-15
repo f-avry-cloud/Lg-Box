@@ -9,6 +9,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import {
+  demoBoxAvecOccupant,
   demoContrat,
   demoEnregistreObservations,
   demoFiche,
@@ -16,13 +17,18 @@ import {
   demoSupprimeReglement,
   demoUpsertReglement,
 } from "@/lib/suivi/demo-store";
-import type {
-  Box,
-  Contrat,
-  FicheLocataire,
-  LigneMois,
-  Locataire,
-  Reglement,
+import { calculeTotaux } from "@/lib/suivi/totals";
+import { groupeParBatiment } from "@/lib/suivi/box";
+import {
+  type Box,
+  type BoxListe,
+  type Contrat,
+  type FicheLocataire,
+  type GroupeBatiment,
+  type LigneMois,
+  type Locataire,
+  type Reglement,
+  type StatsTableauDeBord,
 } from "@/lib/suivi/types";
 
 /**
@@ -208,4 +214,142 @@ export async function enregistreObservations(
     .eq("id", locataireId);
 
   if (error) throw new Error(error.message);
+}
+
+
+// ---------------------------------------------------------------------------
+// Écran Box
+// ---------------------------------------------------------------------------
+
+/**
+ * Le référentiel des box est celui du back-office (`units`), pas `sr_box` :
+ * sr_box ne contient que les 39 box identifiés dans l'export d'encaissement,
+ * alors que le site en compte davantage, et c'est bien la fiche back-office
+ * que l'exploitant veut corriger depuis son téléphone.
+ *
+ * En mode démo, faute de base, la liste est reconstituée depuis le CSV — en
+ * lecture seule (voir `boxModifiables`).
+ */
+export async function listeBox(): Promise<GroupeBatiment[]> {
+  if (estModeDemo()) return groupeParBatiment(demoBoxListe());
+
+  const supabase = await createClient();
+
+  const [unitsRes, contratsRes] = await Promise.all([
+    supabase
+      .from("units")
+      .select("id, numero, zone, taille_m2, statut, prix_mensuel_standard")
+      .order("numero", { ascending: true }),
+    supabase
+      .from("contracts")
+      .select("unit_id, customers (prenom, nom)")
+      .in("statut", ["actif", "en_preavis"]),
+  ]);
+
+  if (unitsRes.error) throw new Error(unitsRes.error.message);
+  if (contratsRes.error) throw new Error(contratsRes.error.message);
+
+  type ContratJointClient = {
+    unit_id: string;
+    customers: { prenom: string | null; nom: string | null } | null;
+  };
+
+  const locataireParBox = new Map<string, string>();
+  for (const c of (contratsRes.data ?? []) as unknown as ContratJointClient[]) {
+    const client = c.customers;
+    if (!client) continue;
+    locataireParBox.set(c.unit_id, [client.prenom, client.nom].filter(Boolean).join(" ").trim());
+  }
+
+  const box: BoxListe[] = (unitsRes.data ?? []).map((u) => ({
+    id: u.id,
+    numero: u.numero,
+    batiment: u.zone,
+    surface_m2: u.taille_m2,
+    statut: u.statut,
+    prix_mensuel_standard: u.prix_mensuel_standard,
+    locataire: locataireParBox.get(u.id) ?? null,
+  }));
+
+  return groupeParBatiment(box);
+}
+
+/** L'édition écrit dans `units` : impossible sans base. */
+export function boxModifiables(): boolean {
+  return !estModeDemo();
+}
+
+function demoBoxListe(): BoxListe[] {
+  // Le mode démo n'a pas de table units : on reconstitue la liste depuis les
+  // box du CSV, surface comprise, avec le loyer du contrat associé comme prix.
+  return demoBoxAvecOccupant().map(({ box, locataire, loyer }) => ({
+    id: box.id,
+    numero: box.numero,
+    batiment: box.batiment,
+    surface_m2: box.surface_m2,
+    statut: locataire ? ("loue" as const) : ("libre" as const),
+    prix_mensuel_standard: loyer,
+    locataire,
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Écran Tableau de bord
+// ---------------------------------------------------------------------------
+
+export async function statsTableauDeBord(periode: string): Promise<StatsTableauDeBord> {
+  const lignes = await lignesDuMois(periode);
+  const totaux = calculeTotaux(lignes);
+
+  const base: StatsTableauDeBord = {
+    boxTotal: 0,
+    boxLoues: 0,
+    boxLibres: 0,
+    tauxOccupation: 0,
+    periode,
+    encaisse: totaux.encaisse,
+    reste: totaux.reste,
+    contratsRegles: totaux.regles,
+    contratsTotal: totaux.total,
+    impayesMontant: 0,
+    impayesClients: 0,
+    contratsEnPreavis: 0,
+    demandesNouvelles: 0,
+  };
+
+  if (estModeDemo()) {
+    // Sans base, seuls les chiffres du carnet sont réels ; le reste tient du
+    // back-office et reste donc à zéro plutôt qu'inventé.
+    const box = demoBoxListe();
+    return { ...base, boxTotal: box.length, boxLoues: box.length, tauxOccupation: 100 };
+  }
+
+  const supabase = await createClient();
+
+  const [total, loues, impayes, preavis, demandes] = await Promise.all([
+    supabase.from("units").select("id", { count: "exact", head: true }),
+    supabase.from("units").select("id", { count: "exact", head: true }).eq("statut", "loue"),
+    supabase.from("invoices").select("montant_ttc, customer_id").in("statut", ["emise", "en_retard"]),
+    supabase.from("contracts").select("id", { count: "exact", head: true }).eq("statut", "en_preavis"),
+    supabase
+      .from("reservation_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("statut", "nouvelle"),
+  ]);
+
+  const boxTotal = total.count ?? 0;
+  const boxLoues = loues.count ?? 0;
+  const factures = impayes.data ?? [];
+
+  return {
+    ...base,
+    boxTotal,
+    boxLoues,
+    boxLibres: Math.max(0, boxTotal - boxLoues),
+    tauxOccupation: boxTotal > 0 ? Math.round((boxLoues / boxTotal) * 100) : 0,
+    impayesMontant: factures.reduce((somme, f) => somme + f.montant_ttc, 0),
+    impayesClients: new Set(factures.map((f) => f.customer_id)).size,
+    contratsEnPreavis: preavis.count ?? 0,
+    demandesNouvelles: demandes.count ?? 0,
+  };
 }

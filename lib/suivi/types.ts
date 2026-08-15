@@ -95,3 +95,60 @@ export const BOX_A_IDENTIFIER = "box à identifier";
 // Libellé affiché quand l'export ne donne pas le nom du locataire : le loyer
 // est bien encaissé, la ligne doit rester pointable et comptée dans les totaux.
 export const LOCATAIRE_A_IDENTIFIER = "Locataire à identifier";
+
+// ---------------------------------------------------------------------------
+// Écran Box — le référentiel des box vient du back-office (table `units`),
+// pas de sr_box : c'est lui qui fait foi pour la surface et le numéro, et
+// c'est lui que l'exploitant veut corriger depuis son téléphone.
+// ---------------------------------------------------------------------------
+
+export type BoxListe = {
+  id: string;
+  numero: string;
+  batiment: string | null;
+  surface_m2: number | null;
+  statut: "libre" | "loue" | "reserve" | "hors_service";
+  prix_mensuel_standard: number;
+  /** Locataire en place, quand le box est loué. */
+  locataire: string | null;
+};
+
+export type GroupeBatiment = {
+  batiment: string;
+  box: BoxListe[];
+  surface_totale: number;
+};
+
+export const BATIMENT_NON_PRECISE = "Sans bâtiment";
+
+// Zone posée par l'import du registre Excel sur les box dont l'emplacement
+// n'est pas encore établi : 70 des 137 box du site sont dans ce cas. Ce n'est
+// pas un bâtiment, c'est une file d'attente — elle se range en fin de liste et
+// s'affiche en orange, comme les box sans surface.
+export const BATIMENT_A_LOCALISER = "À localiser";
+
+export function estBatimentATraiter(batiment: string): boolean {
+  return batiment === BATIMENT_NON_PRECISE || batiment === BATIMENT_A_LOCALISER;
+}
+
+// ---------------------------------------------------------------------------
+// Écran Tableau de bord
+// ---------------------------------------------------------------------------
+
+export type StatsTableauDeBord = {
+  boxTotal: number;
+  boxLoues: number;
+  boxLibres: number;
+  tauxOccupation: number;
+  /** Carnet d'encaissement du mois affiché (tables sr_*). */
+  periode: string;
+  encaisse: number;
+  reste: number;
+  contratsRegles: number;
+  contratsTotal: number;
+  /** Back-office. */
+  impayesMontant: number;
+  impayesClients: number;
+  contratsEnPreavis: number;
+  demandesNouvelles: number;
+};

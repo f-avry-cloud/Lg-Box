@@ -12,7 +12,7 @@ export function BarreTotaux({ totaux }: { totaux: TotauxMois }) {
   const progression = attendu === 0 ? 0 : Math.round((totaux.encaisse / attendu) * 100);
 
   return (
-    <div className="suivi-safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur">
+    <div className="suivi-totaux fixed inset-x-0 z-30 border-t border-border bg-card/95 backdrop-blur">
       <div className="mx-auto max-w-2xl px-4 pb-2 pt-2">
         <div className="flex items-baseline justify-between gap-3">
           <div>
