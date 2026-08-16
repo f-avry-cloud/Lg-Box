@@ -197,13 +197,14 @@ function formatTailleLibelle(m2: number): string {
   return `${Number(m2.toFixed(2))} m²`;
 }
 
-// Le trigger units_sync_taille_m2 recalcule taille_m2 à partir de
-// largeur_cm/profondeur_cm à CHAQUE update dès que ces deux champs sont
-// renseignés — écrire taille_m2 directement pour un box positionné sur le
-// plan serait donc immédiatement écrasé. Pour qu'un seul champ « Surface
-// (m²) » reste éditable partout (liste, fiche box) sans avoir à jongler
-// avec des cm, on dérive ici de nouvelles largeur/profondeur en conservant
-// les proportions actuelles du box quand il est positionné sur le plan.
+// La surface est une donnée commerciale saisie à la main, indépendante de la
+// géométrie du plan (largeur_cm/profondeur_cm). Le plan ne sert qu'au
+// positionnement et à la numérotation : les relevés dont il est issu ne sont
+// pas fiables au centimètre et ne doivent donc jamais dicter la surface
+// facturée. Le trigger units_sync_taille_m2, qui recalculait taille_m2 depuis
+// les dimensions dessinées, a été supprimé pour cette raison (migration
+// 014_v1_13.sql) — redimensionner un box sur le plan ne change plus sa surface,
+// et modifier sa surface ici ne déforme plus son emplacement sur le plan.
 export async function updateUnitSize(unitId: string, params: { tailleM2: number | null }): Promise<ActionResult> {
   await requireStaff();
   const supabase = await createClient();
@@ -211,36 +212,11 @@ export async function updateUnitSize(unitId: string, params: { tailleM2: number 
     return fail("La surface doit être un nombre positif.");
   }
 
-  const { data: current, error: fetchError } = await supabase
+  const { error } = await supabase
     .from("units")
-    .select("largeur_cm, profondeur_cm")
-    .eq("id", unitId)
-    .single();
-  if (fetchError || !current) return fail(fetchError?.message ?? "Box introuvable.");
-
-  if (current.largeur_cm !== null && current.profondeur_cm !== null) {
-    const currentM2 = (current.largeur_cm * current.profondeur_cm) / 10000;
-    const scale = Math.sqrt(params.tailleM2 / currentM2);
-    const largeurCm = Math.round(current.largeur_cm * scale);
-    const profondeurCm = Math.round(current.profondeur_cm * scale);
-    if (largeurCm < MIN_UNIT_SIZE_CM || profondeurCm < MIN_UNIT_SIZE_CM) {
-      return fail(`Cette surface est trop petite pour ce box (dimensions minimales ${MIN_UNIT_SIZE_CM} cm).`);
-    }
-    // round(..., 2) : reproduit exactement l'arrondi du trigger, pour que le
-    // libellé écrit ici corresponde au taille_m2 qu'il va recalculer.
-    const finalM2 = Math.round(((largeurCm * profondeurCm) / 10000) * 100) / 100;
-    const { error } = await supabase
-      .from("units")
-      .update({ taille_libelle: formatTailleLibelle(finalM2), largeur_cm: largeurCm, profondeur_cm: profondeurCm })
-      .eq("id", unitId);
-    if (error) return fail(error.message);
-  } else {
-    const { error } = await supabase
-      .from("units")
-      .update({ taille_libelle: formatTailleLibelle(params.tailleM2), taille_m2: params.tailleM2 })
-      .eq("id", unitId);
-    if (error) return fail(error.message);
-  }
+    .update({ taille_libelle: formatTailleLibelle(params.tailleM2), taille_m2: params.tailleM2 })
+    .eq("id", unitId);
+  if (error) return fail(error.message);
 
   revalidatePath("/admin/units");
   revalidatePath(`/admin/units/${unitId}`);
@@ -259,8 +235,9 @@ export type UnitPositionUpdate = {
 // Enregistrement groupé des box déplacés/redimensionnés dans le plan
 // interactif — réservé aux admins (contrairement aux autres mutations de
 // cette page, réservées au staff au sens large). taille_m2 n'est jamais
-// écrite ici : elle est recalculée en base par le trigger units_sync_taille_m2,
-// d'où la relecture après écriture pour la rafraîchir côté client.
+// écrite ici : déplacer ou redimensionner un box sur le plan ne doit pas
+// toucher à sa surface commerciale (voir updateUnitSize). La relecture après
+// écriture renvoie simplement les lignes canoniques au client.
 export async function saveUnitPositions(
   updates: UnitPositionUpdate[]
 ): Promise<ActionResult & { units?: FloorPlanUnit[] }> {

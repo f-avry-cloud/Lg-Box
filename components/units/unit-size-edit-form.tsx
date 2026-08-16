@@ -18,15 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updateUnitSize } from "@/lib/actions/units";
 
-export function UnitSizeEditForm({
-  unitId,
-  tailleM2,
-  hasPhysicalDimensions,
-}: {
-  unitId: string;
-  tailleM2: number | null;
-  hasPhysicalDimensions: boolean;
-}) {
+export function UnitSizeEditForm({ unitId, tailleM2 }: { unitId: string; tailleM2: number | null }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -72,9 +64,8 @@ export function UnitSizeEditForm({
               required
             />
             <p className="text-xs text-muted-foreground">
-              Le libellé affiché reprend automatiquement cette valeur.
-              {hasPhysicalDimensions &&
-                " Ce box est positionné sur le plan : ses dimensions (largeur/profondeur) sont ajustées en conservant ses proportions actuelles."}
+              Surface commerciale, indépendante du plan : le libellé affiché la reprend automatiquement, et
+              l&apos;emplacement du box sur le plan n&apos;est pas modifié.
             </p>
           </div>
           <DialogFooter>
