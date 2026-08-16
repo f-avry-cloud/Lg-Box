@@ -207,11 +207,7 @@ export function UnitsView({
                     <TableCell>
                       <span className="flex items-center gap-1">
                         {unit.taille_libelle}
-                        <UnitSizeEditForm
-                          unitId={unit.id}
-                          tailleM2={unit.taille_m2}
-                          hasPhysicalDimensions={unit.largeur_cm !== null && unit.profondeur_cm !== null}
-                        />
+                        <UnitSizeEditForm unitId={unit.id} tailleM2={unit.taille_m2} />
                       </span>
                     </TableCell>
                   )}
