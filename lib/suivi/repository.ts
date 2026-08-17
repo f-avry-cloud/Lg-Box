@@ -15,15 +15,16 @@ import {
   demoEnregistreObservations,
   demoFiche,
   demoLignesMois,
+  demoReglementsDeLAnnee,
   demoSupprimeReglement,
   demoUpsertReglement,
 } from "@/lib/suivi/demo-store";
-import { calculeTotaux } from "@/lib/suivi/totals";
+import { calculeTotaux, cumuleEncaisse, resumeFacturation } from "@/lib/suivi/totals";
 import { groupeParBatiment, parseBoxReferenceCsv } from "@/lib/suivi/box";
 import { estPlace, type BoxPlan } from "@/lib/suivi/plan";
 import { BOX_REFERENCE_CSV } from "@/lib/suivi/box-reference";
 import { contratDuPour } from "@/lib/suivi/contrat";
-import { periodeCourante, premierJour } from "@/lib/suivi/period";
+import { parsePeriode, periodeCourante, premierJour } from "@/lib/suivi/period";
 import {
   type Box,
   type BoxListe,
@@ -413,9 +414,46 @@ function demoBoxListe(): BoxListe[] {
 // Écran Tableau de bord
 // ---------------------------------------------------------------------------
 
+/**
+ * Chiffre d'affaires encaissé depuis le 1er janvier de l'année demandée.
+ *
+ * Compté sur les règlements du carnet, avec la même règle que le total du
+ * mois (`cumuleEncaisse`) : un mois pointé d'un tap, sans montant saisi, vaut
+ * le loyer plein. Les périodes sont des textes `AAAA-MM` de largeur fixe, donc
+ * comparables tels quels — pas besoin de convertir en dates.
+ */
+export async function caDepuisJanvier(annee: number): Promise<number> {
+  if (estModeDemo()) return cumuleEncaisse(demoReglementsDeLAnnee(annee));
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("sr_reglements")
+    .select("statut, montant_encaisse_eur, sr_contrats (loyer_mensuel_eur)")
+    .gte("periode", `${annee}-01`)
+    .lte("periode", `${annee}-12`);
+
+  if (error) throw new Error(error.message);
+
+  type ReglementJoint = {
+    statut: Reglement["statut"];
+    montant_encaisse_eur: number;
+    sr_contrats: { loyer_mensuel_eur: number } | null;
+  };
+
+  return cumuleEncaisse(
+    ((data ?? []) as unknown as ReglementJoint[]).map((r) => ({
+      statut: r.statut,
+      montant_encaisse_eur: r.montant_encaisse_eur,
+      loyer_mensuel_eur: r.sr_contrats?.loyer_mensuel_eur ?? 0,
+    }))
+  );
+}
+
 export async function statsTableauDeBord(periode: string): Promise<StatsTableauDeBord> {
-  const lignes = await lignesDuMois(periode);
+  const { annee } = parsePeriode(periode);
+  const [lignes, caAnnuel] = await Promise.all([lignesDuMois(periode), caDepuisJanvier(annee)]);
   const totaux = calculeTotaux(lignes);
+  const facturation = resumeFacturation(lignes);
 
   const base: StatsTableauDeBord = {
     boxTotal: 0,
@@ -427,6 +465,11 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
     reste: totaux.reste,
     contratsRegles: totaux.regles,
     contratsTotal: totaux.total,
+    annee,
+    caAnnuel,
+    aFacturer: facturation.aFacturer,
+    dejaFacturees: facturation.dejaFacturees,
+    montantAFacturer: facturation.montant,
     impayesMontant: 0,
     impayesClients: 0,
     contratsEnPreavis: 0,
@@ -550,6 +593,7 @@ export async function contratsSansBox(): Promise<ContratSansBox[]> {
         nom: l.nom,
         societe: l.societe,
         loyer_mensuel_eur: l.loyer_mensuel_eur,
+        date_debut: demoContrat(l.contrat_id)?.date_debut ?? null,
       }))
       .sort((a, b) => a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }));
   }
@@ -557,7 +601,7 @@ export async function contratsSansBox(): Promise<ContratSansBox[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("sr_contrats")
-    .select("id, loyer_mensuel_eur, sr_locataires (id, nom, societe)")
+    .select("id, loyer_mensuel_eur, date_debut, sr_locataires (id, nom, societe)")
     .is("box_id", null)
     .is("date_fin", null);
 
@@ -566,6 +610,7 @@ export async function contratsSansBox(): Promise<ContratSansBox[]> {
   type Joint = {
     id: string;
     loyer_mensuel_eur: number;
+    date_debut: string | null;
     sr_locataires: { id: string; nom: string; societe: string | null } | null;
   };
 
@@ -577,6 +622,7 @@ export async function contratsSansBox(): Promise<ContratSansBox[]> {
       nom: c.sr_locataires!.nom,
       societe: c.sr_locataires!.societe,
       loyer_mensuel_eur: c.loyer_mensuel_eur,
+      date_debut: c.date_debut,
     }))
     .sort((a, b) => a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }));
 }

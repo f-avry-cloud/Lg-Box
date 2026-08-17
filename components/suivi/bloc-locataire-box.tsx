@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 
 const LIBELLE_STATUT: Record<ReglementStatut, string> = {
   paye: "Réglé",
+  facture: "Facturé",
   partiel: "Partiellement réglé",
   retard: "En retard",
   attendu: "En attente",
@@ -31,6 +32,8 @@ const LIBELLE_STATUT: Record<ReglementStatut, string> = {
 function couleurStatut(statut: ReglementStatut): string {
   if (statut === "paye") return "var(--suivi-vert)";
   if (statut === "partiel" || statut === "retard") return "var(--suivi-orange)";
+  // Facturé : réclamé mais pas encore encaissé — ni vert, ni alarmant.
+  if (statut === "facture") return "var(--primary)";
   return "var(--suivi-gris)";
 }
 

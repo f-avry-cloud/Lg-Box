@@ -3,7 +3,7 @@
 // d'encaissement manipule locataire / box / contrat / règlement, pas
 // customer / unit / contract / invoice.
 
-export type ReglementStatut = "attendu" | "paye" | "partiel" | "retard";
+export type ReglementStatut = "attendu" | "facture" | "paye" | "partiel" | "retard";
 export type MoyenPaiement = "virement" | "cheque" | "especes" | "CB" | "autre";
 
 export const MOYENS_PAIEMENT: readonly MoyenPaiement[] = [
@@ -58,6 +58,8 @@ export type Reglement = {
   statut: ReglementStatut;
   montant_encaisse_eur: number;
   date_encaissement: string | null;
+  /** Date de réclamation, posée par la facturation groupée du mois. */
+  date_facturation: string | null;
   moyen: MoyenPaiement | null;
   note: string | null;
   updated_at: string;
@@ -177,6 +179,13 @@ export type StatsTableauDeBord = {
   reste: number;
   contratsRegles: number;
   contratsTotal: number;
+  /** Année de la période affichée, et cumul encaissé depuis son 1er janvier. */
+  annee: number;
+  caAnnuel: number;
+  /** Ce que la facturation groupée du mois changerait. */
+  aFacturer: number;
+  dejaFacturees: number;
+  montantAFacturer: number;
   /** Back-office. */
   impayesMontant: number;
   impayesClients: number;
@@ -205,4 +214,6 @@ export type ContratSansBox = {
   nom: string;
   societe: string | null;
   loyer_mensuel_eur: number;
+  /** Date d'entrée déjà connue : l'affectation propose de la conserver. */
+  date_debut: string | null;
 };

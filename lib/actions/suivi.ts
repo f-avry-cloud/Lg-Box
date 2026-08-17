@@ -13,7 +13,7 @@ import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { fail, ok, type ActionResult } from "@/lib/actions/result";
 import { contratDuPour } from "@/lib/suivi/contrat";
-import { isPeriode, periodeCourante } from "@/lib/suivi/period";
+import { isPeriode, periodeCourante, premierJour } from "@/lib/suivi/period";
 import {
   annuleReglement,
   enregistreObservations,
@@ -153,10 +153,17 @@ export async function sauvegardeObservations(
  * réduit à poser `box_id` : plus besoin de recopier une unité du back-office,
  * ni de retrouver un box sur un libellé de bâtiment que les deux référentiels
  * n'écrivaient pas pareil. Le back-office n'est ni lu ni écrit ici.
+ *
+ * `periodeEffet` fixe le premier mois dû (`date_debut` au 1er du mois choisi).
+ * C'est ce qui empêche la facturation groupée de réclamer un loyer à quelqu'un
+ * qui n'entre que le mois prochain. Omise ou nulle, la date d'entrée du
+ * contrat n'est pas touchée : rattacher tardivement le box d'un locataire déjà
+ * en place ne doit pas réécrire son ancienneté.
  */
 export async function rattacheBoxAuContrat(
   contratId: string,
-  boxId: string
+  boxId: string,
+  periodeEffet?: string | null
 ): Promise<ActionResult> {
   try {
     await autorise();
@@ -179,9 +186,19 @@ export async function rattacheBoxAuContrat(
     const occupe = (autres ?? []).some((c) => contratDuPour(periode, c.date_debut, c.date_fin));
     if (occupe) return fail("Ce box est déjà rattaché à un autre locataire.");
 
+    const modification: { box_id: string; updated_at: string; date_debut?: string } = {
+      box_id: boxId,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (periodeEffet != null) {
+      if (!isPeriode(periodeEffet)) return fail(`Période invalide : ${periodeEffet}`);
+      modification.date_debut = premierJour(periodeEffet);
+    }
+
     const { error } = await supabase
       .from("sr_contrats")
-      .update({ box_id: boxId, updated_at: new Date().toISOString() })
+      .update(modification)
       .eq("id", contratId);
 
     if (error) return fail(error.message);

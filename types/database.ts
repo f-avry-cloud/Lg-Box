@@ -336,9 +336,10 @@ export type SrReglement = {
   id: string;
   contrat_id: string;
   periode: string;
-  statut: "attendu" | "paye" | "partiel" | "retard";
+  statut: "attendu" | "facture" | "paye" | "partiel" | "retard";
   montant_encaisse_eur: number;
   date_encaissement: string | null;
+  date_facturation: string | null;
   moyen: "virement" | "cheque" | "especes" | "CB" | "autre" | null;
   note: string | null;
   updated_at: string;

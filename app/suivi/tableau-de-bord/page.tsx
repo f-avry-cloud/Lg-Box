@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { AlertTriangle, Inbox, LogOut, Warehouse } from "lucide-react";
+import { AlertTriangle, Inbox, LogOut, TrendingUp, Warehouse } from "lucide-react";
+
+import { BoutonFacturation } from "@/components/suivi/bouton-facturation";
 
 import { labelPeriode, isPeriode, periodeCourante } from "@/lib/suivi/period";
 import { estModeDemo, statsTableauDeBord } from "@/lib/suivi/repository";
@@ -66,6 +68,31 @@ export default async function TableauDeBordPage({
             Reste {stats.reste.toLocaleString("fr-FR")} € à encaisser
           </p>
         </Link>
+
+        {/* Chiffre d'affaires encaissé depuis le 1er janvier : le cumul de
+            l'exercice, à côté du mois qui, seul, ne dit pas où l'on en est. */}
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2 text-[var(--suivi-gris)]">
+            <TrendingUp className="size-5" aria-hidden />
+            <span className="text-sm font-semibold uppercase tracking-wide">
+              {`Encaissé depuis le 1er janvier ${stats.annee}`}
+            </span>
+          </div>
+          <p className="mt-1 text-3xl font-bold tabular-nums text-foreground">
+            {stats.caAnnuel.toLocaleString("fr-FR")} €
+          </p>
+          <p className="mt-0.5 text-sm text-[var(--suivi-gris)]">
+            {`Cumul des règlements pointés sur l'année ${stats.annee}`}
+          </p>
+        </div>
+
+        {/* Facturation groupée du mois */}
+        <BoutonFacturation
+          periode={periode}
+          aFacturer={stats.aFacturer}
+          dejaFacturees={stats.dejaFacturees}
+          montant={stats.montantAFacturer}
+        />
 
         {/* Occupation */}
         <Link

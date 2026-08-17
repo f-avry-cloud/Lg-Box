@@ -158,6 +158,7 @@ export function demoUpsertReglement(
     date_encaissement: patch.date_encaissement ?? existant?.date_encaissement ?? null,
     moyen: patch.moyen ?? existant?.moyen ?? null,
     note: patch.note ?? existant?.note ?? null,
+    date_facturation: patch.date_facturation ?? existant?.date_facturation ?? null,
     updated_at: new Date().toISOString(),
   };
   s.reglements.set(k, suivant);
@@ -210,4 +211,21 @@ export function demoBoxAvecOccupant(): Array<{
       loyer: contrat?.loyer_mensuel_eur ?? 0,
     };
   });
+}
+
+/**
+ * Les règlements de l'année, avec le loyer de leur contrat : de quoi calculer
+ * le cumul encaissé sans que l'appelant ait à refaire la jointure.
+ */
+export function demoReglementsDeLAnnee(
+  annee: number
+): Array<{ statut: Reglement["statut"]; montant_encaisse_eur: number; loyer_mensuel_eur: number }> {
+  const s = store();
+  return [...s.reglements.values()]
+    .filter((r) => r.periode.startsWith(`${annee}-`))
+    .map((r) => ({
+      statut: r.statut,
+      montant_encaisse_eur: r.montant_encaisse_eur,
+      loyer_mensuel_eur: s.contrats.get(r.contrat_id)?.loyer_mensuel_eur ?? 0,
+    }));
 }

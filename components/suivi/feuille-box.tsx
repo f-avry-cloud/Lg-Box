@@ -9,10 +9,12 @@ import { FeuilleModale } from "@/components/suivi/feuille-modale";
 import { vibre } from "@/components/suivi/bouton-encaissement";
 import { Button } from "@/components/ui/button";
 import { creeBox, modifieBox, supprimeBox } from "@/lib/actions/suivi-box";
+import { ChoixDateEffet } from "@/components/suivi/choix-date-effet";
 import { detacheBoxDuContrat, rattacheBoxAuContrat } from "@/lib/actions/suivi";
 import type { BoxListe, ContratSansBox } from "@/lib/suivi/types";
 import { ChevronDown } from "lucide-react";
 
+import { periodeCourante } from "@/lib/suivi/period";
 import { cn } from "@/lib/utils";
 
 /**
@@ -49,6 +51,10 @@ export function FeuilleBox({
   // courant est de consulter le locataire, pas de corriger une surface.
   const [champsOuverts, setChampsOuverts] = useState(false);
   const [rechercheLocataire, setRechercheLocataire] = useState("");
+  // Locataire choisi, en attente de sa date d'effet — deuxième temps de
+  // l'affectation.
+  const [contratChoisi, setContratChoisi] = useState<ContratSansBox | null>(null);
+  const [periodeEffet, setPeriodeEffet] = useState<string | null>(null);
   const [enCours, demarreTransition] = useTransition();
 
   const cle = creation ? "creation" : box?.id ?? null;
@@ -62,6 +68,8 @@ export function FeuilleBox({
     setConfirmeSuppression(false);
     setChoixLocataire(false);
     setRechercheLocataire("");
+    setContratChoisi(null);
+    setPeriodeEffet(null);
     setChampsOuverts(creation || !box?.detail);
   }
 
@@ -252,6 +260,58 @@ export function FeuilleBox({
                 Détacher
               </button>
             </div>
+          ) : contratChoisi ? (
+            <>
+              <p className="mb-2 text-base">
+                <strong>{contratChoisi.nom}</strong>
+                {` — box ${box.numero}`}
+              </p>
+
+              <ChoixDateEffet
+                dateDebutActuelle={contratChoisi.date_debut}
+                valeur={periodeEffet}
+                onChange={setPeriodeEffet}
+                desactive={enCours}
+              />
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-12 flex-1"
+                  disabled={enCours}
+                  onClick={() => setContratChoisi(null)}
+                >
+                  Retour
+                </Button>
+                <Button
+                  type="button"
+                  className="h-12 flex-1"
+                  disabled={enCours}
+                  onClick={() => {
+                    const contrat = contratChoisi;
+                    demarreTransition(async () => {
+                      const resultat = await rattacheBoxAuContrat(
+                        contrat.contrat_id,
+                        box.id,
+                        periodeEffet
+                      );
+                      if (!resultat.success) {
+                        vibre(60);
+                        toast.error(resultat.error ?? "Affectation impossible.");
+                        return;
+                      }
+                      vibre();
+                      toast.success(`${contrat.nom} rattaché au box ${box.numero}.`);
+                      onFermer();
+                      router.refresh();
+                    });
+                  }}
+                >
+                  Affecter
+                </Button>
+              </div>
+            </>
           ) : choixLocataire ? (
             <>
               <input
@@ -275,18 +335,9 @@ export function FeuilleBox({
                       type="button"
                       disabled={enCours}
                       onClick={() => {
-                        demarreTransition(async () => {
-                          const resultat = await rattacheBoxAuContrat(c.contrat_id, box.id);
-                          if (!resultat.success) {
-                            vibre(60);
-                            toast.error(resultat.error ?? "Affectation impossible.");
-                            return;
-                          }
-                          vibre();
-                          toast.success(`${c.nom} rattaché au box ${box.numero}.`);
-                          onFermer();
-                          router.refresh();
-                        });
+                        // Deuxième temps : à partir de quand ce loyer est dû.
+                        setContratChoisi(c);
+                        setPeriodeEffet(c.date_debut ? null : periodeCourante());
                       }}
                       className="suivi-tap flex min-h-14 w-full items-center justify-between gap-2 border-b border-border/70 px-1 text-left last:border-0 active:bg-secondary"
                     >

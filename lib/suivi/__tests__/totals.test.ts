@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   calculeTotaux,
+  cumuleEncaisse,
   encaisseLigne,
   filtreLignes,
   initiales,
+  resumeFacturation,
   statutLigne,
   trieLignes,
 } from "@/lib/suivi/totals";
@@ -27,6 +29,7 @@ function ligne(
         date_encaissement: null,
         moyen: null,
         note: null,
+        date_facturation: null,
         updated_at: "2026-08-01T00:00:00.000Z",
       }
     : null;
@@ -158,5 +161,64 @@ describe("initiales", () => {
 
   it("se rabat sur les deux premières lettres d'un nom unique", () => {
     expect(initiales("ELIAS")).toBe("EL");
+  });
+});
+
+describe("cumuleEncaisse", () => {
+  it("compte un « payé » sans montant au loyer plein", () => {
+    // C'est le geste courant : un tap, pas de saisie. L'oublier ferait
+    // afficher un chiffre d'affaires annuel proche de zéro.
+    expect(
+      cumuleEncaisse([{ statut: "paye", montant_encaisse_eur: 0, loyer_mensuel_eur: 140 }])
+    ).toBe(140);
+  });
+
+  it("additionne les mois de l'année, partiels compris", () => {
+    expect(
+      cumuleEncaisse([
+        { statut: "paye", montant_encaisse_eur: 0, loyer_mensuel_eur: 140 },
+        { statut: "paye", montant_encaisse_eur: 150, loyer_mensuel_eur: 140 },
+        { statut: "partiel", montant_encaisse_eur: 60, loyer_mensuel_eur: 140 },
+      ])
+    ).toBe(350);
+  });
+
+  it("ignore le facturé : réclamé n'est pas encaissé", () => {
+    expect(
+      cumuleEncaisse([{ statut: "facture", montant_encaisse_eur: 0, loyer_mensuel_eur: 140 }])
+    ).toBe(0);
+  });
+
+  it("rend zéro sur une année sans règlement", () => {
+    expect(cumuleEncaisse([])).toBe(0);
+  });
+});
+
+describe("resumeFacturation", () => {
+  it("ne compte que les loyers encore attendus, et leur montant", () => {
+    const resume = resumeFacturation([
+      ligne("Attendu", 140),
+      ligne("Payé", 200, "paye"),
+      ligne("Facturé", 90, "facture"),
+      ligne("Partiel", 100, "partiel", 40),
+    ]);
+
+    expect(resume).toEqual({ aFacturer: 1, dejaFacturees: 1, montant: 140 });
+  });
+
+  it("annonce zéro quand le mois est déjà entièrement réclamé", () => {
+    // Le bouton doit alors se désactiver plutôt que promettre une action sans
+    // effet : la facturation est rejouable, mais elle ne doit pas mentir.
+    const resume = resumeFacturation([ligne("A", 140, "facture"), ligne("B", 90, "paye")]);
+    expect(resume.aFacturer).toBe(0);
+    expect(resume.montant).toBe(0);
+  });
+});
+
+describe("encaisseLigne face au statut « facturé »", () => {
+  it("laisse le loyer entier dans le reste à encaisser", () => {
+    const lignes = [ligne("A", 140, "facture")];
+    expect(encaisseLigne(lignes[0])).toBe(0);
+    expect(calculeTotaux(lignes)).toEqual({ encaisse: 0, reste: 140, regles: 0, total: 1 });
   });
 });
