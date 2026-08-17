@@ -85,7 +85,7 @@ export function ListeBox({
     <div className="mx-auto max-w-2xl">
       <header className="suivi-safe-top sticky top-0 z-30 border-b border-border bg-background/95 px-3 pb-2 pt-2 backdrop-blur">
         <div className="flex items-baseline justify-between gap-2 px-1">
-          <h1 className="text-lg font-semibold">Box</h1>
+          <h1 className="t-titre">Box</h1>
           <span className="text-sm tabular-nums text-[var(--suivi-gris)]">
             {recherche ? `${affiche} / ${total}` : `${total} box`}
           </span>
@@ -145,7 +145,7 @@ export function ListeBox({
       )}
 
       {!modifiable && (
-        <p className="border-b border-[var(--suivi-orange)]/30 bg-[var(--suivi-orange)]/10 px-4 py-2 text-sm font-medium text-[var(--suivi-orange)]">
+        <p className="t-meta border-b border-[var(--suivi-trait)] bg-[var(--suivi-orange)]/8 px-4 py-2 text-[var(--suivi-orange)]">
           Mode démo — liste reconstituée depuis le CSV, édition indisponible.
         </p>
       )}
@@ -156,7 +156,7 @@ export function ListeBox({
         restant là où il se fait, sur l'écran Box.
       */}
       {enAttente > 0 && (
-        <p className="border-b border-[var(--suivi-orange)]/30 bg-[var(--suivi-orange)]/10 px-4 py-2 text-sm font-medium text-[var(--suivi-orange)]">
+        <p className="t-meta border-b border-[var(--suivi-trait)] bg-[var(--suivi-orange)]/8 px-4 py-2 text-[var(--suivi-orange)]">
           {/*
             Phrase construite en une seule expression : coupée sur plusieurs
             lignes de JSX, l'espace de début de ligne est supprimé et « s » se
@@ -211,10 +211,10 @@ export function ListeBox({
                     </span>
 
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-base font-bold text-foreground">
+                      <span className="block truncate t-corps font-bold text-foreground">
                         Box {box.numero}
                       </span>
-                      <span className="block truncate text-sm text-[var(--suivi-gris)]">
+                      <span className="block truncate t-meta">
                         {box.locataire ?? LIBELLE_STATUT[box.statut]}
                       </span>
                     </span>
@@ -222,7 +222,7 @@ export function ListeBox({
                     <span className="shrink-0 text-right">
                       <span
                         className={cn(
-                          "block text-base font-semibold tabular-nums",
+                          "block t-corps font-medium tabular-nums",
                           box.surface_m2 == null
                             ? "text-[var(--suivi-orange)]"
                             : "text-foreground"
@@ -251,7 +251,7 @@ export function ListeBox({
         ))}
 
         {affiches.length === 0 && (
-          <p className="px-4 py-12 text-center text-base text-[var(--suivi-gris)]">
+          <p className="px-4 py-12 text-center t-corps text-[var(--suivi-gris)]">
             {recherche
               ? `Aucun box ne correspond à « ${recherche} ».`
               : "Aucun box enregistré."}
@@ -259,7 +259,7 @@ export function ListeBox({
         )}
 
         {affiches.length > 0 && (
-          <p className="px-4 py-4 text-center text-sm text-[var(--suivi-gris)]">
+          <p className="px-4 py-4 text-center t-meta">
             Surface connue : {Number(surfaceConnue.toFixed(2))} m²
             {sansSurface > 0 && ` · ${sansSurface} box sans surface renseignée`}
           </p>

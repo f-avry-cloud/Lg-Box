@@ -204,25 +204,25 @@ export function FicheLocataireVue({
         >
           <ArrowLeft className="size-6" />
         </Link>
-        <span className="truncate text-base font-semibold">{labelPeriode(periode)}</span>
+        <span className="truncate t-corps font-medium">{labelPeriode(periode)}</span>
       </header>
 
       {/* En-tête locataire */}
       <section className="flex items-center gap-3 px-4 py-4">
         <span
           aria-hidden
-          className="flex size-14 shrink-0 items-center justify-center rounded-full text-lg font-bold text-white"
+          className="flex size-14 shrink-0 items-center justify-center rounded-full t-titre text-white"
           style={{ backgroundColor: couleurPastille(locataire.nom) }}
         >
           {initiales(locataire.nom)}
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-xl font-bold text-foreground">{locataire.nom}</h1>
+          <h1 className="t-titre truncate">{locataire.nom}</h1>
           {locataire.societe && (
-            <p className="truncate text-sm text-[var(--suivi-gris)]">{locataire.societe}</p>
+            <p className="truncate t-meta">{locataire.societe}</p>
           )}
           <span
-            className="mt-1 inline-block rounded-full px-2 py-0.5 text-sm font-semibold text-white"
+            className="t-etiquette mt-1 inline-block rounded-full px-2 py-1 text-white"
             style={{ backgroundColor: couleurStatut(statutGlobal) }}
           >
             {LIBELLE_STATUT[statutGlobal]}
@@ -232,15 +232,15 @@ export function FicheLocataireVue({
 
       {/* Bloc box */}
       <section className="px-4">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
+        <h2 className="mb-2 t-etiquette">
           {plusieursBox ? `Box (${contrats.length})` : "Box"}
         </h2>
         <div className="space-y-2">
           {contrats.map((contrat) => {
             const anciennete = libelleAnciennete(contrat.date_debut);
             return (
-              <div key={contrat.id} className="rounded-xl border border-border bg-card p-3">
-                <p className="text-base font-bold text-foreground">
+              <div key={contrat.id} className="suivi-carte p-3">
+                <p className="t-corps font-bold text-foreground">
                   {contrat.box
                     ? `Box ${contrat.box.numero}`
                     : BOX_A_IDENTIFIER.charAt(0).toUpperCase() + BOX_A_IDENTIFIER.slice(1)}
@@ -281,7 +281,7 @@ export function FicheLocataireVue({
                   <Button
                     type="button"
                     variant="outline"
-                    className="mt-3 h-12 w-full text-base"
+                    className="mt-3 h-12 w-full t-corps"
                     onClick={() => setContratARattacher(contrat.id)}
                   >
                     Rattacher un box
@@ -295,7 +295,7 @@ export function FicheLocataireVue({
 
       {/* Bloc coordonnées : les boutons les plus utiles de la fiche. */}
       <section className="px-4 pt-5">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
+        <h2 className="mb-2 t-etiquette">
           Contacter
         </h2>
         {locataire.telephone || locataire.email ? (
@@ -329,7 +329,7 @@ export function FicheLocataireVue({
             )}
           </>
         ) : (
-          <p className="rounded-xl border border-dashed border-border p-3 text-sm text-[var(--suivi-gris)]">
+          <p className="rounded-xl border border-dashed border-border p-3 t-meta">
             Aucune coordonnée renseignée.
           </p>
         )}
@@ -337,7 +337,7 @@ export function FicheLocataireVue({
 
       {/* Bloc règlement du mois */}
       <section className="px-4 pt-5">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
+        <h2 className="mb-2 t-etiquette">
           Règlement — {labelPeriode(periode)}
         </h2>
         <div className="space-y-3">
@@ -350,16 +350,13 @@ export function FicheLocataireVue({
               (paye ? contrat.loyer_mensuel_eur : 0);
 
             return (
-              <div key={contrat.id} className="rounded-xl border border-border bg-card p-3">
+              <div key={contrat.id} className="suivi-carte p-3">
                 {plusieursBox && (
                   <p className="mb-1 text-sm font-medium text-[var(--suivi-gris)]">
                     {contrat.box ? `Box ${contrat.box.numero}` : BOX_A_IDENTIFIER}
                   </p>
                 )}
-                <p
-                  className="text-2xl font-bold"
-                  style={{ color: couleurStatut(statut) }}
-                >
+                <p className="t-titre" style={{ color: couleurStatut(statut) }}>
                   {LIBELLE_STATUT[statut]}
                 </p>
 
@@ -379,14 +376,14 @@ export function FicheLocataireVue({
                 </dl>
 
                 {reglement?.note && (
-                  <p className="mt-1 text-sm text-[var(--suivi-gris)]">{reglement.note}</p>
+                  <p className="mt-1 t-meta">{reglement.note}</p>
                 )}
 
                 <div className="mt-3 flex flex-col gap-2">
                   <Button
                     type="button"
                     variant={paye ? "outline" : "success"}
-                    className="h-14 w-full text-base"
+                    className="h-14 w-full t-corps"
                     onClick={() => bascule(contrat.id)}
                   >
                     {paye ? "Annuler le règlement" : "Marquer comme réglé"}
@@ -394,7 +391,7 @@ export function FicheLocataireVue({
                   <Button
                     type="button"
                     variant="secondary"
-                    className="h-12 w-full text-base"
+                    className="h-12 w-full t-corps"
                     onClick={() => setContratEnSaisie(contrat.id)}
                   >
                     Saisir montant, date et moyen
@@ -408,7 +405,7 @@ export function FicheLocataireVue({
 
       {/* Observations */}
       <section className="px-4 pt-5">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
+        <h2 className="mb-2 t-etiquette">
           Observations
         </h2>
         <textarea
@@ -417,9 +414,9 @@ export function FicheLocataireVue({
           onBlur={surPerteFocusObservations}
           rows={4}
           placeholder="Relances, promesses de paiement, changement de RIB…"
-          className="w-full rounded-xl border border-input bg-card p-3 text-base leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="w-full rounded-xl border border-input bg-card p-3 t-corps leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
-        <p className="mt-1 text-sm text-[var(--suivi-gris)]">
+        <p className="mt-1 t-meta">
           {horodatage
             ? `Enregistré le ${formatDate(horodatage)}`
             : "Enregistrement automatique en quittant le champ."}
@@ -428,7 +425,7 @@ export function FicheLocataireVue({
 
       {/* Historique 12 mois */}
       <section className="px-4 pt-5">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
+        <h2 className="mb-2 t-etiquette">
           Douze derniers mois
         </h2>
         <div className="grid grid-cols-6 gap-2">
@@ -513,7 +510,7 @@ function BoutonCopier({ valeur, libelle }: { valeur: string; libelle: string }) 
           toast.error("Copie impossible — sélectionnez le numéro à la main.");
         }
       }}
-      className="suivi-tap mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card text-sm font-semibold text-foreground active:bg-secondary"
+      className="suivi-tap mt-2 flex min-h-12 w-full items-center justify-center gap-2 suivi-carte text-sm font-semibold text-foreground active:bg-secondary"
     >
       <Copy className="size-4" aria-hidden />
       {libelle}
@@ -532,7 +529,7 @@ function BoutonContact({
 }) {
   if (!href) {
     return (
-      <span className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border text-sm text-[var(--suivi-gris)] opacity-60">
+      <span className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border t-meta opacity-60">
         {icone}
         {libelle}
       </span>
@@ -542,7 +539,7 @@ function BoutonContact({
   return (
     <a
       href={href}
-      className="suivi-tap flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-card text-sm font-semibold text-primary active:bg-secondary"
+      className="suivi-tap flex min-h-16 flex-col items-center justify-center gap-1 suivi-carte text-sm font-semibold text-primary active:bg-secondary"
     >
       {icone}
       {libelle}

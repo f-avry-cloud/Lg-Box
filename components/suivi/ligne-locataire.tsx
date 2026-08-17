@@ -47,15 +47,15 @@ export function LigneLocataire({
         </span>
 
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-base font-bold text-foreground">{ligne.nom}</span>
-          <span className="block truncate text-sm text-[var(--suivi-gris)]">
+          <span className="block truncate t-corps font-bold text-foreground">{ligne.nom}</span>
+          <span className="block truncate t-meta">
             {ligne.societe ? `${ligne.societe} · ` : ""}
             {libelleBoxCourt}
           </span>
         </span>
 
         <span className="shrink-0 pr-1 text-right">
-          <span className="block text-base font-semibold tabular-nums text-foreground">
+          <span className="block t-corps font-medium tabular-nums text-foreground">
             {ligne.loyer_mensuel_eur} €
           </span>
           {statut === "partiel" && (

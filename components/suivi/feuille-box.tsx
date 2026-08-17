@@ -199,7 +199,7 @@ export function FeuilleBox({
           Le tarif doit être un nombre positif.
         </p>
       ) : (
-        <p className="mb-2 text-sm text-[var(--suivi-gris)]">
+        <p className="mb-2 t-meta">
           Sert à proposer un loyer à l&apos;affectation. Le loyer facturé reste celui du contrat
           {box?.detail ? ` — aujourd'hui ${box.detail.loyer_mensuel_eur} €.` : "."}
         </p>
@@ -261,7 +261,7 @@ export function FeuilleBox({
 
       {!creation && box?.locataire && !box.detail && (
         <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-border bg-secondary/40 p-3">
-          <span className="min-w-0 flex-1 truncate text-base font-bold">{box.locataire}</span>
+          <span className="min-w-0 flex-1 truncate t-corps font-bold">{box.locataire}</span>
           <button
             type="button"
             disabled={enCours}
@@ -287,12 +287,12 @@ export function FeuilleBox({
       )}
 
       <div className="flex gap-2">
-        <Button type="button" variant="outline" className="h-14 flex-1 text-base" onClick={onFermer}>
+        <Button type="button" variant="outline" className="h-14 flex-1 t-corps" onClick={onFermer}>
           Annuler
         </Button>
         <Button
           type="button"
-          className="h-14 flex-1 text-base"
+          className="h-14 flex-1 t-corps"
           disabled={enCours || !valide}
           onClick={enregistre}
         >
@@ -334,7 +334,7 @@ export function FeuilleBox({
         </div>
       )}
 
-      <p className="mt-3 text-center text-sm text-[var(--suivi-gris)]">
+      <p className="mt-3 text-center t-meta">
         Ces données appartiennent à l&apos;application. Le back-office n&apos;est pas modifié.
       </p>
     </FeuilleModale>

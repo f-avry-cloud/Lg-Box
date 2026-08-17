@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { AlertTriangle, Inbox, LogOut, TrendingUp, Warehouse } from "lucide-react";
+import { ChevronRight, Inbox, LogOut, TrendingUp, Warehouse } from "lucide-react";
 
 import { BlocEnvoiFactures } from "@/components/suivi/bloc-envoi-factures";
 import { BoutonFacturation } from "@/components/suivi/bouton-facturation";
-
 import { aEnvoyer, resumeEnvoi } from "@/lib/suivi/mail";
 import { labelPeriode, isPeriode, periodeCourante } from "@/lib/suivi/period";
 import {
@@ -15,6 +14,16 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Tableau de bord.
+ *
+ * Une seule chose est mise en avant — l'encaissement du mois — et tout le
+ * reste vient après, à taille égale entre soi. La version précédente donnait
+ * la même prééminence à cinq chiffres de natures différentes, chacun en gras
+ * et dans une taille choisie au coup par coup : l'œil ne savait pas par où
+ * commencer. La hiérarchie se fait ici par la taille et la couleur, jamais
+ * par le gras, et toutes les tailles viennent de l'échelle de `suivi.css`.
+ */
 export default async function TableauDeBordPage({
   searchParams,
 }: {
@@ -29,45 +38,52 @@ export default async function TableauDeBordPage({
     destinatairesFactures(periode),
   ]);
 
-  // L'aperçu se calcule sur le premier destinataire réel : le message montré
-  // avant l'envoi est alors exactement celui qui partira.
-  const premier = aEnvoyer(destinataires)[0] ?? null;
   const modeDemo = estModeDemo();
   const attendu = stats.encaisse + stats.reste;
   const progression = attendu === 0 ? 0 : Math.round((stats.encaisse / attendu) * 100);
 
+  // L'aperçu se calcule sur le premier destinataire réel : le message montré
+  // avant l'envoi est alors exactement celui qui partira.
+  const premier = aEnvoyer(destinataires)[0] ?? null;
+
   return (
     <div className="mx-auto max-w-2xl">
-      <header className="suivi-safe-top sticky top-0 z-30 border-b border-border bg-background/95 px-4 pb-2 pt-3 backdrop-blur">
-        <h1 className="text-lg font-semibold">Tableau de bord</h1>
-        <p className="text-sm text-[var(--suivi-gris)]">{labelPeriode(periode)}</p>
+      <header className="suivi-safe-top sticky top-0 z-30 bg-[var(--background)]/90 px-5 pb-3 pt-4 backdrop-blur-md">
+        <p className="t-etiquette">{labelPeriode(periode)}</p>
+        <h1 className="t-titre mt-0.5">Tableau de bord</h1>
       </header>
 
       {modeDemo && (
-        <p className="border-b border-[var(--suivi-orange)]/30 bg-[var(--suivi-orange)]/10 px-4 py-2 text-sm font-medium text-[var(--suivi-orange)]">
+        <p className="t-meta mx-5 mb-3 rounded-lg bg-[var(--suivi-orange)]/10 px-3 py-2 text-[var(--suivi-orange)]">
           Mode démo — seuls les chiffres d&apos;encaissement sont réels.
         </p>
       )}
 
-      <div className="suivi-scroll-simple space-y-3 p-3">
-        {/* Encaissement du mois : le chiffre que l'exploitant vient chercher. */}
+      <div className="suivi-scroll-simple space-y-3 px-5 pb-5">
+        {/* Le chiffre que l'exploitant vient chercher. Seul en haut, seul de
+            sa taille : c'est ce qui fait qu'on le voit sans le chercher. */}
         <Link
           href={`/suivi?mois=${periode}`}
-          className="suivi-tap block rounded-2xl border border-border bg-card p-4 active:bg-secondary/60"
+          className="suivi-tap suivi-carte block p-5 active:bg-[var(--secondary)]/40"
         >
-          <div className="flex items-baseline justify-between">
-            <span className="text-sm font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
-              Encaissé ce mois
-            </span>
-            <span className="text-sm tabular-nums text-[var(--suivi-gris)]">
+          <div className="flex items-center justify-between">
+            <span className="t-etiquette">Encaissé ce mois</span>
+            <span className="t-meta t-nombre">
               {stats.contratsRegles} / {stats.contratsTotal}
             </span>
           </div>
-          <p className="mt-1 text-3xl font-bold tabular-nums text-[var(--suivi-vert)]">
+
+          {/* Vert quand quelque chose est rentré ; neutre à zéro — un zéro
+              vert annoncerait une bonne nouvelle qui n'en est pas une. */}
+          <p
+            className="t-hero mt-2"
+            style={{ color: stats.encaisse > 0 ? "var(--suivi-vert)" : "var(--foreground)" }}
+          >
             {stats.encaisse.toLocaleString("fr-FR")} €
           </p>
+
           <div
-            className="mt-2 h-2 w-full overflow-hidden rounded-full bg-secondary"
+            className="mt-3 h-1 w-full overflow-hidden rounded-full bg-[var(--suivi-trait)]"
             role="progressbar"
             aria-valuenow={progression}
             aria-valuemin={0}
@@ -75,33 +91,66 @@ export default async function TableauDeBordPage({
             aria-label="Part du mois encaissée"
           >
             <div
-              className="h-full rounded-full bg-[var(--suivi-vert)]"
+              className="h-full rounded-full bg-[var(--suivi-vert)] transition-[width] duration-500"
               style={{ width: `${progression}%` }}
             />
           </div>
-          <p className="mt-2 text-base font-semibold tabular-nums text-[var(--suivi-orange)]">
-            Reste {stats.reste.toLocaleString("fr-FR")} € à encaisser
+
+          <p className="t-meta mt-2">
+            Reste{" "}
+            <span className="t-nombre font-medium text-[var(--suivi-orange)]">
+              {stats.reste.toLocaleString("fr-FR")} €
+            </span>{" "}
+            à encaisser
           </p>
         </Link>
 
-        {/* Chiffre d'affaires encaissé depuis le 1er janvier : le cumul de
-            l'exercice, à côté du mois qui, seul, ne dit pas où l'on en est. */}
-        <div className="rounded-2xl border border-border bg-card p-4">
-          <div className="flex items-center gap-2 text-[var(--suivi-gris)]">
-            <TrendingUp className="size-5" aria-hidden />
-            <span className="text-sm font-semibold uppercase tracking-wide">
-              {`Encaissé depuis le 1er janvier ${stats.annee}`}
-            </span>
-          </div>
-          <p className="mt-1 text-3xl font-bold tabular-nums text-foreground">
-            {stats.caAnnuel.toLocaleString("fr-FR")} €
-          </p>
-          <p className="mt-0.5 text-sm text-[var(--suivi-gris)]">
-            {`Cumul des règlements pointés sur l'année ${stats.annee}`}
-          </p>
+        {/* Les indicateurs, tous de même rang, donc tous de même taille. */}
+        <div className="grid grid-cols-2 gap-3">
+          <Tuile
+            icone={<TrendingUp className="size-4" aria-hidden />}
+            libelle={`Encaissé ${stats.annee}`}
+            valeur={`${stats.caAnnuel.toLocaleString("fr-FR")} €`}
+            detail="depuis le 1er janvier"
+          />
+          <Tuile
+            href="/suivi/box"
+            icone={<Warehouse className="size-4" aria-hidden />}
+            libelle="Occupation"
+            valeur={`${stats.tauxOccupation} %`}
+            detail={`${stats.boxLoues} loués · ${stats.boxLibres} libres`}
+          />
+          <Tuile
+            icone={<LogOut className="size-4" aria-hidden />}
+            libelle="Préavis"
+            valeur={String(stats.contratsEnPreavis)}
+            detail={stats.contratsEnPreavis > 0 ? "box à relouer" : "aucun départ"}
+            alerte={stats.contratsEnPreavis > 0}
+          />
+          <Tuile
+            href="/suivi/demandes"
+            icone={<Inbox className="size-4" aria-hidden />}
+            libelle="Demandes"
+            valeur={String(stats.demandesNouvelles)}
+            detail={stats.demandesNouvelles > 0 ? "à rappeler" : "aucune nouvelle"}
+            alerte={stats.demandesNouvelles > 0}
+          />
         </div>
 
-        {/* Facturation groupée du mois */}
+        {stats.impayesMontant > 0 && (
+          <div className="suivi-carte flex items-baseline justify-between p-4">
+            <span className="t-etiquette">Impayés back-office</span>
+            <span className="t-nombre t-corps font-medium text-[var(--suivi-orange)]">
+              {stats.impayesMontant.toLocaleString("fr-FR")} €
+              <span className="t-meta ml-2">
+                {`${stats.impayesClients} client${stats.impayesClients > 1 ? "s" : ""}`}
+              </span>
+            </span>
+          </div>
+        )}
+
+        {/* Les actions du mois, séparées des chiffres : on regarde, puis on
+            agit — l'écran suit cet ordre. */}
         <BoutonFacturation
           periode={periode}
           aFacturer={stats.aFacturer}
@@ -109,9 +158,8 @@ export default async function TableauDeBordPage({
           montant={stats.montantAFacturer}
         />
 
-        {/* Envoi groupé des factures — la seule action qui sorte du site.
-            Masquée en démo : sans base, il n'y a ni paramétrage à régler ni
-            destinataire à servir. */}
+        {/* Envoi groupé — la seule action qui sorte du site. Masquée en démo :
+            sans base, il n'y a ni paramétrage à régler ni destinataire. */}
         {!modeDemo && (
           <BlocEnvoiFactures
             periode={periode}
@@ -121,71 +169,7 @@ export default async function TableauDeBordPage({
           />
         )}
 
-        {/* Occupation */}
-        <Link
-          href="/suivi/box"
-          className="suivi-tap block rounded-2xl border border-border bg-card p-4 active:bg-secondary/60"
-        >
-          <div className="flex items-center gap-2">
-            <Warehouse className="size-5 text-primary" aria-hidden />
-            <span className="text-sm font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
-              Occupation
-            </span>
-          </div>
-          <p className="mt-1 text-3xl font-bold tabular-nums text-foreground">
-            {stats.tauxOccupation} %
-          </p>
-          <p className="mt-1 text-base text-[var(--suivi-gris)]">
-            <strong className="text-foreground">{stats.boxLoues}</strong> loués ·{" "}
-            <strong className="text-foreground">{stats.boxLibres}</strong> libres · {stats.boxTotal}{" "}
-            box
-          </p>
-        </Link>
-
-        {/* Points d'attention */}
-        <div className="grid grid-cols-1 gap-3">
-          <Tuile
-            icone={<AlertTriangle className="size-5" aria-hidden />}
-            libelle="Impayés"
-            valeur={`${stats.impayesMontant.toLocaleString("fr-FR")} €`}
-            detail={
-              stats.impayesClients > 0
-                ? `${stats.impayesClients} client${stats.impayesClients > 1 ? "s" : ""} concerné${
-                    stats.impayesClients > 1 ? "s" : ""
-                  }`
-                : "Aucune facture en attente"
-            }
-            alerte={stats.impayesMontant > 0}
-          />
-
-          <Tuile
-            icone={<LogOut className="size-5" aria-hidden />}
-            libelle="Contrats en préavis"
-            valeur={String(stats.contratsEnPreavis)}
-            detail={
-              stats.contratsEnPreavis > 0
-                ? "Box à relouer prochainement"
-                : "Aucun départ annoncé"
-            }
-            alerte={stats.contratsEnPreavis > 0}
-          />
-
-          <Link href="/suivi/demandes" className="suivi-tap block active:opacity-80">
-            <Tuile
-              icone={<Inbox className="size-5" aria-hidden />}
-              libelle="Demandes de réservation"
-              valeur={String(stats.demandesNouvelles)}
-              detail={
-                stats.demandesNouvelles > 0
-                  ? "À rappeler — toucher pour ouvrir"
-                  : "Aucune nouvelle demande"
-              }
-              alerte={stats.demandesNouvelles > 0}
-            />
-          </Link>
-        </div>
-
-        <p className="px-1 pt-1 text-center text-sm text-[var(--suivi-gris)]">
+        <p className="t-meta pt-1 text-center">
           Contrats, documents et rapports restent dans le back-office.
         </p>
       </div>
@@ -193,35 +177,50 @@ export default async function TableauDeBordPage({
   );
 }
 
+/**
+ * Un indicateur. Toutes les tuiles ont la même taille de chiffre : c'est ce
+ * qui les rend comparables d'un coup d'œil. L'alerte se marque en couleur,
+ * pas en taille ni en gras.
+ */
 function Tuile({
   icone,
   libelle,
   valeur,
   detail,
   alerte,
+  href,
 }: {
   icone: React.ReactNode;
   libelle: string;
   valeur: string;
   detail: string;
-  alerte: boolean;
+  alerte?: boolean;
+  href?: string;
 }) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <div
-        className="flex items-center gap-2"
-        style={{ color: alerte ? "var(--suivi-orange)" : "var(--suivi-gris)" }}
-      >
+  const contenu = (
+    <>
+      <div className="flex items-center gap-1.5 text-[var(--suivi-gris)]">
         {icone}
-        <span className="text-sm font-semibold uppercase tracking-wide">{libelle}</span>
+        <span className="t-etiquette">{libelle}</span>
+        {href && <ChevronRight className="ml-auto size-3.5 opacity-50" aria-hidden />}
       </div>
       <p
-        className="mt-1 text-2xl font-bold tabular-nums"
+        className="t-chiffre mt-1.5"
         style={{ color: alerte ? "var(--suivi-orange)" : "var(--foreground)" }}
       >
         {valeur}
       </p>
-      <p className="mt-0.5 text-sm text-[var(--suivi-gris)]">{detail}</p>
-    </div>
+      <p className="t-meta mt-0.5">{detail}</p>
+    </>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className="suivi-tap suivi-carte block p-4 active:bg-[var(--secondary)]/40">
+        {contenu}
+      </Link>
+    );
+  }
+
+  return <div className="suivi-carte p-4">{contenu}</div>;
 }

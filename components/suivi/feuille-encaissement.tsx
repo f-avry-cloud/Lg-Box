@@ -59,7 +59,7 @@ export function FeuilleEncaissement({
 
   return (
     <FeuilleModale ouverte titre={ligne.nom} onFermer={onFermer}>
-      <p className="-mt-2 mb-4 text-sm text-[var(--suivi-gris)]">
+      <p className="-mt-2 mb-4 t-meta">
         {labelPeriode(periode)} · loyer attendu{" "}
         <strong className="text-foreground">{ligne.loyer_mensuel_eur} €</strong>
       </p>
@@ -101,7 +101,7 @@ export function FeuilleEncaissement({
         type="date"
         value={date}
         onChange={(e) => setDate(e.target.value)}
-        className="mb-3 h-14 w-full rounded-xl border border-input bg-background px-4 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="mb-3 h-14 w-full rounded-xl border border-input bg-background px-4 t-corps outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
 
       <span className="mb-1 block text-sm font-medium">Moyen de paiement</span>
@@ -132,21 +132,21 @@ export function FeuilleEncaissement({
         value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Chèque remis le 12, à déposer"
-        className="mb-4 h-14 w-full rounded-xl border border-input bg-background px-4 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="mb-4 h-14 w-full rounded-xl border border-input bg-background px-4 t-corps outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
 
       <div className="flex gap-2">
         <Button
           type="button"
           variant="outline"
-          className="h-14 flex-1 text-base"
+          className="h-14 flex-1 t-corps"
           onClick={onFermer}
         >
           Annuler
         </Button>
         <Button
           type="button"
-          className="h-14 flex-1 text-base"
+          className="h-14 flex-1 t-corps"
           disabled={!montantValide}
           onClick={() =>
             onValider({
@@ -161,7 +161,7 @@ export function FeuilleEncaissement({
         </Button>
       </div>
 
-      <p className="mt-3 text-center text-sm text-[var(--suivi-gris)]">
+      <p className="mt-3 text-center t-meta">
         Un montant à 0 € remet le mois en attente.
       </p>
     </FeuilleModale>

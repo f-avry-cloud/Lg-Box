@@ -105,12 +105,12 @@ export function BlocLocataireBox({ box }: { box: BoxListe }) {
   };
 
   return (
-    <section className="mb-4 rounded-2xl border border-border bg-card p-3">
+    <section className="mb-4 suivi-carte p-3">
       <div className="mb-3 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="truncate text-lg font-bold text-foreground">{detail.nom}</h3>
+          <h3 className="truncate t-titre text-foreground">{detail.nom}</h3>
           {detail.societe && (
-            <p className="truncate text-sm text-[var(--suivi-gris)]">{detail.societe}</p>
+            <p className="truncate t-meta">{detail.societe}</p>
           )}
         </div>
         <span
@@ -154,7 +154,7 @@ export function BlocLocataireBox({ box }: { box: BoxListe }) {
       {editeLoyer && (
         <div className="mb-3 rounded-xl border border-border bg-secondary/40 p-3">
           <label
-            className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]"
+            className="mb-1 block t-etiquette"
             htmlFor="loyer-contrat"
           >
             Loyer mensuel (€)
@@ -169,7 +169,7 @@ export function BlocLocataireBox({ box }: { box: BoxListe }) {
             onChange={(e) => setSaisieLoyer(e.target.value)}
             className="mb-2 h-14 w-full rounded-xl border border-input bg-background px-4 text-lg tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
-          <p className="mb-2 text-xs text-[var(--suivi-gris)]">
+          <p className="mb-2 t-meta">
             Le nouveau loyer vaut pour les mois à venir. Les règlements déjà pointés gardent le
             montant encaissé.
           </p>
@@ -210,7 +210,7 @@ export function BlocLocataireBox({ box }: { box: BoxListe }) {
         </div>
       )}
 
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
+      <span className="mb-1 block t-etiquette">
         Périodicité
       </span>
       <div className="mb-3 flex gap-2">
@@ -239,7 +239,7 @@ export function BlocLocataireBox({ box }: { box: BoxListe }) {
       <Button
         type="button"
         variant={paye ? "outline" : "success"}
-        className="h-14 w-full text-base"
+        className="h-14 w-full t-corps"
         disabled={enCours || !box.contrat_id}
         onClick={basculePaiement}
       >
@@ -309,7 +309,7 @@ export function BlocLocataireBox({ box }: { box: BoxListe }) {
                   className="suivi-tap flex min-h-14 w-full items-center justify-between rounded-xl border border-border bg-background px-3 text-left active:bg-secondary"
                 >
                   <span className="font-semibold">{labelPeriode(cible)}</span>
-                  <span className="text-xs text-[var(--suivi-gris)]">
+                  <span className="t-meta">
                     {decalage === 0
                       ? "préavis échu"
                       : decalage === 1
@@ -402,7 +402,7 @@ function Donnee({
 }) {
   return (
     <div>
-      <dt className="flex items-baseline gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
+      <dt className="flex items-baseline gap-2 t-etiquette">
         {libelle}
         {action && (
           <button
@@ -415,12 +415,12 @@ function Donnee({
         )}
       </dt>
       <dd
-        className="text-base font-bold tabular-nums"
+        className="t-corps font-bold tabular-nums"
         style={{ color: alerte ? "var(--suivi-orange)" : "var(--foreground)" }}
       >
         {valeur}
       </dd>
-      {detail && <dd className="text-xs text-[var(--suivi-gris)]">{detail}</dd>}
+      {detail && <dd className="t-meta">{detail}</dd>}
     </div>
   );
 }

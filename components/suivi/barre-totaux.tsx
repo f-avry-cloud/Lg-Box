@@ -12,22 +12,23 @@ export function BarreTotaux({ totaux }: { totaux: TotauxMois }) {
   const progression = attendu === 0 ? 0 : Math.round((totaux.encaisse / attendu) * 100);
 
   return (
-    <div className="suivi-totaux fixed inset-x-0 z-30 border-t border-border bg-card/95 backdrop-blur">
+    <div className="suivi-totaux fixed inset-x-0 z-30 border-t border-[var(--suivi-trait)] bg-card/95 backdrop-blur">
       <div className="mx-auto max-w-2xl px-4 pb-2 pt-2">
         <div className="flex items-baseline justify-between gap-3">
           <div>
-            <span className="block text-xs font-medium uppercase tracking-wide text-[var(--suivi-gris)]">
-              Encaissé
-            </span>
-            <span className="block text-xl font-bold tabular-nums text-[var(--suivi-vert)]">
+            <span className="t-etiquette block">Encaissé</span>
+            <span
+              className="t-chiffre block"
+              style={{
+                color: totaux.encaisse > 0 ? "var(--suivi-vert)" : "var(--foreground)",
+              }}
+            >
               {totaux.encaisse.toLocaleString("fr-FR")} €
             </span>
           </div>
           <div className="text-right">
-            <span className="block text-xs font-medium uppercase tracking-wide text-[var(--suivi-gris)]">
-              Reste à encaisser
-            </span>
-            <span className="block text-xl font-bold tabular-nums text-[var(--suivi-orange)]">
+            <span className="t-etiquette block">Reste à encaisser</span>
+            <span className="t-chiffre block text-[var(--suivi-orange)]">
               {totaux.reste.toLocaleString("fr-FR")} €
             </span>
           </div>
@@ -47,7 +48,7 @@ export function BarreTotaux({ totaux }: { totaux: TotauxMois }) {
           />
         </div>
 
-        <p className="mt-1 text-center text-sm font-medium tabular-nums text-[var(--suivi-gris)]">
+        <p className="t-meta t-nombre mt-1 text-center">
           {totaux.regles} / {totaux.total} locataires
         </p>
       </div>

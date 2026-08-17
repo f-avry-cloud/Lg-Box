@@ -61,35 +61,33 @@ export function BoutonFacturation({
   };
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-4">
-      <div className="flex items-center gap-2 text-[var(--suivi-gris)]">
-        <FileText className="size-5" aria-hidden />
-        <span className="text-sm font-semibold uppercase tracking-wide">Facturation du mois</span>
+    <section className="suivi-carte p-4">
+      <div className="flex items-center gap-1.5 text-[var(--suivi-gris)]">
+        <FileText className="size-4" aria-hidden />
+        <span className="t-etiquette">Facturation du mois</span>
       </div>
 
-      <p className="mt-1 text-base text-[var(--suivi-gris)]">
+      <p className="t-corps mt-1.5">
         {aFacturer > 0 ? (
           <>
-            <strong className="text-foreground tabular-nums">{aFacturer}</strong>
+            <span className="t-nombre font-medium">{aFacturer}</span>
             {` loyer${aFacturer > 1 ? "s" : ""} à réclamer · `}
-            <strong className="text-foreground tabular-nums">
-              {montant.toLocaleString("fr-FR")} €
-            </strong>
+            <span className="t-nombre font-medium">{montant.toLocaleString("fr-FR")} €</span>
           </>
         ) : (
-          `Tous les loyers ${dePeriode(periode)} sont réclamés ou réglés.`
+          <span className="text-[var(--suivi-gris-clair)]">
+            {`Tous les loyers ${dePeriode(periode)} sont réclamés ou réglés.`}
+          </span>
         )}
       </p>
 
       {dejaFacturees > 0 && (
-        <p className="mt-0.5 text-sm text-[var(--suivi-gris)]">
-          {`${dejaFacturees} déjà en attente de règlement.`}
-        </p>
+        <p className="t-meta mt-0.5">{`${dejaFacturees} déjà en attente de règlement.`}</p>
       )}
 
       <Button
         type="button"
-        className="mt-3 h-14 w-full text-base"
+        className="mt-3 h-12 w-full"
         disabled={enCours || aFacturer === 0}
         onClick={() => setConfirmation("facturer")}
       >
@@ -101,7 +99,7 @@ export function BoutonFacturation({
           type="button"
           disabled={enCours}
           onClick={() => setConfirmation("annuler")}
-          className="suivi-tap mt-2 flex min-h-11 w-full items-center justify-center gap-2 text-sm font-medium text-[var(--suivi-gris)]"
+          className="suivi-tap t-meta mt-2 flex min-h-11 w-full items-center justify-center gap-1.5"
         >
           <Undo2 className="size-4" aria-hidden />
           Annuler la facturation du mois
@@ -114,13 +112,13 @@ export function BoutonFacturation({
         onFermer={() => setConfirmation(null)}
       >
         {confirmation === "annuler" ? (
-          <p className="mb-4 text-base">
+          <p className="t-corps mb-4">
             {`Retirer la mention « facturé » sur ${dejaFacturees} loyer${
               dejaFacturees > 1 ? "s" : ""
             } ${dePeriode(periode)} ? Les règlements déjà encaissés ne sont pas touchés.`}
           </p>
         ) : (
-          <p className="mb-4 text-base">
+          <p className="t-corps mb-4">
             {`Marquer comme facturés ${aFacturer} loyer${
               aFacturer > 1 ? "s" : ""
             } ${dePeriode(periode)}, pour ${montant.toLocaleString(
@@ -133,7 +131,7 @@ export function BoutonFacturation({
           <Button
             type="button"
             variant="outline"
-            className="h-14 flex-1"
+            className="h-12 flex-1"
             onClick={() => setConfirmation(null)}
           >
             Non
@@ -141,7 +139,7 @@ export function BoutonFacturation({
           <Button
             type="button"
             variant={confirmation === "annuler" ? "destructive" : "default"}
-            className="h-14 flex-1"
+            className="h-12 flex-1"
             disabled={enCours}
             onClick={() => lance(confirmation === "annuler" ? "annuler" : "facturer")}
           >

@@ -53,7 +53,7 @@ export function ChoixDateEffet({
 
   return (
     <fieldset disabled={desactive} className="mb-3">
-      <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
+      <legend className="mb-1 t-etiquette">
         Premier mois dû
       </legend>
       <div className="space-y-2">
@@ -73,7 +73,7 @@ export function ChoixDateEffet({
               )}
             >
               <span className="font-semibold">{option.titre}</span>
-              <span className="text-xs text-[var(--suivi-gris)]">{option.detail}</span>
+              <span className="t-meta">{option.detail}</span>
             </button>
           );
         })}

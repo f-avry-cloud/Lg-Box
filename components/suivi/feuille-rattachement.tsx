@@ -138,12 +138,12 @@ export function FeuilleRattachement({
           onChange={(e) => setRecherche(e.target.value)}
           placeholder="Numéro ou bâtiment"
           aria-label="Rechercher un box"
-          className="h-12 w-full rounded-xl border border-input bg-background pl-9 pr-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="h-12 w-full rounded-xl border border-input bg-background pl-9 pr-3 t-corps outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
 
       {groupes.length === 0 && (
-        <p className="py-8 text-center text-base text-[var(--suivi-gris)]">
+        <p className="py-8 text-center t-corps text-[var(--suivi-gris)]">
           {recherche ? `Aucun box ne correspond à « ${recherche} ».` : "Aucun box disponible."}
         </p>
       )}
@@ -192,7 +192,7 @@ export function FeuilleRattachement({
         </section>
       ))}
 
-      <p className="mt-2 text-center text-sm text-[var(--suivi-gris)]">
+      <p className="mt-2 text-center t-meta">
         Le rattachement ne touche que les données de l&apos;application.
       </p>
     </FeuilleModale>

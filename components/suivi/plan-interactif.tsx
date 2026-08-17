@@ -151,7 +151,7 @@ export function PlanInteractif({
 
   if (!groupe) {
     return (
-      <p className="px-4 py-12 text-center text-base text-[var(--suivi-gris)]">
+      <p className="px-4 py-12 text-center t-corps text-[var(--suivi-gris)]">
         Aucun box à afficher.
       </p>
     );
@@ -198,14 +198,14 @@ export function PlanInteractif({
         onTouchMove={surMouvement}
         onTouchEnd={surFin}
         onTouchCancel={surFin}
-        className="suivi-tap relative mx-3 overflow-hidden rounded-2xl border border-border bg-card"
+        className="suivi-tap relative mx-3 overflow-hidden suivi-carte"
         // Hauteur bornée pour que la légende et le compte restent visibles
         // sous le plan, au-dessus de la barre d'onglets — sur un iPhone 13,
         // 58 dvh les repoussaient hors écran.
         style={{ height: "min(46dvh, 24rem)", touchAction: "none" }}
       >
         {places.length === 0 ? (
-          <p className="flex h-full items-center justify-center px-6 text-center text-base text-[var(--suivi-gris)]">
+          <p className="flex h-full items-center justify-center px-6 text-center t-corps text-[var(--suivi-gris)]">
             Aucun box de {groupe.batiment} n&apos;est encore placé sur le plan.
           </p>
         ) : (
@@ -289,7 +289,7 @@ export function PlanInteractif({
       </div>
 
       {/* Légende et chiffres du bâtiment affiché. */}
-      <div className="mx-3 mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-border bg-card px-3 py-2 text-sm">
+      <div className="mx-3 mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 suivi-carte px-3 py-2 text-sm">
         <span className="flex items-center gap-1.5">
           <span
             className="size-3 rounded"
@@ -311,7 +311,7 @@ export function PlanInteractif({
         </span>
       </div>
 
-      <p className="px-4 pt-2 text-center text-sm text-[var(--suivi-gris)]">
+      <p className="px-4 pt-2 text-center t-meta">
         Pincez pour zoomer, glissez pour déplacer, tapez un box pour l&apos;ouvrir.
       </p>
 

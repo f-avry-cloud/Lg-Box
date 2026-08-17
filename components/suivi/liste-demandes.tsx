@@ -60,8 +60,8 @@ export function ListeDemandes({ demandes }: { demandes: DemandeReservation[] }) 
   return (
     <>
       <div className="suivi-safe-top sticky top-0 z-30 border-b border-border bg-background/95 px-4 pb-2 pt-3 backdrop-blur">
-        <h1 className="text-lg font-semibold">Demandes de réservation</h1>
-        <p className="text-sm text-[var(--suivi-gris)]">
+        <h1 className="t-titre">Demandes de réservation</h1>
+        <p className="t-meta">
           {nouvelles > 0
             ? `${nouvelles} nouvelle${nouvelles > 1 ? "s" : ""} à rappeler`
             : "Aucune demande en attente"}
@@ -96,7 +96,7 @@ export function ListeDemandes({ demandes }: { demandes: DemandeReservation[] }) 
         {visibles.length === 0 && (
           <div className="flex flex-col items-center gap-2 px-6 py-16 text-center">
             <Inbox className="size-10 text-[var(--suivi-gris)]" aria-hidden />
-            <p className="text-base text-[var(--suivi-gris)]">
+            <p className="t-corps text-[var(--suivi-gris)]">
               {filtre === "attente"
                 ? "Toutes les demandes ont été traitées."
                 : "Aucune demande reçue pour l'instant."}
@@ -110,7 +110,7 @@ export function ListeDemandes({ demandes }: { demandes: DemandeReservation[] }) 
               key={d.id}
               type="button"
               onClick={() => setOuverte(d.id)}
-              className="suivi-tap flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left active:bg-secondary/60"
+              className="suivi-tap flex w-full items-center gap-3 suivi-carte p-3 text-left active:bg-secondary/60"
             >
               <span
                 className="flex size-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
@@ -121,8 +121,8 @@ export function ListeDemandes({ demandes }: { demandes: DemandeReservation[] }) 
               </span>
 
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-base font-semibold">{d.nom}</span>
-                <span className="block truncate text-sm text-[var(--suivi-gris)]">
+                <span className="block truncate t-corps font-medium">{d.nom}</span>
+                <span className="block truncate t-meta">
                   {[
                     d.taille_souhaitee,
                     d.date_souhaitee ? `pour le ${formatDate(d.date_souhaitee)}` : null,
@@ -133,7 +133,7 @@ export function ListeDemandes({ demandes }: { demandes: DemandeReservation[] }) 
               </span>
 
               <span
-                className="shrink-0 rounded-full px-2 py-1 text-xs font-bold text-white"
+                className="t-etiquette shrink-0 rounded-full px-2 py-1 text-white"
                 style={{ backgroundColor: couleurStatutDemande(d.statut) }}
               >
                 {STATUT_DEMANDE_LABELS[d.statut]}
@@ -150,7 +150,7 @@ export function ListeDemandes({ demandes }: { demandes: DemandeReservation[] }) 
       >
         {demande && (
           <>
-            <p className="mb-3 text-sm text-[var(--suivi-gris)]">
+            <p className="mb-3 t-meta">
               {`Reçue le ${formatDate(demande.created_at)}`}
             </p>
 
@@ -179,7 +179,7 @@ export function ListeDemandes({ demandes }: { demandes: DemandeReservation[] }) 
               className="mb-4"
             />
 
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
+            <span className="mb-1 block t-etiquette">
               Suivi de la demande
             </span>
             <div className="grid grid-cols-2 gap-2">
@@ -224,11 +224,11 @@ function Donnee({
 }) {
   return (
     <div>
-      <dt className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
+      <dt className="flex items-center gap-1 t-etiquette">
         {icone}
         {libelle}
       </dt>
-      <dd className="text-base font-semibold">{valeur}</dd>
+      <dd className="t-corps font-medium">{valeur}</dd>
     </div>
   );
 }

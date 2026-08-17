@@ -41,7 +41,7 @@ export function NavigationMois({ periode }: { periode: string }) {
             setAnneeAffichee(annee);
             setSelecteurOuvert(true);
           }}
-          className="suivi-tap min-h-11 flex-1 rounded-lg px-2 text-lg font-semibold text-foreground active:bg-secondary"
+          className="suivi-tap min-h-11 flex-1 rounded-lg px-2 t-titre text-foreground active:bg-secondary"
           aria-label={`${labelPeriode(periode)} — changer de mois`}
         >
           {labelPeriode(periode)}
@@ -71,7 +71,7 @@ export function NavigationMois({ periode }: { periode: string }) {
           >
             <ChevronLeft className="size-5" />
           </button>
-          <span className="text-base font-semibold">{anneeAffichee}</span>
+          <span className="t-corps font-medium">{anneeAffichee}</span>
           <button
             type="button"
             aria-label="Année suivante"
@@ -95,7 +95,7 @@ export function NavigationMois({ periode }: { periode: string }) {
                   va(cible);
                 }}
                 className={cn(
-                  "suivi-tap min-h-14 rounded-xl border text-base font-medium",
+                  "suivi-tap min-h-14 rounded-xl border t-corps font-medium",
                   actif
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-background text-foreground active:bg-secondary"

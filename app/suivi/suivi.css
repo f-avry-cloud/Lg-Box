@@ -16,11 +16,106 @@
   --suivi-vert: #1f7a45;
   --suivi-orange: #b5580d;
   --suivi-gris: #6d6559;
+  /* Gris plus clair, pour les mentions qui accompagnent sans réclamer. */
+  --suivi-gris-clair: #938a7c;
+  /* Filet plus discret que --border, pour séparer sans encadrer. */
+  --suivi-trait: #ece6db;
 
   min-height: 100dvh;
   background: var(--background);
   /* Empêche le rebond élastique iOS de décoller les barres collantes. */
   overscroll-behavior-y: contain;
+
+  /*
+   * Police propre à l'app mobile — le back-office garde la sienne.
+   * Le léger resserrement des lettres est ce qui fait la différence entre un
+   * écran « propre » et un écran « fin » : à taille égale, un texte moins
+   * espacé se lit plus vite et s'encombre moins.
+   */
+  font-family: var(--font-suivi), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  /*
+   * Échelle typographique
+   * ---------------------
+   * Six tailles, pas une de plus. Le désordre précédent venait de ce que chaque
+   * écran choisissait librement dans les vingt classes de Tailwind : deux
+   * chiffres de même nature se retrouvaient à des tailles différentes d'un
+   * bloc à l'autre. Ici, chaque rôle a sa taille, et un seul niveau de gras par
+   * rôle — la hiérarchie se fait par la taille et la couleur, pas par le gras.
+   */
+
+  /* Le chiffre unique d'une carte. Un seul par carte, jamais deux. */
+  .t-hero {
+    font-size: 1.875rem;
+    line-height: 1.05;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Chiffre secondaire : les tuiles d'un tableau de bord dense. */
+  .t-chiffre {
+    font-size: 1.375rem;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Titre d'écran et noms propres mis en avant. */
+  .t-titre {
+    font-size: 1.0625rem;
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  /* Texte courant. */
+  .t-corps {
+    font-size: 0.9375rem;
+    line-height: 1.45;
+    font-weight: 400;
+  }
+
+  /* Mention discrète sous une valeur, aide de saisie, contexte. */
+  .t-meta {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    font-weight: 400;
+    color: var(--suivi-gris-clair);
+  }
+
+  /*
+   * Étiquette de section. Capitales très espacées mais **fines** : c'est le
+   * gras des anciennes étiquettes qui faisait crier l'écran, pas les capitales.
+   */
+  .t-etiquette {
+    font-size: 0.6875rem;
+    line-height: 1.2;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--suivi-gris);
+  }
+
+  /* Tous les montants s'alignent d'une ligne à l'autre. */
+  .t-nombre {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * Carte. Fond blanc, filet clair, pas d'ombre : sur un fond sable, l'ombre
+   * salit plus qu'elle ne détache.
+   */
+  .suivi-carte {
+    background: var(--card);
+    border: 1px solid var(--suivi-trait);
+    border-radius: 1rem;
+  }
 }
 
 /* Zones de sécurité : encoche en haut, barre d'accueil en bas. */

@@ -193,7 +193,7 @@ export function BlocAffectation({
   if (creationLocataire) {
     return (
       <div className="mb-4 rounded-xl border border-border bg-secondary/40 p-3">
-        <p className="mb-3 text-base">
+        <p className="mb-3 t-corps">
           <strong>Nouveau locataire</strong>
           {` — box ${box.numero}`}
         </p>
@@ -279,15 +279,15 @@ export function BlocAffectation({
 
     return (
       <div className="mb-4 rounded-xl border border-border bg-secondary/40 p-3">
-        <p className="mb-1 text-base">
+        <p className="mb-1 t-corps">
           <strong>{candidat.nom}</strong>
           {` loue déjà ${candidat.contrats_loges.length} box.`}
         </p>
-        <p className="mb-3 text-sm text-[var(--suivi-gris)]">
+        <p className="mb-3 t-meta">
           {`Le box ${box.numero} fera l'objet d'un second contrat, avec son propre loyer.`}
         </p>
 
-        <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
+        <label className="mb-1 block t-etiquette">
           {`Loyer du box ${box.numero} (€ / mois)`}
         </label>
         <input
@@ -301,14 +301,14 @@ export function BlocAffectation({
           className="mb-1 h-14 w-full rounded-xl border border-input bg-background px-4 text-lg tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         {box.tarif_indicatif_eur != null && (
-          <p className="mb-3 text-xs text-[var(--suivi-gris)]">
+          <p className="mb-3 t-meta">
             {`Proposé d'après le tarif indicatif du box (${box.tarif_indicatif_eur} €). Modifiable.`}
           </p>
         )}
 
         {/* Répartition : le cas de correction courant, quand le montant global
             couvrait déjà les deux box. */}
-        <span className="mb-1 mt-2 block text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
+        <span className="mb-1 mt-2 block t-etiquette">
           D&apos;où vient ce loyer ?
         </span>
         <div className="mb-2 space-y-2">
@@ -339,7 +339,7 @@ export function BlocAffectation({
 
         {sourceId && (
           <>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
+            <label className="mb-1 block t-etiquette">
               Loyer restant sur ce contrat (€ / mois)
             </label>
             <input
@@ -405,7 +405,7 @@ export function BlocAffectation({
   if (candidat) {
     return (
       <div className="mb-4 rounded-xl border border-border bg-secondary/40 p-3">
-        <p className="mb-2 text-base">
+        <p className="mb-2 t-corps">
           <strong>{candidat.nom}</strong>
           {` — box ${box.numero} · ${candidat.contrat_libre!.loyer_mensuel_eur} €`}
         </p>
@@ -448,7 +448,7 @@ export function BlocAffectation({
             onChange={(e) => setRecherche(e.target.value)}
             placeholder="Nom du locataire"
             aria-label="Rechercher un locataire"
-            className="mb-2 h-12 w-full rounded-xl border border-input bg-background px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="mb-2 h-12 w-full rounded-xl border border-input bg-background px-3 t-corps outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <div className="max-h-64 overflow-y-auto">
             {visibles.map((c) => (
@@ -460,9 +460,9 @@ export function BlocAffectation({
                 className="suivi-tap flex min-h-14 w-full items-center justify-between gap-2 border-b border-border/70 px-1 text-left last:border-0 active:bg-secondary"
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-base font-semibold">{c.nom}</span>
+                  <span className="block truncate t-corps font-medium">{c.nom}</span>
                   {c.societe && (
-                    <span className="block truncate text-sm text-[var(--suivi-gris)]">
+                    <span className="block truncate t-meta">
                       {c.societe}
                     </span>
                   )}
@@ -473,14 +473,14 @@ export function BlocAffectation({
                       <span className="block font-semibold tabular-nums">
                         {c.contrat_libre.loyer_mensuel_eur} €
                       </span>
-                      <span className="block text-xs text-[var(--suivi-gris)]">en attente</span>
+                      <span className="block t-meta">en attente</span>
                     </>
                   ) : (
                     <>
                       <span className="block font-semibold tabular-nums">
                         {totalActuel(c.contrats_loges)} €
                       </span>
-                      <span className="block text-xs text-[var(--suivi-gris)]">
+                      <span className="block t-meta">
                         {`box ${c.contrats_loges.map((l) => l.box_numero ?? "?").join(", ")}`}
                       </span>
                     </>
@@ -490,7 +490,7 @@ export function BlocAffectation({
             ))}
 
             {visibles.length === 0 && (
-              <p className="py-3 text-center text-sm text-[var(--suivi-gris)]">
+              <p className="py-3 text-center t-meta">
                 {recherche ? `Aucun locataire ne correspond à « ${recherche} ».` : "Aucun locataire."}
               </p>
             )}
@@ -517,7 +517,7 @@ export function BlocAffectation({
         <Button
           type="button"
           variant="outline"
-          className="h-12 w-full text-base"
+          className="h-12 w-full t-corps"
           disabled={candidats.length === 0}
           onClick={() => setOuvert(true)}
         >
@@ -550,7 +550,7 @@ function OptionSource({
       )}
     >
       <span className="text-sm font-semibold">{titre}</span>
-      <span className="text-xs text-[var(--suivi-gris)]">{detail}</span>
+      <span className="t-meta">{detail}</span>
     </button>
   );
 }
@@ -572,7 +572,7 @@ function Champ({
 }) {
   return (
     <label className="mb-3 block">
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
+      <span className="mb-1 block t-etiquette">
         {libelle}
       </span>
       <input
@@ -583,9 +583,9 @@ function Champ({
         placeholder={placeholder}
         autoCapitalize={type === "email" ? "none" : undefined}
         autoCorrect="off"
-        className="h-12 w-full rounded-xl border border-input bg-background px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="h-12 w-full rounded-xl border border-input bg-background px-3 t-corps outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
-      {aide && <span className="mt-1 block text-xs text-[var(--suivi-gris)]">{aide}</span>}
+      {aide && <span className="mt-1 block t-meta">{aide}</span>}
     </label>
   );
 }

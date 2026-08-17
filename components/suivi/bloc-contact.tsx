@@ -79,7 +79,7 @@ function Contact({
 }) {
   if (!href) {
     return (
-      <span className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-border text-xs text-[var(--suivi-gris)] opacity-60">
+      <span className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-border t-meta opacity-60">
         {icone}
         {libelle}
       </span>

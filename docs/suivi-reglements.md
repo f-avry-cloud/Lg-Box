@@ -492,6 +492,43 @@ plan faussement complet. C'est le signal qu'il faut renseigner son `unit_id`.
 En mode démo, faute de géométrie, une grille régulière est fabriquée pour
 éprouver le rendu et les gestes. Elle ne décrit pas le site.
 
+## Typographie et échelle
+
+L'app avait vingt tailles de texte pour six rôles : chaque écran puisait
+librement dans les classes de Tailwind, et deux chiffres de même nature se
+retrouvaient à des tailles différentes d'un bloc à l'autre. La lecture en
+souffrait plus que d'un manque de style.
+
+**Six tailles, pas une de plus**, définies dans `app/suivi/suivi.css` :
+
+| Classe | Rôle |
+|---|---|
+| `t-hero` | le chiffre unique d'une carte — un seul par carte |
+| `t-chiffre` | chiffre secondaire : tuiles, barre de totaux |
+| `t-titre` | titre d'écran, nom propre mis en avant |
+| `t-corps` | texte courant |
+| `t-meta` | mention discrète : contexte, aide de saisie |
+| `t-etiquette` | étiquette de section, en capitales espacées |
+
+Deux règles tiennent le reste : **la hiérarchie se fait par la taille et la
+couleur, jamais par le gras** — les anciennes étiquettes en gras faisaient
+crier l'écran — et **les chiffres sont tabulaires**, donc alignés d'une ligne à
+l'autre.
+
+La police est **Instrument Sans**, appliquée sur `.suivi-app` et là seulement :
+le back-office garde Geist. Un léger resserrement des lettres
+(`letter-spacing: -0.011em`) fait la différence entre un écran propre et un
+écran fin.
+
+### Pourquoi les classes sont dans `@layer components`
+
+Sans cela, `.t-etiquette { color: … }` et l'utilitaire `text-white` ont la même
+spécificité, et c'est l'ordre des feuilles qui tranche — au détriment de
+l'utilitaire. Le défaut s'est vu tout de suite en vérifiant le rendu : la
+pastille de statut affichait du gris sur gris, et le bandeau du mode démo
+avait perdu son orange. Placées dans la couche `components`, les classes de
+l'échelle se laissent surcharger par les utilitaires, comme il se doit.
+
 ## Choix d'interface
 
 - L'ordre de la liste est **figé au chargement du mois**. Si elle se retriait à

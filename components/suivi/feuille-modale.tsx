@@ -62,7 +62,7 @@ export function FeuilleModale({
         )}
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" aria-hidden />
-        <h2 className="mb-3 text-base font-semibold text-foreground">{titre}</h2>
+        <h2 className="t-titre mb-3">{titre}</h2>
         {children}
       </div>
     </div>

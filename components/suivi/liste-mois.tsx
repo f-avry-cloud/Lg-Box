@@ -203,7 +203,7 @@ export function ListeMois({
       </header>
 
       {modeDemo && (
-        <p className="border-b border-[var(--suivi-orange)]/30 bg-[var(--suivi-orange)]/10 px-4 py-2 text-sm font-medium text-[var(--suivi-orange)]">
+        <p className="t-meta border-b border-[var(--suivi-trait)] bg-[var(--suivi-orange)]/8 px-4 py-2 text-[var(--suivi-orange)]">
           Mode démo — les règlements pointés ne sont pas enregistrés en base.
         </p>
       )}
@@ -224,7 +224,7 @@ export function ListeMois({
         ))}
 
         {affichees.length === 0 && (
-          <li className="px-4 py-12 text-center text-base text-[var(--suivi-gris)]">
+          <li className="px-4 py-12 text-center t-corps text-[var(--suivi-gris)]">
             {recherche
               ? `Aucun locataire ne correspond à « ${recherche} ».`
               : filtre === "regles"

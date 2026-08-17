@@ -111,27 +111,29 @@ export function BlocEnvoiFactures({
   };
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-4">
-      <div className="flex items-center gap-2 text-[var(--suivi-gris)]">
-        <Send className="size-5" aria-hidden />
-        <span className="text-sm font-semibold uppercase tracking-wide">Factures par mail</span>
+    <section className="suivi-carte p-4">
+      <div className="flex items-center gap-1.5 text-[var(--suivi-gris)]">
+        <Send className="size-4" aria-hidden />
+        <span className="t-etiquette">Factures par mail</span>
       </div>
 
-      <p className="mt-1 text-base text-[var(--suivi-gris)]">
+      <p className="t-corps mt-1.5">
         {resume.aEnvoyer > 0 ? (
           <>
-            <strong className="text-foreground tabular-nums">{resume.aEnvoyer}</strong>
+            <span className="t-nombre font-medium">{resume.aEnvoyer}</span>
             {` facture${resume.aEnvoyer > 1 ? "s" : ""} prête${
               resume.aEnvoyer > 1 ? "s" : ""
             } à partir`}
           </>
         ) : (
-          "Aucune facture en attente d'envoi."
+          <span className="text-[var(--suivi-gris-clair)]">
+            Aucune facture en attente d&apos;envoi.
+          </span>
         )}
       </p>
 
       {(resume.dejaEnvoyes > 0 || resume.sansEmail > 0) && (
-        <p className="mt-0.5 text-sm text-[var(--suivi-gris)]">
+        <p className="t-meta mt-0.5">
           {[
             resume.dejaEnvoyes > 0 ? `${resume.dejaEnvoyes} déjà envoyée(s)` : null,
             resume.sansEmail > 0 ? `${resume.sansEmail} sans adresse mail` : null,
@@ -142,14 +144,14 @@ export function BlocEnvoiFactures({
       )}
 
       {manques.length > 0 && (
-        <p className="mt-2 rounded-xl border border-[var(--suivi-orange)]/40 bg-[var(--suivi-orange)]/10 p-2 text-sm font-medium text-[var(--suivi-orange)]">
+        <p className="t-meta mt-2 rounded-lg bg-[var(--suivi-orange)]/10 px-2.5 py-1.5 text-[var(--suivi-orange)]">
           {`Mail à paramétrer : il manque ${manques.join(", ")}.`}
         </p>
       )}
 
       <Button
         type="button"
-        className="mt-3 h-14 w-full text-base"
+        className="mt-3 h-12 w-full"
         disabled={enCours || !pretAEnvoyer}
         onClick={() => setConfirmation(true)}
       >
@@ -159,7 +161,7 @@ export function BlocEnvoiFactures({
       <button
         type="button"
         onClick={() => setReglages(true)}
-        className="suivi-tap mt-2 flex min-h-11 w-full items-center justify-center gap-2 text-sm font-medium text-[var(--suivi-gris)]"
+        className="suivi-tap t-meta mt-2 flex min-h-11 w-full items-center justify-center gap-1.5"
       >
         <Settings2 className="size-4" aria-hidden />
         Paramétrer le mail
@@ -171,23 +173,21 @@ export function BlocEnvoiFactures({
         titre="Envoyer les factures"
         onFermer={() => setConfirmation(false)}
       >
-        <p className="mb-3 text-base">{phraseEnvoi(resume.aEnvoyer, periode)}</p>
+        <p className="t-corps mb-3">{phraseEnvoi(resume.aEnvoyer, periode)}</p>
 
         {parametres && apercu && (
-          <div className="mb-4 rounded-xl border border-border bg-secondary/40 p-3">
-            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
-              {`Aperçu — ${apercu.nom}`}
-            </p>
-            <p className="text-sm font-semibold">
+          <div className="mb-4 rounded-xl bg-[var(--secondary)]/60 p-3">
+            <p className="t-etiquette mb-1.5">{`Aperçu — ${apercu.nom}`}</p>
+            <p className="t-corps font-medium">
               {interpoleMail(parametres.objet, apercu, periode)}
             </p>
-            <p className="mt-1 whitespace-pre-wrap text-sm text-[var(--suivi-gris)]">
+            <p className="t-meta mt-1 whitespace-pre-wrap">
               {interpoleMail(parametres.corps, apercu, periode)}
             </p>
           </div>
         )}
 
-        <p className="mb-4 text-sm text-[var(--suivi-gris)]">
+        <p className="t-meta mb-4">
           Un mail parti ne se rattrape pas. Les locataires déjà servis ce mois-ci ne seront pas
           relancés.
         </p>
@@ -196,12 +196,12 @@ export function BlocEnvoiFactures({
           <Button
             type="button"
             variant="outline"
-            className="h-14 flex-1"
+            className="h-12 flex-1"
             onClick={() => setConfirmation(false)}
           >
             Non
           </Button>
-          <Button type="button" className="h-14 flex-1" disabled={enCours} onClick={envoie}>
+          <Button type="button" className="h-12 flex-1" disabled={enCours} onClick={envoie}>
             Envoyer
           </Button>
         </div>
@@ -246,26 +246,24 @@ export function BlocEnvoiFactures({
           onChange={(v) => setSaisie({ ...saisie, objet: v })}
         />
 
-        <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
-          Message
-        </label>
+        <label className="t-etiquette mb-1 block">Message</label>
         <textarea
           value={saisie.corps}
           onChange={(e) => setSaisie({ ...saisie, corps: e.target.value })}
           rows={9}
-          className="mb-1 w-full rounded-xl border border-input bg-background p-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="mb-1 w-full rounded-xl border border-input bg-background p-3 t-corps outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
-        <p className="mb-3 text-xs text-[var(--suivi-gris)]">
+        <p className="t-meta mb-3">
           {`Variables remplacées à l'envoi : ${VARIABLES_MAIL.join(" ")}`}
         </p>
 
         {apercu && (
-          <div className="mb-3 rounded-xl border border-border bg-secondary/40 p-3">
-            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
+          <div className="mb-3 rounded-xl bg-[var(--secondary)]/60 p-3">
+            <p className="t-etiquette mb-1.5">
               {`Aperçu sur ${apercu.nom} — ${labelPeriode(periode)}`}
             </p>
-            <p className="text-sm font-semibold">{interpoleMail(saisie.objet, apercu, periode)}</p>
-            <p className="mt-1 whitespace-pre-wrap text-sm text-[var(--suivi-gris)]">
+            <p className="t-corps font-medium">{interpoleMail(saisie.objet, apercu, periode)}</p>
+            <p className="t-meta mt-1 whitespace-pre-wrap">
               {interpoleMail(saisie.corps, apercu, periode)}
             </p>
           </div>
@@ -275,12 +273,12 @@ export function BlocEnvoiFactures({
           <Button
             type="button"
             variant="outline"
-            className="h-14 flex-1"
+            className="h-12 flex-1"
             onClick={() => setReglages(false)}
           >
             Annuler
           </Button>
-          <Button type="button" className="h-14 flex-1" disabled={enCours} onClick={enregistre}>
+          <Button type="button" className="h-12 flex-1" disabled={enCours} onClick={enregistre}>
             Enregistrer
           </Button>
         </div>
@@ -306,9 +304,7 @@ function Champ({
 }) {
   return (
     <label className="mb-3 block">
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
-        {libelle}
-      </span>
+      <span className="t-etiquette mb-1 block">{libelle}</span>
       <input
         type={type}
         value={valeur}
@@ -316,9 +312,9 @@ function Champ({
         placeholder={placeholder}
         autoCapitalize="none"
         autoCorrect="off"
-        className="h-12 w-full rounded-xl border border-input bg-background px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="h-12 w-full rounded-xl border border-input bg-background px-3 t-corps outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
-      {aide && <span className="mt-1 block text-xs text-[var(--suivi-gris)]">{aide}</span>}
+      {aide && <span className="t-meta mt-1 block">{aide}</span>}
     </label>
   );
 }
