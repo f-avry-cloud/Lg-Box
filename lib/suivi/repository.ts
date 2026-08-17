@@ -25,6 +25,7 @@ import { groupeParBatiment, parseBoxReferenceCsv } from "@/lib/suivi/box";
 import { estPlace, type BoxPlan } from "@/lib/suivi/plan";
 import { BOX_REFERENCE_CSV } from "@/lib/suivi/box-reference";
 import { contratDuPour } from "@/lib/suivi/contrat";
+import type { DestinataireFacture, ParametresMail } from "@/lib/suivi/mail";
 import { parsePeriode, periodeCourante, premierJour } from "@/lib/suivi/period";
 import {
   type Box,
@@ -797,4 +798,82 @@ export async function demandesReservation(): Promise<DemandeReservation[]> {
     if (aNouvelle !== bNouvelle) return aNouvelle ? -1 : 1;
     return b.created_at.localeCompare(a.created_at);
   });
+}
+
+
+// ---------------------------------------------------------------------------
+// Envoi groupé des factures
+// ---------------------------------------------------------------------------
+
+/** Paramétrage du mail de facture. Null tant que la table est vide. */
+export async function parametresMail(): Promise<ParametresMail | null> {
+  if (estModeDemo()) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("sr_mail_parametres")
+    .select("expediteur_nom, expediteur_email, repondre_a, copie_email, objet, corps")
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return (data as ParametresMail | null) ?? null;
+}
+
+/**
+ * Qui doit recevoir sa facture pour la période, et qui l'a déjà reçue.
+ *
+ * On ne retient que les loyers passés en « facturé » : envoyer la facture est
+ * le second temps du geste, après l'avoir réclamée. Un loyer déjà encaissé n'a
+ * plus de facture à recevoir, un loyer encore « attendu » n'a pas été réclamé.
+ */
+export async function destinatairesFactures(periode: string): Promise<DestinataireFacture[]> {
+  if (estModeDemo()) return [];
+
+  const supabase = await createClient();
+
+  const [contratsRes, reglementsRes, envoisRes] = await Promise.all([
+    supabase
+      .from("sr_contrats")
+      .select(
+        "id, date_debut, date_fin, loyer_mensuel_eur, sr_locataires (nom, email), sr_box (numero)"
+      ),
+    supabase.from("sr_reglements").select("contrat_id, statut").eq("periode", periode),
+    supabase
+      .from("sr_envois_facture")
+      .select("contrat_id")
+      .eq("periode", periode)
+      .eq("statut", "envoye"),
+  ]);
+
+  if (contratsRes.error) throw new Error(contratsRes.error.message);
+  if (reglementsRes.error) throw new Error(reglementsRes.error.message);
+  if (envoisRes.error) throw new Error(envoisRes.error.message);
+
+  const statuts = new Map<string, string>();
+  for (const r of reglementsRes.data ?? []) statuts.set(r.contrat_id, r.statut);
+
+  const expedies = new Set((envoisRes.data ?? []).map((e) => e.contrat_id));
+
+  type ContratJointMail = {
+    id: string;
+    date_debut: string | null;
+    date_fin: string | null;
+    loyer_mensuel_eur: number;
+    sr_locataires: { nom: string; email: string | null } | null;
+    sr_box: { numero: string } | null;
+  };
+
+  return ((contratsRes.data ?? []) as unknown as ContratJointMail[])
+    .filter((c) => c.sr_locataires !== null)
+    .filter((c) => contratDuPour(periode, c.date_debut, c.date_fin))
+    .filter((c) => statuts.get(c.id) === "facture")
+    .map((c) => ({
+      contrat_id: c.id,
+      nom: c.sr_locataires!.nom,
+      email: c.sr_locataires!.email,
+      box: c.sr_box?.numero ?? null,
+      loyer: c.loyer_mensuel_eur,
+      dejaEnvoye: expedies.has(c.id),
+    }))
+    .sort((a, b) => a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }));
 }

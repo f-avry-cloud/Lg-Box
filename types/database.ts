@@ -345,6 +345,30 @@ export type SrReglement = {
   updated_at: string;
 };
 
+// Paramétrage du mail de facture : une seule ligne, garantie par la clé
+// primaire booléenne contrainte à `true` (migration 016).
+export type SrMailParametres = {
+  id: boolean;
+  expediteur_nom: string;
+  expediteur_email: string;
+  repondre_a: string | null;
+  copie_email: string | null;
+  objet: string;
+  corps: string;
+  updated_at: string;
+};
+
+// Journal des envois : un mail parti ne se rattrape pas, on garde trace.
+export type SrEnvoiFacture = {
+  id: string;
+  contrat_id: string;
+  periode: string;
+  destinataire: string;
+  statut: "envoye" | "echec";
+  erreur: string | null;
+  created_at: string;
+};
+
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row;
   Insert: Insert;
@@ -377,6 +401,8 @@ export type Database = {
       sr_box: Table<SrBox>;
       sr_contrats: Table<SrContrat>;
       sr_reglements: Table<SrReglement>;
+      sr_mail_parametres: Table<SrMailParametres>;
+      sr_envois_facture: Table<SrEnvoiFacture>;
     };
     Views: Record<string, never>;
     Functions: {

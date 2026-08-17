@@ -1,10 +1,17 @@
 import Link from "next/link";
 import { AlertTriangle, Inbox, LogOut, TrendingUp, Warehouse } from "lucide-react";
 
+import { BlocEnvoiFactures } from "@/components/suivi/bloc-envoi-factures";
 import { BoutonFacturation } from "@/components/suivi/bouton-facturation";
 
+import { aEnvoyer, resumeEnvoi } from "@/lib/suivi/mail";
 import { labelPeriode, isPeriode, periodeCourante } from "@/lib/suivi/period";
-import { estModeDemo, statsTableauDeBord } from "@/lib/suivi/repository";
+import {
+  destinatairesFactures,
+  estModeDemo,
+  parametresMail,
+  statsTableauDeBord,
+} from "@/lib/suivi/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +23,15 @@ export default async function TableauDeBordPage({
   const { mois } = await searchParams;
   const periode = mois && isPeriode(mois) ? mois : periodeCourante();
 
-  const stats = await statsTableauDeBord(periode);
+  const [stats, parametres, destinataires] = await Promise.all([
+    statsTableauDeBord(periode),
+    parametresMail(),
+    destinatairesFactures(periode),
+  ]);
+
+  // L'aperçu se calcule sur le premier destinataire réel : le message montré
+  // avant l'envoi est alors exactement celui qui partira.
+  const premier = aEnvoyer(destinataires)[0] ?? null;
   const modeDemo = estModeDemo();
   const attendu = stats.encaisse + stats.reste;
   const progression = attendu === 0 ? 0 : Math.round((stats.encaisse / attendu) * 100);
@@ -93,6 +108,18 @@ export default async function TableauDeBordPage({
           dejaFacturees={stats.dejaFacturees}
           montant={stats.montantAFacturer}
         />
+
+        {/* Envoi groupé des factures — la seule action qui sorte du site.
+            Masquée en démo : sans base, il n'y a ni paramétrage à régler ni
+            destinataire à servir. */}
+        {!modeDemo && (
+          <BlocEnvoiFactures
+            periode={periode}
+            parametres={parametres}
+            resume={resumeEnvoi(destinataires)}
+            apercu={premier ? { nom: premier.nom, box: premier.box, loyer: premier.loyer } : null}
+          />
+        )}
 
         {/* Occupation */}
         <Link
