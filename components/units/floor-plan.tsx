@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 
 import { UnitShape } from "@/components/units/unit-shape";
-import { computeViewBox, type FloorPlanUnit } from "@/lib/units/floor-plan";
+import { FloorPlanBackground } from "@/components/units/floor-plan-background";
+import { computePlanViewBox, type FloorPlanUnit } from "@/lib/units/floor-plan";
 import type { UnitFloor } from "@/types/database";
 
 // Rendu SVG en lecture seule d'un niveau : 1 unité SVG = 1 cm, aucune échelle
@@ -19,7 +20,7 @@ export function FloorPlan({
   onSelectUnit?: (unit: FloorPlanUnit) => void;
   selectedUnitId?: string | null;
 }) {
-  const viewBox = useMemo(() => computeViewBox(units), [units]);
+  const viewBox = useMemo(() => computePlanViewBox(units, floor), [units, floor]);
 
   if (units.length === 0) {
     return (
@@ -38,6 +39,7 @@ export function FloorPlan({
       role="img"
       aria-label={`Plan des box — niveau ${floor}`}
     >
+      <FloorPlanBackground floor={floor} />
       {units.map((unit) => (
         <UnitShape
           key={unit.id}
