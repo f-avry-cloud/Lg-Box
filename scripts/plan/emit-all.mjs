@@ -1,11 +1,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
 const UP = "/root/.claude/uploads/9241dae0-e9a7-5d0c-a31a-0dcfff126ba4";
-const map = JSON.parse(readFileSync(new URL("./mapping-fixed.json", import.meta.url), "utf8"));
-const geo = JSON.parse(readFileSync(new URL("./rooms-geometry.json", import.meta.url), "utf8"));
+const map = JSON.parse(readFileSync(new URL("./mapping-v3.json", import.meta.url), "utf8"));
 
 // 4D : relevé sur le plan, créé en base ensuite — il doit suivre la même origine.
-const d4 = geo.rdc.find((r) => r.label === "4D");
-map.push({ zone: "Bâtiment 4", numero: "4d", x: d4.x, y: d4.y, w: d4.w, h: d4.h });
+
 
 const K = 100 / 18.9247, MARGE = 100;
 const FLOOR = { "Rez-de-jardin": "sous_sol", "Étage": "premier_etage" };
