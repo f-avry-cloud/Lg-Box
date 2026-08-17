@@ -93,3 +93,27 @@ export function anneesDisponibles(periode: string, span = 3): number[] {
 }
 
 export { MOIS_FR };
+
+/** Premier jour d'une période, au format AAAA-MM-JJ. */
+export function premierJour(periode: string): string {
+  const { annee, mois } = parsePeriode(periode);
+  return `${formatPeriode(annee, mois)}-01`;
+}
+
+/**
+ * Dernier jour d'une période, au format AAAA-MM-JJ.
+ *
+ * Calculé sur le calendrier grégorien plutôt qu'avec une table de 12 valeurs :
+ * février change de longueur une année sur quatre, et la règle séculaire
+ * (2100 n'est pas bissextile) est déjà fausse dans la plupart des tables
+ * écrites à la main.
+ */
+export function dernierJour(periode: string): string {
+  const { annee, mois } = parsePeriode(periode);
+  const jours = [31, bissextile(annee) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mois - 1];
+  return `${formatPeriode(annee, mois)}-${jours}`;
+}
+
+export function bissextile(annee: number): boolean {
+  return (annee % 4 === 0 && annee % 100 !== 0) || annee % 400 === 0;
+}

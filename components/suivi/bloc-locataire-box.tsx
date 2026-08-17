@@ -8,9 +8,10 @@ import { toast } from "sonner";
 import { vibre } from "@/components/suivi/bouton-encaissement";
 import { Button } from "@/components/ui/button";
 import { basculeReglement, detacheBoxDuContrat } from "@/lib/actions/suivi";
-import { modifiePeriodicite } from "@/lib/actions/suivi-box";
+import { annuleSortie, modifiePeriodicite, programmeSortie } from "@/lib/actions/suivi-box";
 import { libelleAnciennete } from "@/lib/suivi/anciennete";
-import { labelPeriode, periodeCourante } from "@/lib/suivi/period";
+import { formatPeriode, labelPeriode, parsePeriode, periodeCourante, shiftPeriode } from "@/lib/suivi/period";
+import { sortieAVenir } from "@/lib/suivi/contrat";
 import {
   PERIODICITE_LABELS,
   type BoxListe,
@@ -47,6 +48,7 @@ export function BlocLocataireBox({ box }: { box: BoxListe }) {
   const [periodicite, setPeriodicite] = useState<Periodicite>(
     box.detail?.periodicite ?? "mensuelle"
   );
+  const [choixSortie, setChoixSortie] = useState(false);
   const [confirmeDetachement, setConfirmeDetachement] = useState(false);
 
   const detail = box.detail;
@@ -197,8 +199,100 @@ export function BlocLocataireBox({ box }: { box: BoxListe }) {
         {paye ? "Annuler le règlement" : `Marquer réglé — ${labelPeriode(periode)}`}
       </Button>
 
-      {/* Détacher est une opération rare et structurante : discrète, et
-          confirmée, plutôt qu'à portée de pouce distrait. */}
+      {/*
+        Sortie d'un locataire. Tout mois commencé étant dû, on ne coupe pas le
+        lien sur-le-champ : on pose une date d'effet, et le contrat continue
+        d'être réclamé jusque-là. Fin du mois courant si le préavis est échu,
+        fin de M+1 ou de M+2 sinon.
+      */}
+      {detail.date_fin && sortieAVenir(periode, detail.date_fin) ? (
+        <div className="mt-3 rounded-xl border border-[var(--suivi-orange)]/40 bg-[var(--suivi-orange)]/10 p-3">
+          <p className="text-sm font-semibold text-[var(--suivi-orange)]">
+            {`Sortie prévue le ${formatDate(detail.date_fin)} — le loyer reste dû jusque-là.`}
+          </p>
+          <button
+            type="button"
+            disabled={enCours}
+            onClick={() => {
+              if (!box.contrat_id) return;
+              demarreTransition(async () => {
+                const resultat = await annuleSortie(box.contrat_id!);
+                if (!resultat.success) {
+                  vibre(60);
+                  toast.error(resultat.error ?? "Annulation impossible.");
+                  return;
+                }
+                vibre();
+                toast.success("Sortie annulée.");
+                router.refresh();
+              });
+            }}
+            className="suivi-tap mt-2 min-h-11 w-full rounded-lg border border-border bg-card text-sm font-semibold active:bg-secondary"
+          >
+            Annuler la sortie
+          </button>
+        </div>
+      ) : choixSortie ? (
+        <div className="mt-3 rounded-xl border border-border bg-secondary/40 p-3">
+          <p className="mb-2 text-sm font-medium">Dernier mois dû</p>
+          <div className="space-y-2">
+            {[0, 1, 2].map((decalage) => {
+              const cible = shiftPeriode(periode, decalage);
+              const { annee, mois } = parsePeriode(cible);
+              return (
+                <button
+                  key={cible}
+                  type="button"
+                  disabled={enCours || !box.contrat_id}
+                  onClick={() => {
+                    if (!box.contrat_id) return;
+                    demarreTransition(async () => {
+                      const resultat = await programmeSortie(box.contrat_id!, formatPeriode(annee, mois));
+                      if (!resultat.success) {
+                        vibre(60);
+                        toast.error(resultat.error ?? "Programmation impossible.");
+                        return;
+                      }
+                      vibre();
+                      toast.success(`Sortie programmée fin ${labelPeriode(cible)}.`);
+                      setChoixSortie(false);
+                      router.refresh();
+                    });
+                  }}
+                  className="suivi-tap flex min-h-14 w-full items-center justify-between rounded-xl border border-border bg-background px-3 text-left active:bg-secondary"
+                >
+                  <span className="font-semibold">{labelPeriode(cible)}</span>
+                  <span className="text-xs text-[var(--suivi-gris)]">
+                    {decalage === 0
+                      ? "préavis échu"
+                      : decalage === 1
+                        ? "préavis en cours"
+                        : "préavis non respecté"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={() => setChoixSortie(false)}
+            className="suivi-tap mt-2 min-h-11 w-full text-sm font-medium text-[var(--suivi-gris)]"
+          >
+            Annuler
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setChoixSortie(true)}
+          className="suivi-tap mt-3 min-h-11 w-full rounded-xl border border-border text-sm font-semibold active:bg-secondary"
+        >
+          Programmer la sortie du locataire
+        </button>
+      )}
+
+      {/* Retirer sur-le-champ, sans rien devoir : c'est une correction
+          d'affectation, pas un départ. Sémantique différente, bouton distinct. */}
       {confirmeDetachement ? (
         <div className="mt-3 flex gap-2">
           <Button
@@ -224,7 +318,7 @@ export function BlocLocataireBox({ box }: { box: BoxListe }) {
                   return;
                 }
                 vibre();
-                toast.success(`${detail.nom} détaché du box.`);
+                toast.success(`${detail.nom} retiré du box.`);
                 router.refresh();
               });
             }}
@@ -238,7 +332,7 @@ export function BlocLocataireBox({ box }: { box: BoxListe }) {
           onClick={() => setConfirmeDetachement(true)}
           className="suivi-tap mt-3 min-h-11 w-full text-sm font-medium text-destructive"
         >
-          Détacher ce locataire du box
+          Mauvaise affectation — retirer sans échéance
         </button>
       )}
     </section>

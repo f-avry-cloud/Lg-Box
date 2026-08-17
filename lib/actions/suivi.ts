@@ -12,7 +12,8 @@ import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { fail, ok, type ActionResult } from "@/lib/actions/result";
-import { isPeriode } from "@/lib/suivi/period";
+import { contratDuPour } from "@/lib/suivi/contrat";
+import { isPeriode, periodeCourante } from "@/lib/suivi/period";
 import {
   annuleReglement,
   enregistreObservations,
@@ -163,16 +164,19 @@ export async function rattacheBoxAuContrat(
 
     const supabase = await createClient();
 
-    // Un box ne peut porter qu'un locataire à la fois : on le vérifie plutôt
-    // que de laisser deux contrats pointer la même ligne en silence.
-    const { data: occupe, error: erreurLecture } = await supabase
+    // Un box ne peut porter qu'un locataire à la fois — mais un contrat dont
+    // la sortie a pris effet ne compte plus : le box est libre, même si la
+    // ligne conserve son box_id pour l'historique.
+    const { data: autres, error: erreurLecture } = await supabase
       .from("sr_contrats")
-      .select("id")
+      .select("id, date_debut, date_fin")
       .eq("box_id", boxId)
-      .neq("id", contratId)
-      .maybeSingle();
+      .neq("id", contratId);
 
     if (erreurLecture) return fail(erreurLecture.message);
+
+    const periode = periodeCourante();
+    const occupe = (autres ?? []).some((c) => contratDuPour(periode, c.date_debut, c.date_fin));
     if (occupe) return fail("Ce box est déjà rattaché à un autre locataire.");
 
     const { error } = await supabase

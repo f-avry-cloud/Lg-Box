@@ -16,6 +16,7 @@ import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth";
 import { fail, ok, type ActionResult } from "@/lib/actions/result";
 import { createClient } from "@/lib/supabase/server";
+import { dernierJour, isPeriode } from "@/lib/suivi/period";
 import { estModeDemo } from "@/lib/suivi/repository";
 
 async function autorise(): Promise<ActionResult | null> {
@@ -145,6 +146,52 @@ export async function modifiePeriodicite(
   const { error } = await supabase
     .from("sr_contrats")
     .update({ periodicite, updated_at: new Date().toISOString() })
+    .eq("id", contratId);
+
+  if (error) return fail(error.message);
+
+  rafraichit();
+  return ok;
+}
+
+/**
+ * Programme la sortie d'un locataire : le contrat reste dû jusqu'à la fin du
+ * mois choisi, puis le box se libère de lui-même.
+ *
+ * Détacher sur-le-champ ferait disparaître le loyer du mois en cours, alors
+ * que tout mois commencé est dû. On enregistre donc une date d'effet — fin du
+ * mois courant si le préavis est échu, fin de M+1 ou de M+2 sinon.
+ */
+export async function programmeSortie(
+  contratId: string,
+  periodeFin: string
+): Promise<ActionResult> {
+  const refus = await autorise();
+  if (refus) return refus;
+
+  if (!isPeriode(periodeFin)) return fail(`Période invalide : ${periodeFin}`);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("sr_contrats")
+    .update({ date_fin: dernierJour(periodeFin), updated_at: new Date().toISOString() })
+    .eq("id", contratId);
+
+  if (error) return fail(error.message);
+
+  rafraichit();
+  return ok;
+}
+
+/** Annule une sortie programmée : le contrat redevient sans échéance. */
+export async function annuleSortie(contratId: string): Promise<ActionResult> {
+  const refus = await autorise();
+  if (refus) return refus;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("sr_contrats")
+    .update({ date_fin: null, updated_at: new Date().toISOString() })
     .eq("id", contratId);
 
   if (error) return fail(error.message);

@@ -211,6 +211,35 @@ Les champs du box (numéro, surface, bâtiment) restent modifiables mais sont
 corriger sa surface. Sur un box libre, ils sont dépliés d'emblée, puisqu'il n'y
 a pas de locataire à consulter.
 
+### Faire sortir un locataire
+
+**Tout mois commencé est dû.** Couper le lien sur-le-champ ferait donc
+disparaître du carnet un loyer encore exigible. La fiche propose à la place
+**« Programmer la sortie du locataire »**, avec trois échéances :
+
+| Choix | Lecture |
+|---|---|
+| Fin du mois courant | préavis échu |
+| Fin de M+1 | préavis en cours |
+| Fin de M+2 | préavis non respecté |
+
+L'échéance est écrite dans `sr_contrats.date_fin` (dernier jour du mois
+choisi). Jusque-là, le contrat continue d'apparaître dans le carnet et le box
+reste occupé ; ensuite, le box se libère de lui-même et redevient
+attribuable. Un bandeau rappelle la sortie prévue, avec un bouton pour
+l'annuler.
+
+À côté, **« Mauvaise affectation — retirer sans échéance »** coupe le lien
+immédiatement. Sémantique différente : ce n'est pas un départ, c'est une
+correction, et rien n'est dû.
+
+Conséquence sur les requêtes : un contrat n'est plus filtré sur
+`date_fin is null` mais sur `contratDuPour(periode, date_debut, date_fin)`
+(`lib/suivi/contrat.ts`, 12 tests). La règle « tout mois commencé est dû »
+vaut aussi à l'entrée : entrer le 31 août rend août dû. Les sept contrats
+sans date d'entrée connue ne sont pas exclus — les écarter reviendrait à
+cesser de réclamer leur loyer.
+
 ### La périodicité ne change pas encore les totaux
 
 `sr_contrats.periodicite` est aujourd'hui **descriptive**. Le carnet reste

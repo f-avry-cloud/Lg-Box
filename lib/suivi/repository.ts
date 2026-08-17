@@ -22,7 +22,8 @@ import { calculeTotaux } from "@/lib/suivi/totals";
 import { groupeParBatiment, parseBoxReferenceCsv } from "@/lib/suivi/box";
 import { estPlace, type BoxPlan } from "@/lib/suivi/plan";
 import { BOX_REFERENCE_CSV } from "@/lib/suivi/box-reference";
-import { periodeCourante } from "@/lib/suivi/period";
+import { contratDuPour } from "@/lib/suivi/contrat";
+import { periodeCourante, premierJour } from "@/lib/suivi/period";
 import {
   type Box,
   type BoxListe,
@@ -67,8 +68,7 @@ export async function lignesDuMois(periode: string): Promise<LigneMois[]> {
       .from("sr_contrats")
       .select(
         "id, locataire_id, box_id, loyer_mensuel_eur, date_debut, date_fin, remarque, sr_locataires (id, nom, societe), sr_box (numero, batiment)"
-      )
-      .is("date_fin", null),
+      ),
     supabase.from("sr_reglements").select("*").eq("periode", periode),
   ]);
 
@@ -82,6 +82,11 @@ export async function lignesDuMois(periode: string): Promise<LigneMois[]> {
 
   return ((contratsRes.data ?? []) as unknown as ContratJoint[])
     .filter((c) => c.sr_locataires !== null)
+    // Tout mois commencé est dû : un contrat sorti au 30 septembre reste
+    // réclamé en septembre, et disparaît en octobre. Filtrer sur
+    // « date_fin is null » l'aurait fait disparaître dès la programmation
+    // de la sortie, avec le loyer du mois en cours.
+    .filter((c) => contratDuPour(periode, c.date_debut, c.date_fin))
     .map((c) => ({
       contrat_id: c.id,
       locataire_id: c.sr_locataires!.id,
@@ -253,10 +258,9 @@ export async function listeBox(): Promise<GroupeBatiment[]> {
     supabase
       .from("sr_contrats")
       .select(
-        "id, box_id, loyer_mensuel_eur, date_debut, periodicite, sr_locataires (id, nom, societe, telephone, email)"
+        "id, box_id, loyer_mensuel_eur, date_debut, date_fin, periodicite, sr_locataires (id, nom, societe, telephone, email)"
       )
-      .not("box_id", "is", null)
-      .is("date_fin", null),
+      .not("box_id", "is", null),
     supabase.from("sr_reglements").select("*").eq("periode", periode),
   ]);
 
@@ -269,6 +273,7 @@ export async function listeBox(): Promise<GroupeBatiment[]> {
     box_id: string | null;
     loyer_mensuel_eur: number;
     date_debut: string | null;
+    date_fin: string | null;
     periodicite: Periodicite;
     sr_locataires: {
       id: string;
@@ -288,6 +293,8 @@ export async function listeBox(): Promise<GroupeBatiment[]> {
   for (const c of (contratsRes.data ?? []) as unknown as ContratDetaille[]) {
     const l = c.sr_locataires;
     if (!c.box_id || !l) continue;
+    // Un box dont la sortie est programmée reste occupé jusqu'à l'échéance.
+    if (!contratDuPour(periode, c.date_debut, c.date_fin)) continue;
     occupantParBox.set(c.box_id, {
       contratId: c.id,
       detail: {
@@ -299,6 +306,7 @@ export async function listeBox(): Promise<GroupeBatiment[]> {
         date_entree: c.date_debut,
         loyer_mensuel_eur: c.loyer_mensuel_eur,
         periodicite: c.periodicite,
+        date_fin: c.date_fin,
         reglement: reglementParContrat.get(c.id) ?? null,
       },
     });
@@ -376,6 +384,7 @@ function demoBoxListe(): BoxListe[] {
         loyer_mensuel_eur: loyer,
         // Une périodicité sur trois en trimestriel, pour éprouver l'affichage.
         periodicite: loyer % 3 === 0 ? "trimestrielle" : "mensuelle",
+        date_fin: null,
         reglement: null,
       },
     });
@@ -442,7 +451,7 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
       .from("sr_contrats")
       .select("id", { count: "exact", head: true })
       .not("box_id", "is", null)
-      .is("date_fin", null),
+      .or(`date_fin.is.null,date_fin.gte.${premierJour(periode)}`),
     supabase.from("invoices").select("montant_ttc, customer_id").in("statut", ["emise", "en_retard"]),
     supabase.from("contracts").select("id", { count: "exact", head: true }).eq("statut", "en_preavis"),
     supabase
@@ -489,18 +498,29 @@ export async function boxRattachables(): Promise<BoxRattachable[]> {
     supabase.from("sr_box").select("id, numero, batiment, surface_m2"),
     supabase
       .from("sr_contrats")
-      .select("box_id, sr_locataires (nom)")
+      .select("box_id, date_debut, date_fin, sr_locataires (nom)")
       .not("box_id", "is", null),
   ]);
 
   if (boxRes.error) throw new Error(boxRes.error.message);
   if (contratsRes.error) throw new Error(contratsRes.error.message);
 
-  type ContratJointNom = { box_id: string | null; sr_locataires: { nom: string } | null };
+  type ContratJointNom = {
+    box_id: string | null;
+    date_debut: string | null;
+    date_fin: string | null;
+    sr_locataires: { nom: string } | null;
+  };
 
+  // Un contrat dont la sortie a pris effet ne bloque plus le box : sans ce
+  // filtre, un box libéré resterait marqué « pris » et impossible à
+  // réattribuer, alors que son occupant est parti.
+  const periodeCourse = periodeCourante();
   const occupantParBox = new Map<string, string>();
   for (const c of (contratsRes.data ?? []) as unknown as ContratJointNom[]) {
-    if (c.box_id && c.sr_locataires?.nom) occupantParBox.set(c.box_id, c.sr_locataires.nom);
+    if (!c.box_id || !c.sr_locataires?.nom) continue;
+    if (!contratDuPour(periodeCourse, c.date_debut, c.date_fin)) continue;
+    occupantParBox.set(c.box_id, c.sr_locataires.nom);
   }
 
   return (boxRes.data ?? []).map((b) => ({
@@ -590,9 +610,8 @@ export async function planParBatiment(): Promise<GroupePlan[]> {
       .select("id, floor, pos_x, pos_y, largeur_cm, profondeur_cm, rotation_deg"),
     supabase
       .from("sr_contrats")
-      .select("id, box_id, sr_locataires (nom)")
-      .not("box_id", "is", null)
-      .is("date_fin", null),
+      .select("id, box_id, date_debut, date_fin, sr_locataires (nom)")
+      .not("box_id", "is", null),
   ]);
 
   if (boxRes.error) throw new Error(boxRes.error.message);

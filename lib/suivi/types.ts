@@ -138,6 +138,8 @@ export type DetailOccupation = {
   date_entree: string | null;
   loyer_mensuel_eur: number;
   periodicite: Periodicite;
+  /** Sortie programmée : dernier mois dû. Null tant qu'aucune n'est prévue. */
+  date_fin: string | null;
   /** Règlement de la période affichée, null quand rien n'est pointé. */
   reglement: Reglement | null;
 };
