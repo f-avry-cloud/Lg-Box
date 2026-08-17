@@ -6,10 +6,11 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { UnitShape } from "@/components/units/unit-shape";
+import { FloorPlanBackground } from "@/components/units/floor-plan-background";
 import { saveUnitPositions } from "@/lib/actions/units";
 import {
   computeScale,
-  computeViewBox,
+  computePlanViewBox,
   snapToGrid,
   MIN_UNIT_SIZE_CM,
   type FloorPlanUnit,
@@ -43,7 +44,7 @@ export function FloorPlanEditor({
   const [unitsMap, setUnitsMap] = useState<Map<string, FloorPlanUnit>>(() => new Map(units.map((u) => [u.id, u])));
   const [dirtyIds, setDirtyIds] = useState<Set<string>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [viewBox] = useState<ViewBox>(() => computeViewBox(units));
+  const [viewBox] = useState<ViewBox>(() => computePlanViewBox(units, floor));
   const [saving, setSaving] = useState(false);
 
   const svgRef = useRef<SVGSVGElement>(null);
@@ -259,6 +260,7 @@ export function FloorPlanEditor({
           role="img"
           aria-label={`Plan éditable des box — niveau ${floor}`}
         >
+          <FloorPlanBackground floor={floor} />
           {orderedUnits.map((unit) => (
             <UnitShape
               key={unit.id}

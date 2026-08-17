@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { FLOOR_BACKGROUNDS } from "@/lib/units/floor-plan-walls";
 import type { ContractStatus, Database, Unit, UnitFloor, UnitStatus } from "@/types/database";
 
 // Locataire actuel d'un box (contrat actif ou en préavis) — construit côté
@@ -73,6 +74,29 @@ export function computeViewBox(units: FloorPlanUnit[], margin: number = VIEWBOX_
 
 export function snapToGrid(value: number, step: number = GRID_SNAP_CM): number {
   return Math.round(value / step) * step;
+}
+
+// Cadrage effectif du plan : englobe à la fois le fond relevé (murs du
+// bâtiment) et les box. Sans cette union, un box encore mal placé sortirait du
+// cadre, ou à l'inverse les murs seraient rognés sur les bords.
+export function computePlanViewBox(units: FloorPlanUnit[], floor: UnitFloor): ViewBox {
+  const bg = FLOOR_BACKGROUNDS[floor];
+  if (!bg) return computeViewBox(units);
+
+  const [bx, by, bw, bh] = bg.viewBox;
+  const fond: ViewBox = { minX: bx, minY: by, width: bw, height: bh };
+
+  const placed = units.some(
+    (u) => u.pos_x !== null && u.pos_y !== null && u.largeur_cm !== null && u.profondeur_cm !== null
+  );
+  if (!placed) return fond;
+
+  const boxes = computeViewBox(units);
+  const minX = Math.min(boxes.minX, fond.minX);
+  const minY = Math.min(boxes.minY, fond.minY);
+  const maxX = Math.max(boxes.minX + boxes.width, fond.minX + fond.width);
+  const maxY = Math.max(boxes.minY + boxes.height, fond.minY + fond.height);
+  return { minX, minY, width: maxX - minX, height: maxY - minY };
 }
 
 // Ratio pixel -> cm à appliquer aux deltas de souris pendant un drag/resize —

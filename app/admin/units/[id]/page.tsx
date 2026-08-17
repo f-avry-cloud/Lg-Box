@@ -55,11 +55,7 @@ export default async function UnitDetailPage({ params }: { params: Promise<{ id:
           </h1>
           <p className="flex items-center gap-1 text-sm text-muted-foreground">
             {unit.taille_libelle}
-            <UnitSizeEditForm
-              unitId={unit.id}
-              tailleM2={unit.taille_m2}
-              hasPhysicalDimensions={unit.largeur_cm !== null && unit.profondeur_cm !== null}
-            />
+            <UnitSizeEditForm unitId={unit.id} tailleM2={unit.taille_m2} />
             · {unit.type} · {unit.zone} · {formatCurrency(unit.prix_mensuel_standard)}/mois
             <UnitPriceEditForm unitId={unit.id} prixMensuelStandard={unit.prix_mensuel_standard} />
           </p>
