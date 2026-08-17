@@ -4,15 +4,17 @@ import {
   boxModifiables,
   contratsSansBox,
   listeBox,
+  planParBatiment,
 } from "@/lib/suivi/repository";
 
 export const dynamic = "force-dynamic";
 
 export default async function BoxPage() {
-  const [groupes, batiments, enAttente] = await Promise.all([
+  const [groupes, batiments, enAttente, plan] = await Promise.all([
     listeBox(),
     batimentsConnus(),
     contratsSansBox(),
+    planParBatiment(),
   ]);
 
   return (
@@ -21,6 +23,7 @@ export default async function BoxPage() {
       modifiable={boxModifiables()}
       batiments={batiments}
       contratsSansBox={enAttente}
+      plan={plan}
     />
   );
 }

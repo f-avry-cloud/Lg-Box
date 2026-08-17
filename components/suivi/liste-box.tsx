@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Pencil, Plus, Search } from "lucide-react";
+import { LayoutGrid, Map, Pencil, Plus, Search } from "lucide-react";
 
 import { FeuilleBox } from "@/components/suivi/feuille-box";
+import { PlanInteractif, type GroupePlanVue } from "@/components/suivi/plan-interactif";
 import { couleurPastille } from "@/lib/suivi/totals";
 import {
   estBatimentATraiter,
@@ -37,15 +38,21 @@ export function ListeBox({
   modifiable,
   batiments,
   contratsSansBox,
+  plan,
 }: {
   groupes: GroupeBatiment[];
   modifiable: boolean;
   batiments: string[];
   contratsSansBox: ContratSansBox[];
+  plan: GroupePlanVue[];
 }) {
   const [recherche, setRecherche] = useState("");
   const [boxEnEdition, setBoxEnEdition] = useState<BoxListe | null>(null);
   const [creation, setCreation] = useState(false);
+  const [vue, setVue] = useState<"liste" | "plan">("liste");
+
+  // Le plan renvoie un identifiant de box ; l'édition attend la ligne complète.
+  const tousLesBox = useMemo(() => groupes.flatMap((g) => g.box), [groupes]);
 
   const affiches = useMemo(() => {
     const terme = recherche.trim().toLocaleLowerCase("fr");
@@ -82,7 +89,30 @@ export function ListeBox({
           </span>
         </div>
 
-        <div className="relative mt-2">
+        <div className="mt-2 flex gap-2">
+          <div className="flex shrink-0 gap-1 rounded-full bg-secondary p-1">
+            {([
+              { cle: "liste" as const, libelle: "Liste", icone: LayoutGrid },
+              { cle: "plan" as const, libelle: "Plan", icone: Map },
+            ]).map(({ cle, libelle, icone: Icone }) => (
+              <button
+                key={cle}
+                type="button"
+                onClick={() => setVue(cle)}
+                aria-pressed={vue === cle}
+                className={cn(
+                  "suivi-tap flex h-9 items-center gap-1 rounded-full px-3 text-sm font-semibold",
+                  vue === cle ? "bg-card text-foreground shadow-sm" : "text-[var(--suivi-gris)]"
+                )}
+              >
+                <Icone className="size-4" aria-hidden />
+                {libelle}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className={cn("relative mt-2", vue === "plan" && "hidden")}>
           <Search
             className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-[var(--suivi-gris)]"
             aria-hidden
@@ -98,9 +128,10 @@ export function ListeBox({
         </div>
       </header>
 
-      {modifiable && (
+      {modifiable && vue === "liste" && (
         // Bouton flottant plutôt qu'en tête d'écran : ajouter un box est un
-        // geste occasionnel, mais il doit rester atteignable au pouce.
+        // geste occasionnel, mais il doit rester atteignable au pouce. Masqué
+        // en vue plan, où il recouvrirait le dessin.
         <button
           type="button"
           onClick={() => setCreation(true)}
@@ -135,6 +166,15 @@ export function ListeBox({
         </p>
       )}
 
+      {vue === "plan" ? (
+        <PlanInteractif
+          groupes={plan}
+          onOuvrirBox={(boxId) => {
+            const box = tousLesBox.find((b) => b.id === boxId);
+            if (box && modifiable) setBoxEnEdition(box);
+          }}
+        />
+      ) : (
       <div className="suivi-scroll-simple">
         {affiches.map((groupe) => (
           <section key={groupe.batiment}>
@@ -225,6 +265,7 @@ export function ListeBox({
           </p>
         )}
       </div>
+      )}
 
       {(boxEnEdition || creation) && (
         <FeuilleBox

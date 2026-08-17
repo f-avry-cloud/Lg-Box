@@ -19,6 +19,7 @@ import {
 } from "@/lib/suivi/demo-store";
 import { calculeTotaux } from "@/lib/suivi/totals";
 import { groupeParBatiment, parseBoxReferenceCsv } from "@/lib/suivi/box";
+import { estPlace, type BoxPlan } from "@/lib/suivi/plan";
 import { BOX_REFERENCE_CSV } from "@/lib/suivi/box-reference";
 import { periodeCourante } from "@/lib/suivi/period";
 import {
@@ -510,4 +511,137 @@ export async function contratsSansBox(): Promise<ContratSansBox[]> {
       loyer_mensuel_eur: c.loyer_mensuel_eur,
     }))
     .sort((a, b) => a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }));
+}
+
+
+// ---------------------------------------------------------------------------
+// Plan interactif
+// ---------------------------------------------------------------------------
+
+export type GroupePlan = { batiment: string; boxes: BoxPlan[] };
+
+/**
+ * Les box du référentiel mobile, enrichis de la géométrie du plan.
+ *
+ * La géométrie vit dans `units` (c'est le plan dessiné dans le back-office) et
+ * n'est ici que **lue** : l'app mobile ne modifie pas le back-office. Le
+ * raccord se fait sur `sr_box.unit_id` — 60 des 67 box aujourd'hui. Les sept
+ * autres sont des sous-numéros (2A, 4C, 10bis…) sans unité propre dans le
+ * plan : ils restent dans la liste, signalés comme non placés, plutôt que de
+ * disparaître silencieusement de l'écran.
+ */
+export async function planParBatiment(): Promise<GroupePlan[]> {
+  if (estModeDemo()) return planDemo();
+
+  const supabase = await createClient();
+
+  const [boxRes, geoRes, contratsRes] = await Promise.all([
+    supabase.from("sr_box").select("id, numero, batiment, surface_m2, unit_id"),
+    supabase
+      .from("units")
+      .select("id, pos_x, pos_y, largeur_cm, profondeur_cm, rotation_deg"),
+    supabase
+      .from("sr_contrats")
+      .select("id, box_id, sr_locataires (nom)")
+      .not("box_id", "is", null)
+      .is("date_fin", null),
+  ]);
+
+  if (boxRes.error) throw new Error(boxRes.error.message);
+  if (geoRes.error) throw new Error(geoRes.error.message);
+  if (contratsRes.error) throw new Error(contratsRes.error.message);
+
+  type Geo = {
+    id: string;
+    pos_x: number | null;
+    pos_y: number | null;
+    largeur_cm: number | null;
+    profondeur_cm: number | null;
+    rotation_deg: number;
+  };
+  type ContratJointNom = { id: string; box_id: string | null; sr_locataires: { nom: string } | null };
+
+  const geoParUnit = new Map<string, Geo>();
+  for (const g of (geoRes.data ?? []) as Geo[]) geoParUnit.set(g.id, g);
+
+  const occupantParBox = new Map<string, { nom: string; contratId: string }>();
+  for (const c of (contratsRes.data ?? []) as unknown as ContratJointNom[]) {
+    if (c.box_id && c.sr_locataires?.nom) {
+      occupantParBox.set(c.box_id, { nom: c.sr_locataires.nom, contratId: c.id });
+    }
+  }
+
+  const boxes: BoxPlan[] = (boxRes.data ?? []).map((b) => {
+    const geo = b.unit_id ? geoParUnit.get(b.unit_id) ?? null : null;
+    const occupant = occupantParBox.get(b.id) ?? null;
+    return {
+      id: b.id,
+      numero: b.numero,
+      batiment: b.batiment,
+      surface_m2: b.surface_m2,
+      occupe: occupant !== null,
+      locataire: occupant?.nom ?? null,
+      contrat_id: occupant?.contratId ?? null,
+      x: geo?.pos_x ?? null,
+      y: geo?.pos_y ?? null,
+      largeur: geo?.largeur_cm ?? null,
+      profondeur: geo?.profondeur_cm ?? null,
+      rotation: geo?.rotation_deg ?? 0,
+    };
+  });
+
+  return regroupePlan(boxes);
+}
+
+function regroupePlan(boxes: BoxPlan[]): GroupePlan[] {
+  const parBatiment = new Map<string, BoxPlan[]>();
+  for (const b of boxes) {
+    const liste = parBatiment.get(b.batiment);
+    if (liste) liste.push(b);
+    else parBatiment.set(b.batiment, [b]);
+  }
+
+  return [...parBatiment.entries()]
+    .map(([batiment, liste]) => ({
+      batiment,
+      boxes: liste.sort((a, b) =>
+        a.numero.localeCompare(b.numero, "fr", { numeric: true, sensitivity: "base" })
+      ),
+    }))
+    // Les bâtiments sans aucun box placé passent en dernier : leur onglet
+    // n'affiche pas de plan, seulement la liste des box non placés.
+    .sort((a, b) => {
+      const aPlace = a.boxes.some(estPlace);
+      const bPlace = b.boxes.some(estPlace);
+      if (aPlace !== bPlace) return aPlace ? -1 : 1;
+      return a.batiment.localeCompare(b.batiment, "fr", { numeric: true });
+    });
+}
+
+/**
+ * En démo, aucune géométrie n'est disponible : on en fabrique une en grille
+ * régulière, uniquement pour éprouver le rendu et les gestes. Les proportions
+ * ne prétendent pas décrire le site réel.
+ */
+function planDemo(): GroupePlan[] {
+  const boxes: BoxPlan[] = demoBoxListe().map((b, index) => {
+    const colonne = index % 5;
+    const rangee = Math.floor(index / 5);
+    return {
+      id: b.id,
+      numero: b.numero,
+      batiment: b.batiment ?? "Sans bâtiment",
+      surface_m2: b.surface_m2,
+      occupe: b.locataire !== null,
+      locataire: b.locataire,
+      contrat_id: b.contrat_id,
+      x: colonne * 350,
+      y: rangee * 350,
+      largeur: 300,
+      profondeur: 300,
+      rotation: 0,
+    };
+  });
+
+  return regroupePlan(boxes);
 }

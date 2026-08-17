@@ -190,6 +190,35 @@ du carnet non reliés (voir plus haut) échappent donc à cette détection.
 - **Un « reste à encaisser » n'est jamais négatif** : une régularisation
   supérieure au loyer gonfle l'encaissé, pas le reste.
 
+## Le plan interactif
+
+Bascule **Liste ⇄ Plan** en haut de l'onglet Box.
+
+**Navigation par bâtiment, pas par niveau.** C'est le choix structurant. Le
+rez-de-chaussée du site fait près de 60 m de large pour 12 m de profondeur :
+cadré en entier sur un téléphone, chaque box tombe sous la vingtaine de pixels
+et le plan devient un ruban illisible. Bâtiment par bâtiment, les proportions
+reviennent entre 1:1 et 1,5:1 et remplissent l'écran — le plan est lisible
+sans zoomer, et le zoom sert au détail.
+
+- Pincer pour zoomer (×1 à ×6), glisser pour déplacer, bouton de recadrage
+  dès qu'on a zoomé. La translation est bornée par ce que le zoom laisse
+  dépasser : au zoom ×1 le plan reste cadré, on ne peut pas le perdre.
+- Un glissement de plus de 6 px annule l'ouverture du box effleuré.
+- Vert plein = occupé, contour = libre. Tap = fiche du box.
+- Les compteurs par bâtiment sont sur les pastilles de sélection.
+
+**D'où vient la géométrie.** Elle est **lue** dans `units` — c'est le plan
+dessiné dans le back-office — via `sr_box.unit_id`, et jamais écrite : déplacer
+un box reste une opération du back-office. 60 des 67 box sont reliés ; les sept
+autres (`2A`, `2B`, `2C`, `4A`, `4B`, `4C`, `10bis`) sont des sous-numéros sans
+unité propre dans le plan. Ils apparaissent sous le plan dans un encart « non
+placés », tapables comme les autres : les escamoter donnerait un plan
+faussement complet.
+
+En mode démo, faute de géométrie, une grille régulière est fabriquée pour
+éprouver le rendu et les gestes. Elle ne décrit pas le site.
+
 ## Choix d'interface
 
 - L'ordre de la liste est **figé au chargement du mois**. Si elle se retriait à
