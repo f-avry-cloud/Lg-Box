@@ -12,6 +12,7 @@ import type { UnitFloor } from "@/types/database";
 import {
   demoBoxAvecOccupant,
   demoContrat,
+  demoDemandes,
   demoEnregistreObservations,
   demoFiche,
   demoLignesMois,
@@ -37,6 +38,7 @@ import {
   type DetailOccupation,
   type Periodicite,
   type ContratSansBox,
+  type DemandeReservation,
   type Reglement,
   type StatsTableauDeBord,
 } from "@/lib/suivi/types";
@@ -760,4 +762,39 @@ function planDemo(): GroupePlan[] {
   });
 
   return regroupePlan(boxes);
+}
+
+
+// ---------------------------------------------------------------------------
+// Demandes de réservation
+// ---------------------------------------------------------------------------
+
+/**
+ * Les demandes reçues par le formulaire public, les non traitées d'abord.
+ *
+ * Le tri place « nouvelle » en tête puis les plus récentes : c'est l'ordre
+ * dans lequel on les rappelle, et il évite d'avoir à filtrer pour retrouver
+ * celles qui attendent.
+ */
+export async function demandesReservation(): Promise<DemandeReservation[]> {
+  // Sans base, l'écran se montre sur trois demandes fictives — numéros de la
+  // plage réservée aux fictions, adresses en example.org : les composer ne
+  // peut atteindre personne.
+  if (estModeDemo()) return demoDemandes();
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("reservation_requests")
+    .select("id, nom, email, telephone, taille_souhaitee, date_souhaitee, message, statut, created_at")
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  const demandes = (data ?? []) as DemandeReservation[];
+  return [...demandes].sort((a, b) => {
+    const aNouvelle = a.statut === "nouvelle";
+    const bNouvelle = b.statut === "nouvelle";
+    if (aNouvelle !== bNouvelle) return aNouvelle ? -1 : 1;
+    return b.created_at.localeCompare(a.created_at);
+  });
 }

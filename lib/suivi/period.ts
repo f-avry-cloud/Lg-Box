@@ -67,6 +67,19 @@ export function labelPeriode(periode: string): string {
   return `${MOIS_FR[mois - 1]} ${annee}`;
 }
 
+/**
+ * « d'août 2026 », « de septembre 2026 » : la période dans une phrase.
+ *
+ * Trois mois sur douze commencent par une voyelle (avril, août, octobre) et
+ * imposent l'élision. Écrire « de Août 2026 » dans une demande de
+ * confirmation fait mauvais effet là où l'on demande justement à l'exploitant
+ * de faire confiance à ce qu'on s'apprête à modifier en base.
+ */
+export function dePeriode(periode: string): string {
+  const label = labelPeriode(periode).toLocaleLowerCase("fr");
+  return /^[aeiouy]/.test(label) ? `d'${label}` : `de ${label}`;
+}
+
 /** « 2026-08 » → « Août », « 2026-10 » → « Oct » (pastilles d'historique). */
 export function labelMoisCourt(periode: string): string {
   const { mois } = parsePeriode(periode);

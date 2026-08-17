@@ -217,3 +217,48 @@ export type ContratSansBox = {
   /** Date d'entrée déjà connue : l'affectation propose de la conserver. */
   date_debut: string | null;
 };
+
+// ---------------------------------------------------------------------------
+// Écran Demandes de réservation
+// ---------------------------------------------------------------------------
+
+// Les demandes viennent du formulaire public (table `reservation_requests` du
+// back-office). L'app mobile les lit et fait avancer leur statut : c'est le
+// seul point où elle écrit hors de ses tables sr_*, parce qu'une demande se
+// traite depuis le téléphone, souvent debout dans l'allée, et que la marquer
+// « contactée » ailleurs qu'à l'endroit où on vient d'appeler ne se fait pas.
+
+export type StatutDemande = "nouvelle" | "contactee" | "convertie" | "refusee";
+
+export type DemandeReservation = {
+  id: string;
+  nom: string;
+  email: string;
+  telephone: string | null;
+  taille_souhaitee: string | null;
+  date_souhaitee: string | null;
+  message: string | null;
+  statut: StatutDemande;
+  created_at: string;
+};
+
+export const STATUT_DEMANDE_LABELS: Record<StatutDemande, string> = {
+  nouvelle: "Nouvelle",
+  contactee: "Contactée",
+  convertie: "Convertie",
+  refusee: "Refusée",
+};
+
+export const STATUTS_DEMANDE: readonly StatutDemande[] = [
+  "nouvelle",
+  "contactee",
+  "convertie",
+  "refusee",
+] as const;
+
+export function couleurStatutDemande(statut: StatutDemande): string {
+  if (statut === "nouvelle") return "var(--suivi-orange)";
+  if (statut === "convertie") return "var(--suivi-vert)";
+  if (statut === "refusee") return "var(--suivi-gris)";
+  return "var(--primary)";
+}

@@ -143,19 +143,23 @@ export default async function TableauDeBordPage({
             alerte={stats.contratsEnPreavis > 0}
           />
 
-          <Tuile
-            icone={<Inbox className="size-5" aria-hidden />}
-            libelle="Demandes de réservation"
-            valeur={String(stats.demandesNouvelles)}
-            detail={
-              stats.demandesNouvelles > 0 ? "À traiter dans le back-office" : "Aucune nouvelle demande"
-            }
-            alerte={stats.demandesNouvelles > 0}
-          />
+          <Link href="/suivi/demandes" className="suivi-tap block active:opacity-80">
+            <Tuile
+              icone={<Inbox className="size-5" aria-hidden />}
+              libelle="Demandes de réservation"
+              valeur={String(stats.demandesNouvelles)}
+              detail={
+                stats.demandesNouvelles > 0
+                  ? "À rappeler — toucher pour ouvrir"
+                  : "Aucune nouvelle demande"
+              }
+              alerte={stats.demandesNouvelles > 0}
+            />
+          </Link>
         </div>
 
         <p className="px-1 pt-1 text-center text-sm text-[var(--suivi-gris)]">
-          Facturation, contrats et rapports restent dans le back-office.
+          Contrats, documents et rapports restent dans le back-office.
         </p>
       </div>
     </div>

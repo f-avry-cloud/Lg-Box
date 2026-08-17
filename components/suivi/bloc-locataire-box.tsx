@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Mail, MessageSquare, Phone } from "lucide-react";
 import { toast } from "sonner";
 
+import { BlocContact } from "@/components/suivi/bloc-contact";
 import { vibre } from "@/components/suivi/bouton-encaissement";
 import { Button } from "@/components/ui/button";
 import { basculeReglement, detacheBoxDuContrat } from "@/lib/actions/suivi";
@@ -152,45 +152,7 @@ export function BlocLocataireBox({ box }: { box: BoxListe }) {
       </div>
 
       {/* Joindre le locataire : la raison la plus fréquente d'ouvrir un box. */}
-      <div className="mb-2 grid grid-cols-3 gap-2">
-        <Contact
-          href={detail.telephone ? `tel:${detail.telephone}` : null}
-          icone={<Phone className="size-5" />}
-          libelle="Appeler"
-        />
-        <Contact
-          href={detail.telephone ? `sms:${detail.telephone}` : null}
-          icone={<MessageSquare className="size-5" />}
-          libelle="SMS"
-        />
-        <Contact
-          href={detail.email ? `mailto:${detail.email}` : null}
-          icone={<Mail className="size-5" />}
-          libelle="E-mail"
-        />
-      </div>
-
-      {detail.telephone && (
-        // iOS réserve tel: et sms: à l'app d'appel par défaut du système ;
-        // copier reste le repli pour composer depuis une app de second numéro.
-        <button
-          type="button"
-          onClick={async () => {
-            try {
-              if (!navigator.clipboard?.writeText) throw new Error("indisponible");
-              await navigator.clipboard.writeText(detail.telephone!);
-              vibre();
-              toast.success(`${detail.telephone} copié.`);
-            } catch {
-              toast.error("Copie impossible — sélectionnez le numéro à la main.");
-            }
-          }}
-          className="suivi-tap mb-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border text-sm font-semibold active:bg-secondary"
-        >
-          <Copy className="size-4" aria-hidden />
-          Copier le numéro
-        </button>
-      )}
+      <BlocContact telephone={detail.telephone} email={detail.email} className="mb-3" />
 
       <Button
         type="button"
@@ -366,34 +328,5 @@ function Donnee({
       </dd>
       {detail && <dd className="text-xs text-[var(--suivi-gris)]">{detail}</dd>}
     </div>
-  );
-}
-
-function Contact({
-  href,
-  icone,
-  libelle,
-}: {
-  href: string | null;
-  icone: React.ReactNode;
-  libelle: string;
-}) {
-  if (!href) {
-    return (
-      <span className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-border text-xs text-[var(--suivi-gris)] opacity-60">
-        {icone}
-        {libelle}
-      </span>
-    );
-  }
-
-  return (
-    <a
-      href={href}
-      className="suivi-tap flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background text-xs font-semibold text-primary active:bg-secondary"
-    >
-      {icone}
-      {libelle}
-    </a>
   );
 }

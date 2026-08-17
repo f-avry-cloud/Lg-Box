@@ -9,7 +9,7 @@ import { vibre } from "@/components/suivi/bouton-encaissement";
 import { FeuilleModale } from "@/components/suivi/feuille-modale";
 import { Button } from "@/components/ui/button";
 import { annuleFacturationDuMois, factureLeMois } from "@/lib/actions/suivi-facturation";
-import { labelPeriode } from "@/lib/suivi/period";
+import { dePeriode } from "@/lib/suivi/period";
 
 /**
  * « Passer le mois en facturé », en un tap et une confirmation.
@@ -77,7 +77,7 @@ export function BoutonFacturation({
             </strong>
           </>
         ) : (
-          `Tous les loyers de ${labelPeriode(periode)} sont réclamés ou réglés.`
+          `Tous les loyers ${dePeriode(periode)} sont réclamés ou réglés.`
         )}
       </p>
 
@@ -117,13 +117,13 @@ export function BoutonFacturation({
           <p className="mb-4 text-base">
             {`Retirer la mention « facturé » sur ${dejaFacturees} loyer${
               dejaFacturees > 1 ? "s" : ""
-            } de ${labelPeriode(periode)} ? Les règlements déjà encaissés ne sont pas touchés.`}
+            } ${dePeriode(periode)} ? Les règlements déjà encaissés ne sont pas touchés.`}
           </p>
         ) : (
           <p className="mb-4 text-base">
             {`Marquer comme facturés ${aFacturer} loyer${
               aFacturer > 1 ? "s" : ""
-            } de ${labelPeriode(periode)}, pour ${montant.toLocaleString(
+            } ${dePeriode(periode)}, pour ${montant.toLocaleString(
               "fr-FR"
             )} € ? Les loyers déjà réglés gardent leur statut.`}
           </p>

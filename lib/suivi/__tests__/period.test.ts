@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   anneesDisponibles,
+  dePeriode,
   douzeDernieresPeriodes,
   isPeriode,
   labelMoisCourt,
@@ -82,5 +83,18 @@ describe("labelMoisCourt", () => {
     expect(labelMoisCourt("2026-08")).toBe("Août");
     expect(labelMoisCourt("2026-10")).toBe("Oct");
     expect(labelMoisCourt("2026-12")).toBe("Déc");
+  });
+});
+
+describe("dePeriode", () => {
+  it("élide devant les mois qui commencent par une voyelle", () => {
+    expect(dePeriode("2026-04")).toBe("d'avril 2026");
+    expect(dePeriode("2026-08")).toBe("d'août 2026");
+    expect(dePeriode("2026-10")).toBe("d'octobre 2026");
+  });
+
+  it("garde « de » devant les autres", () => {
+    expect(dePeriode("2026-09")).toBe("de septembre 2026");
+    expect(dePeriode("2026-01")).toBe("de janvier 2026");
   });
 });
