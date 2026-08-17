@@ -210,11 +210,20 @@ sans zoomer, et le zoom sert au détail.
 
 **D'où vient la géométrie.** Elle est **lue** dans `units` — c'est le plan
 dessiné dans le back-office — via `sr_box.unit_id`, et jamais écrite : déplacer
-un box reste une opération du back-office. 60 des 67 box sont reliés ; les sept
-autres (`2A`, `2B`, `2C`, `4A`, `4B`, `4C`, `10bis`) sont des sous-numéros sans
-unité propre dans le plan. Ils apparaissent sous le plan dans un encart « non
-placés », tapables comme les autres : les escamoter donnerait un plan
-faussement complet.
+un box reste une opération du back-office. **Les 67 box sont reliés.**
+
+Le raccord s'est fait en deux temps, et le second mérite d'être noté :
+l'appariement initial comparait les numéros caractère pour caractère, ce qui
+laissait sept box de côté — `2A`, `2B`, `2C`, `4A`, `4B`, `4C`, `10bis`. Ils
+existaient pourtant bel et bien dans le plan, positionnés et dans les bons
+bâtiments : le back-office les écrit `2a`, `4a`, `10 bis` (minuscules, et une
+espace pour le « bis »). Même box, deux conventions de saisie. La comparaison
+ignore désormais la casse et les espaces.
+
+Un box ajouté plus tard des deux côtés avec des orthographes différentes
+retomberait dans le même piège. Il apparaîtrait alors sous le plan dans un
+encart « non placés », tapable comme les autres — les escamoter donnerait un
+plan faussement complet. C'est le signal qu'il faut renseigner son `unit_id`.
 
 En mode démo, faute de géométrie, une grille régulière est fabriquée pour
 éprouver le rendu et les gestes. Elle ne décrit pas le site.
