@@ -8,7 +8,12 @@ import { BlocContact } from "@/components/suivi/bloc-contact";
 import { vibre } from "@/components/suivi/bouton-encaissement";
 import { Button } from "@/components/ui/button";
 import { basculeReglement, detacheBoxDuContrat } from "@/lib/actions/suivi";
-import { annuleSortie, modifiePeriodicite, programmeSortie } from "@/lib/actions/suivi-box";
+import {
+  annuleSortie,
+  modifieLoyerContrat,
+  modifiePeriodicite,
+  programmeSortie,
+} from "@/lib/actions/suivi-box";
 import { libelleAnciennete } from "@/lib/suivi/anciennete";
 import { formatPeriode, labelPeriode, parsePeriode, periodeCourante, shiftPeriode } from "@/lib/suivi/period";
 import { sortieAVenir } from "@/lib/suivi/contrat";
@@ -52,6 +57,10 @@ export function BlocLocataireBox({ box }: { box: BoxListe }) {
     box.detail?.periodicite ?? "mensuelle"
   );
   const [choixSortie, setChoixSortie] = useState(false);
+  // Édition du loyer : repliée, parce qu'on ouvre un box pour consulter, pas
+  // pour réviser un tarif. Mais accessible sans quitter la fiche.
+  const [editeLoyer, setEditeLoyer] = useState(false);
+  const [saisieLoyer, setSaisieLoyer] = useState("");
   const [confirmeDetachement, setConfirmeDetachement] = useState(false);
 
   const detail = box.detail;
@@ -119,7 +128,21 @@ export function BlocLocataireBox({ box }: { box: BoxListe }) {
           valeur={box.surface_m2 != null ? `${Number(box.surface_m2.toFixed(2))} m²` : "à mesurer"}
           alerte={box.surface_m2 == null}
         />
-        <Donnee libelle="Loyer" valeur={`${detail.loyer_mensuel_eur} €`} />
+        <Donnee
+          libelle="Loyer"
+          valeur={`${detail.loyer_mensuel_eur} €`}
+          action={
+            box.contrat_id
+              ? {
+                  libelle: "Modifier",
+                  onClick: () => {
+                    setSaisieLoyer(String(detail.loyer_mensuel_eur));
+                    setEditeLoyer(true);
+                  },
+                }
+              : undefined
+          }
+        />
         <Donnee
           libelle="Date d'entrée"
           valeur={detail.date_entree ? formatDate(detail.date_entree) : "—"}
@@ -127,6 +150,65 @@ export function BlocLocataireBox({ box }: { box: BoxListe }) {
         />
         <Donnee libelle="Règlement" valeur={labelPeriode(periode)} detail={LIBELLE_STATUT[statut]} />
       </dl>
+
+      {editeLoyer && (
+        <div className="mb-3 rounded-xl border border-border bg-secondary/40 p-3">
+          <label
+            className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]"
+            htmlFor="loyer-contrat"
+          >
+            Loyer mensuel (€)
+          </label>
+          <input
+            id="loyer-contrat"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            step="1"
+            value={saisieLoyer}
+            onChange={(e) => setSaisieLoyer(e.target.value)}
+            className="mb-2 h-14 w-full rounded-xl border border-input bg-background px-4 text-lg tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          <p className="mb-2 text-xs text-[var(--suivi-gris)]">
+            Le nouveau loyer vaut pour les mois à venir. Les règlements déjà pointés gardent le
+            montant encaissé.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-12 flex-1"
+              disabled={enCours}
+              onClick={() => setEditeLoyer(false)}
+            >
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              className="h-12 flex-1"
+              disabled={enCours || !(Number(saisieLoyer.replace(",", ".")) > 0)}
+              onClick={() => {
+                if (!box.contrat_id) return;
+                const montant = Number(saisieLoyer.replace(",", "."));
+                demarreTransition(async () => {
+                  const resultat = await modifieLoyerContrat(box.contrat_id!, montant);
+                  if (!resultat.success) {
+                    vibre(60);
+                    toast.error(resultat.error ?? "Modification impossible.");
+                    return;
+                  }
+                  vibre();
+                  toast.success(`Loyer porté à ${Math.round(montant)} €.`);
+                  setEditeLoyer(false);
+                  router.refresh();
+                });
+              }}
+            >
+              Enregistrer
+            </Button>
+          </div>
+        </div>
+      )}
 
       <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
         Périodicité
@@ -309,16 +391,28 @@ function Donnee({
   valeur,
   detail,
   alerte,
+  action,
 }: {
   libelle: string;
   valeur: string;
   detail?: string;
   alerte?: boolean;
+  /** Lien discret sous l'étiquette, pour rendre la donnée modifiable. */
+  action?: { libelle: string; onClick: () => void };
 }) {
   return (
     <div>
-      <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
+      <dt className="flex items-baseline gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
         {libelle}
+        {action && (
+          <button
+            type="button"
+            onClick={action.onClick}
+            className="text-xs font-semibold normal-case text-primary underline underline-offset-2"
+          >
+            {action.libelle}
+          </button>
+        )}
       </dt>
       <dd
         className="text-base font-bold tabular-nums"

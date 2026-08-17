@@ -2,12 +2,17 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { ChoixDateEffet } from "@/components/suivi/choix-date-effet";
 import { vibre } from "@/components/suivi/bouton-encaissement";
 import { Button } from "@/components/ui/button";
-import { ajouteBoxAuLocataire, rattacheBoxAuContrat } from "@/lib/actions/suivi";
+import {
+  ajouteBoxAuLocataire,
+  creeLocataireAvecContrat,
+  rattacheBoxAuContrat,
+} from "@/lib/actions/suivi";
 import {
   ecartRepartition,
   libelleEcart,
@@ -59,6 +64,16 @@ export function BlocAffectation({
   // la correction visée. Dès qu'il y touche, sa valeur prime.
   const [sourceModifiee, setSourceModifiee] = useState(false);
 
+  // Création d'un locataire absent du carnet : le seul chemin, jusqu'ici,
+  // passait par le back-office ou par un nouvel import.
+  const [creationLocataire, setCreationLocataire] = useState(false);
+  const [nouveau, setNouveau] = useState({
+    nom: "",
+    societe: "",
+    telephone: "",
+    email: "",
+  });
+
   const visibles = useMemo(() => {
     const terme = recherche.trim().toLocaleLowerCase("fr");
     if (!terme) return candidats;
@@ -69,6 +84,8 @@ export function BlocAffectation({
 
   const reinitialise = () => {
     setCandidat(null);
+    setCreationLocataire(false);
+    setNouveau({ nom: "", societe: "", telephone: "", email: "" });
     setSourceId(null);
     setLoyerSource("");
     setSourceModifiee(false);
@@ -151,6 +168,103 @@ export function BlocAffectation({
       termine(`Box ${box.numero} ajouté à ${candidat.nom}.`);
     });
   };
+
+  const cree = () => {
+    demarreTransition(async () => {
+      const resultat = await creeLocataireAvecContrat({
+        nom: nouveau.nom,
+        societe: nouveau.societe || null,
+        telephone: nouveau.telephone || null,
+        email: nouveau.email || null,
+        loyer: Math.round(montantNouveau),
+        periodeEffet: periodeEffet ?? periodeCourante(),
+        boxId: box.id,
+      });
+      if (!resultat.success) {
+        vibre(60);
+        toast.error(resultat.error ?? "Création impossible.");
+        return;
+      }
+      termine(`${nouveau.nom.trim()} créé et rattaché au box ${box.numero}.`);
+    });
+  };
+
+  // ---- Nouveau locataire : création du locataire et de son contrat --------
+  if (creationLocataire) {
+    return (
+      <div className="mb-4 rounded-xl border border-border bg-secondary/40 p-3">
+        <p className="mb-3 text-base">
+          <strong>Nouveau locataire</strong>
+          {` — box ${box.numero}`}
+        </p>
+
+        <Champ
+          libelle="Nom"
+          valeur={nouveau.nom}
+          onChange={(v) => setNouveau({ ...nouveau, nom: v })}
+          placeholder="NOM Prénom"
+        />
+        <Champ
+          libelle="Société (facultatif)"
+          valeur={nouveau.societe}
+          onChange={(v) => setNouveau({ ...nouveau, societe: v })}
+        />
+        <Champ
+          libelle="Téléphone (facultatif)"
+          type="tel"
+          valeur={nouveau.telephone}
+          onChange={(v) => setNouveau({ ...nouveau, telephone: v })}
+          placeholder="+336…"
+        />
+        <Champ
+          libelle="E-mail (facultatif)"
+          type="email"
+          valeur={nouveau.email}
+          onChange={(v) => setNouveau({ ...nouveau, email: v })}
+          aide="Nécessaire pour recevoir ses factures par mail."
+        />
+        <Champ
+          libelle="Loyer mensuel (€)"
+          type="number"
+          valeur={loyer}
+          onChange={setLoyer}
+          placeholder={box.tarif_indicatif_eur != null ? "" : "à définir"}
+          aide={
+            box.tarif_indicatif_eur != null
+              ? `Proposé d'après le tarif indicatif du box (${box.tarif_indicatif_eur} €).`
+              : undefined
+          }
+        />
+
+        <ChoixDateEffet
+          dateDebutActuelle={null}
+          valeur={periodeEffet}
+          onChange={setPeriodeEffet}
+          desactive={enCours}
+        />
+
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-12 flex-1"
+            disabled={enCours}
+            onClick={reinitialise}
+          >
+            Retour
+          </Button>
+          <Button
+            type="button"
+            className="h-12 flex-1"
+            disabled={enCours || nouveau.nom.trim() === "" || !loyerValide}
+            onClick={cree}
+          >
+            Créer
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // ---- Étape 3 : locataire déjà logé, on crée un second contrat -----------
   if (candidat && !candidat.contrat_libre) {
@@ -381,6 +495,23 @@ export function BlocAffectation({
               </p>
             )}
           </div>
+
+          {/* Un arrivant n'est dans aucune liste : il faut pouvoir le créer
+              d'ici, sinon le box reste libre en attendant le back-office. */}
+          <button
+            type="button"
+            disabled={enCours}
+            onClick={() => {
+              setCreationLocataire(true);
+              setNouveau({ nom: recherche.trim(), societe: "", telephone: "", email: "" });
+              setLoyer(loyerPropose(box.tarif_indicatif_eur));
+              setPeriodeEffet(periodeCourante());
+            }}
+            className="suivi-tap mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-background text-sm font-semibold active:bg-secondary"
+          >
+            <UserPlus className="size-4" aria-hidden />
+            {recherche.trim() ? `Créer « ${recherche.trim()} »` : "Nouveau locataire"}
+          </button>
         </>
       ) : (
         <Button
@@ -421,5 +552,40 @@ function OptionSource({
       <span className="text-sm font-semibold">{titre}</span>
       <span className="text-xs text-[var(--suivi-gris)]">{detail}</span>
     </button>
+  );
+}
+
+function Champ({
+  libelle,
+  valeur,
+  onChange,
+  type = "text",
+  placeholder,
+  aide,
+}: {
+  libelle: string;
+  valeur: string;
+  onChange: (valeur: string) => void;
+  type?: string;
+  placeholder?: string;
+  aide?: string;
+}) {
+  return (
+    <label className="mb-3 block">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--suivi-gris)]">
+        {libelle}
+      </span>
+      <input
+        type={type}
+        inputMode={type === "number" ? "numeric" : undefined}
+        value={valeur}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoCapitalize={type === "email" ? "none" : undefined}
+        autoCorrect="off"
+        className="h-12 w-full rounded-xl border border-input bg-background px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      />
+      {aide && <span className="mt-1 block text-xs text-[var(--suivi-gris)]">{aide}</span>}
+    </label>
   );
 }

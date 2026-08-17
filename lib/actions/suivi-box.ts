@@ -227,3 +227,39 @@ export async function annuleSortie(contratId: string): Promise<ActionResult> {
   rafraichit();
   return ok;
 }
+
+/**
+ * Loyer mensuel du contrat qui occupe le box.
+ *
+ * Le loyer vit sur le contrat, jamais sur le box (le box n'a qu'un tarif
+ * indicatif). Le corriger était jusqu'ici impossible depuis le téléphone : il
+ * n'entrait qu'à l'import, ou à la création d'un second contrat. Une révision
+ * de loyer obligeait donc à passer par le back-office.
+ *
+ * Aucune historisation : le carnet enregistre le loyer en cours, et les mois
+ * déjà pointés gardent le montant réellement encaissé, qui est stocké sur le
+ * règlement. Changer le loyer ne réécrit donc pas le passé.
+ */
+export async function modifieLoyerContrat(
+  contratId: string,
+  loyer: number
+): Promise<ActionResult> {
+  const refus = await autorise();
+  if (refus) return refus;
+
+  const montant = Math.round(Number(loyer));
+  if (!Number.isFinite(montant) || montant <= 0) {
+    return fail("Le loyer doit être un nombre positif.");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("sr_contrats")
+    .update({ loyer_mensuel_eur: montant, updated_at: new Date().toISOString() })
+    .eq("id", contratId);
+
+  if (error) return fail(error.message);
+
+  rafraichit();
+  return ok;
+}

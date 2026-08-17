@@ -325,3 +325,98 @@ export async function ajouteBoxAuLocataire(saisie: {
     return fail(erreur instanceof Error ? erreur.message : "Affectation impossible.");
   }
 }
+
+/**
+ * Crée un locataire et son premier contrat, depuis le téléphone.
+ *
+ * Il n'existait aucun chemin pour cela : le carnet ne connaissait que les
+ * locataires venus de l'import. Un nouvel arrivant obligeait à passer par le
+ * back-office, ou à relancer un import.
+ *
+ * Le contrat naît avec son loyer et sa date d'effet — un locataire qui entre
+ * le mois prochain ne doit pas être facturé ce mois-ci. `boxId` peut rester
+ * nul : le contrat rejoint alors la file des « box à identifier », ce qui est
+ * un état légitime et déjà géré partout.
+ */
+export async function creeLocataireAvecContrat(saisie: {
+  nom: string;
+  societe: string | null;
+  telephone: string | null;
+  email: string | null;
+  loyer: number;
+  periodeEffet: string;
+  boxId: string | null;
+}): Promise<ActionResult> {
+  const nom = saisie.nom.trim();
+  if (!nom) return fail("Le nom du locataire est obligatoire.");
+
+  const erreurPeriode = verifiePeriode(saisie.periodeEffet);
+  if (erreurPeriode) return fail(erreurPeriode);
+
+  const loyer = Math.round(Number(saisie.loyer));
+  if (!Number.isFinite(loyer) || loyer <= 0) {
+    return fail("Le loyer doit être un nombre positif.");
+  }
+
+  try {
+    await autorise();
+    if (estModeDemo()) return fail("Création indisponible en mode démo.");
+
+    const supabase = await createClient();
+    const dateEffet = premierJour(saisie.periodeEffet);
+
+    // Le box est vérifié avant de créer quoi que ce soit : mieux vaut refuser
+    // que laisser un locataire sans contrat derrière une erreur.
+    if (saisie.boxId) {
+      const { data: autres, error: erreurLecture } = await supabase
+        .from("sr_contrats")
+        .select("id, date_debut, date_fin")
+        .eq("box_id", saisie.boxId);
+
+      if (erreurLecture) return fail(erreurLecture.message);
+
+      const periode = periodeCourante();
+      if ((autres ?? []).some((c) => contratDuPour(periode, c.date_debut, c.date_fin))) {
+        return fail("Ce box est déjà rattaché à un autre locataire.");
+      }
+    }
+
+    const { data: locataire, error: erreurLocataire } = await supabase
+      .from("sr_locataires")
+      .insert({
+        nom,
+        societe: saisie.societe?.trim() || null,
+        telephone: saisie.telephone?.trim() || null,
+        email: saisie.email?.trim() || null,
+        date_entree: dateEffet,
+        actif: true,
+      })
+      .select("id")
+      .single();
+
+    if (erreurLocataire) return fail(erreurLocataire.message);
+
+    const { error: erreurContrat } = await supabase.from("sr_contrats").insert({
+      locataire_id: locataire.id,
+      box_id: saisie.boxId,
+      loyer_mensuel_eur: loyer,
+      date_debut: dateEffet,
+      date_fin: null,
+    });
+
+    if (erreurContrat) {
+      // Le locataire existe désormais sans contrat : on le dit, plutôt que de
+      // laisser croire à un échec complet et de le faire ressaisir en double.
+      return fail(
+        `${nom} a été créé, mais son contrat n'a pas pu l'être : ${erreurContrat.message}`
+      );
+    }
+
+    revalidatePath("/suivi");
+    revalidatePath("/suivi/box");
+    revalidatePath("/suivi/tableau-de-bord");
+    return ok;
+  } catch (erreur) {
+    return fail(erreur instanceof Error ? erreur.message : "Création impossible.");
+  }
+}

@@ -270,6 +270,29 @@ ressemblent à l'écran et n'ont rien à voir dans les comptes.
 Les calculs sont isolés dans `lib/suivi/affectation.ts` (11 tests, bâtis sur
 les cas réels GAU et CALONNE).
 
+### Créer un locataire, modifier un loyer
+
+Deux chemins manquaient, et leur absence renvoyait au back-office pour des
+gestes quotidiens.
+
+**Modifier le loyer** — un lien « Modifier » à côté du montant, dans le bloc
+locataire de la fiche du box. Le loyer n'entrait jusqu'ici qu'à l'import ou à
+la création d'un second contrat : une révision de tarif était impossible
+depuis le téléphone. Aucune historisation : le nouveau montant vaut pour les
+mois à venir, et les mois déjà pointés gardent la somme réellement encaissée,
+qui est stockée sur le règlement.
+
+**Créer un locataire** — « Nouveau locataire » au bas de la liste
+d'affectation, ou directement « Créer « X » » quand la recherche ne trouve
+personne, le nom étant alors repris de ce qui a été tapé. Le formulaire
+demande le nom (seul champ obligatoire), la société, le téléphone, l'e-mail,
+le loyer — proposé d'après le tarif indicatif du box — et la date d'effet. Il
+crée le locataire **et** son premier contrat, rattaché au box ouvert.
+
+Si l'insertion du contrat échoue après celle du locataire, le message le dit
+explicitement plutôt que d'annoncer un échec complet : le locataire existe, et
+le faire ressaisir créerait un doublon.
+
 ### Le tarif indicatif du box
 
 `sr_box.tarif_indicatif_eur`, facultatif, modifiable dans la fiche du box.
