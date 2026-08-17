@@ -4,12 +4,15 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { BlocLocataireBox } from "@/components/suivi/bloc-locataire-box";
 import { FeuilleModale } from "@/components/suivi/feuille-modale";
 import { vibre } from "@/components/suivi/bouton-encaissement";
 import { Button } from "@/components/ui/button";
 import { creeBox, modifieBox, supprimeBox } from "@/lib/actions/suivi-box";
 import { detacheBoxDuContrat, rattacheBoxAuContrat } from "@/lib/actions/suivi";
 import type { BoxListe, ContratSansBox } from "@/lib/suivi/types";
+import { ChevronDown } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
 /**
@@ -42,6 +45,9 @@ export function FeuilleBox({
   const [initialisePour, setInitialisePour] = useState<string | null>(null);
   const [confirmeSuppression, setConfirmeSuppression] = useState(false);
   const [choixLocataire, setChoixLocataire] = useState(false);
+  // Les champs du box sont repliés par défaut sur un box occupé : le parcours
+  // courant est de consulter le locataire, pas de corriger une surface.
+  const [champsOuverts, setChampsOuverts] = useState(false);
   const [rechercheLocataire, setRechercheLocataire] = useState("");
   const [enCours, demarreTransition] = useTransition();
 
@@ -56,6 +62,7 @@ export function FeuilleBox({
     setConfirmeSuppression(false);
     setChoixLocataire(false);
     setRechercheLocataire("");
+    setChampsOuverts(creation || !box?.detail);
   }
 
   if (!creation && !box) return null;
@@ -115,6 +122,25 @@ export function FeuilleBox({
       titre={creation ? "Nouveau box" : `Box ${box!.numero}`}
       onFermer={onFermer}
     >
+      {!creation && box?.detail && <BlocLocataireBox box={box} />}
+
+      {/* Champs du box, repliables : présents mais pas au premier plan. */}
+      {!creation && box?.detail && (
+        <button
+          type="button"
+          onClick={() => setChampsOuverts((o) => !o)}
+          aria-expanded={champsOuverts}
+          className="suivi-tap mb-3 flex min-h-12 w-full items-center justify-between rounded-xl border border-border px-3 text-sm font-semibold active:bg-secondary"
+        >
+          Modifier le box
+          <ChevronDown
+            className={cn("size-5 transition-transform", champsOuverts && "rotate-180")}
+            aria-hidden
+          />
+        </button>
+      )}
+
+      <div className={cn(!champsOuverts && "hidden")}>
       <label className="mb-1 block text-sm font-medium" htmlFor="box-numero">
         Numéro
       </label>
@@ -190,13 +216,15 @@ export function FeuilleBox({
         </div>
       )}
 
+      </div>
+
       {/*
         Affectation dans le sens box → locataire : c'est ainsi que l'exploitant
         raisonne quand il identifie un box sur le terrain. Le sens inverse
         existe aussi, depuis la fiche du locataire.
       */}
       {!creation && box && (
-        <div className="mb-4 rounded-xl border border-border bg-secondary/40 p-3">
+        <div className={cn("mb-4 rounded-xl border border-border bg-secondary/40 p-3", box.detail && "hidden")}>
           <span className="mb-1 block text-sm font-medium">Locataire</span>
 
           {box.locataire ? (

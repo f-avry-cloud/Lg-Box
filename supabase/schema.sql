@@ -796,3 +796,10 @@ begin
     execute format('create policy %I on %I for delete using (is_admin())', t || '_admin_delete', t);
   end loop;
 end $$;
+
+-- Périodicité de règlement du contrat (voir migration 015_sr_periodicite.sql).
+alter table sr_contrats
+  add column if not exists periodicite text not null default 'mensuelle';
+alter table sr_contrats drop constraint if exists sr_contrats_periodicite_check;
+alter table sr_contrats add constraint sr_contrats_periodicite_check
+  check (periodicite in ('mensuelle', 'trimestrielle'));

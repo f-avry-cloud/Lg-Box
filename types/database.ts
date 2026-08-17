@@ -323,6 +323,7 @@ export type SrContrat = {
   locataire_id: string;
   box_id: string | null;
   loyer_mensuel_eur: number;
+  periodicite: "mensuelle" | "trimestrielle";
   date_debut: string | null;
   date_fin: string | null;
   remarque: string | null;

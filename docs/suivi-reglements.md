@@ -190,6 +190,38 @@ du carnet non reliés (voir plus haut) échappent donc à cette détection.
 - **Un « reste à encaisser » n'est jamais négatif** : une régularisation
   supérieure au loyer gonfle l'encaissé, pas le reste.
 
+## La fiche d'un box
+
+Le parcours visé est court : **j'ouvre un box, je vois son statut, j'appelle le
+locataire si besoin.** La fiche est donc organisée dans cet ordre, et non
+autour de l'édition.
+
+Sur un box occupé, en tête :
+
+- nom du locataire et **statut du règlement du mois** en pastille colorée ;
+- surface louée, loyer, date d'entrée (avec l'ancienneté), période en cours ;
+- **périodicité** de règlement, mensuelle ou trimestrielle, modifiable d'un tap ;
+- **Appeler / SMS / E-mail**, plus « Copier le numéro » ;
+- « Marquer réglé » pour le mois courant ;
+- « Détacher ce locataire du box », discret et confirmé — opération rare et
+  structurante.
+
+Les champs du box (numéro, surface, bâtiment) restent modifiables mais sont
+**repliés** derrière « Modifier le box » : on ouvre rarement un box pour
+corriger sa surface. Sur un box libre, ils sont dépliés d'emblée, puisqu'il n'y
+a pas de locataire à consulter.
+
+### La périodicité ne change pas encore les totaux
+
+`sr_contrats.periodicite` est aujourd'hui **descriptive**. Le carnet reste
+mensuel : un contrat trimestriel apparaît « attendu » chaque mois et pèse
+chaque mois dans le « reste à encaisser ».
+
+Le rendre réellement trimestriel — ne réclamer le loyer qu'un mois sur trois,
+et sans doute pour un montant triple — modifierait les totaux mensuels sur
+lesquels vous vous appuyez. C'est une décision d'exploitation, pas une
+conséquence à tirer en silence de l'ajout d'un champ.
+
 ## Le plan interactif
 
 Bascule **Liste ⇄ Plan** en haut de l'onglet Box.

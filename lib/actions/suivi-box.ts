@@ -125,3 +125,30 @@ export async function supprimeBox(boxId: string): Promise<ActionResult> {
   rafraichit();
   return ok;
 }
+
+/**
+ * Périodicité de règlement du contrat qui occupe le box.
+ *
+ * Aujourd'hui purement descriptive : le carnet reste mensuel, un contrat
+ * trimestriel apparaît donc « attendu » chaque mois. Le rendre réellement
+ * trimestriel changerait les totaux mensuels — c'est une décision
+ * d'exploitation, pas une conséquence à tirer en silence d'un champ ajouté.
+ */
+export async function modifiePeriodicite(
+  contratId: string,
+  periodicite: "mensuelle" | "trimestrielle"
+): Promise<ActionResult> {
+  const refus = await autorise();
+  if (refus) return refus;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("sr_contrats")
+    .update({ periodicite, updated_at: new Date().toISOString() })
+    .eq("id", contratId);
+
+  if (error) return fail(error.message);
+
+  rafraichit();
+  return ok;
+}

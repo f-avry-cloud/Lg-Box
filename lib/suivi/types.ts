@@ -113,6 +113,33 @@ export type BoxListe = {
   locataire: string | null;
   /** Contrat qui occupe ce box — nécessaire pour l'en détacher. */
   contrat_id: string | null;
+  /**
+   * Détail du locataire en place, chargé avec la liste plutôt qu'à
+   * l'ouverture de la fiche : 67 box tiennent en une requête, et la fiche
+   * s'ouvre sans attente ni écran de chargement.
+   */
+  detail: DetailOccupation | null;
+};
+
+export type Periodicite = "mensuelle" | "trimestrielle";
+
+export const PERIODICITE_LABELS: Record<Periodicite, string> = {
+  mensuelle: "Mensuelle",
+  trimestrielle: "Trimestrielle",
+};
+
+/** Ce qu'il faut savoir d'un occupant sans quitter la fiche du box. */
+export type DetailOccupation = {
+  locataire_id: string;
+  nom: string;
+  societe: string | null;
+  telephone: string | null;
+  email: string | null;
+  date_entree: string | null;
+  loyer_mensuel_eur: number;
+  periodicite: Periodicite;
+  /** Règlement de la période affichée, null quand rien n'est pointé. */
+  reglement: Reglement | null;
 };
 
 export type GroupeBatiment = {

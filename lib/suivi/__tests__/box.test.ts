@@ -19,6 +19,7 @@ function box(
     prix_mensuel_standard: 0,
     locataire: null,
     contrat_id: null,
+    detail: null,
     ...extra,
   };
 }

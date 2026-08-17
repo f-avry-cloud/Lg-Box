@@ -190,7 +190,8 @@ export function demoContrat(contratId: string): Contrat | null {
  */
 export function demoBoxAvecOccupant(): Array<{
   box: Box;
-  locataire: string | null;
+  locataire: Locataire | null;
+  contrat: Contrat | null;
   loyer: number;
 }> {
   const s = store();
@@ -204,7 +205,8 @@ export function demoBoxAvecOccupant(): Array<{
     const locataire = contrat ? s.locataires.get(contrat.locataire_id) ?? null : null;
     return {
       box,
-      locataire: locataire?.nom ?? null,
+      locataire,
+      contrat: contrat ?? null,
       loyer: contrat?.loyer_mensuel_eur ?? 0,
     };
   });
