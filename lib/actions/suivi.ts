@@ -232,3 +232,96 @@ export async function detacheBoxDuContrat(contratId: string): Promise<ActionResu
     return fail(erreur instanceof Error ? erreur.message : "Détachement impossible.");
   }
 }
+
+/**
+ * Donne un **second** box à un locataire déjà logé : crée un nouveau contrat.
+ *
+ * Un contrat ne porte qu'un box, et le loyer vit sur le contrat. Deux box
+ * veulent donc deux contrats — c'est la maille du back-office, et la seule qui
+ * sache dire ce que rapporte un box. Sans ce chemin, une location à deux box
+ * restait un contrat unique au montant global, et la fiche du box affichait le
+ * loyer des deux.
+ *
+ * `source` permet de répartir ce montant global au lieu de l'augmenter : on
+ * abaisse le loyer du contrat existant du même coup. C'est facultatif —
+ * ajouter un box à un locataire qui paiera davantage est tout aussi légitime,
+ * et l'écran affiche l'écart dans les deux cas.
+ */
+export async function ajouteBoxAuLocataire(saisie: {
+  locataireId: string;
+  boxId: string;
+  loyer: number;
+  periodeEffet: string;
+  source: { contratId: string; loyerNouveau: number } | null;
+}): Promise<ActionResult> {
+  const erreurPeriode = verifiePeriode(saisie.periodeEffet);
+  if (erreurPeriode) return fail(erreurPeriode);
+
+  const loyer = Math.round(Number(saisie.loyer));
+  if (!Number.isFinite(loyer) || loyer <= 0) {
+    return fail("Le loyer du nouveau box doit être un nombre positif.");
+  }
+
+  if (saisie.source) {
+    const restant = Math.round(Number(saisie.source.loyerNouveau));
+    if (!Number.isFinite(restant) || restant < 0) {
+      return fail("Le loyer restant sur le contrat d'origine doit être positif ou nul.");
+    }
+  }
+
+  try {
+    await autorise();
+    if (estModeDemo()) return fail("Affectation indisponible en mode démo.");
+
+    const supabase = await createClient();
+
+    // Même garde qu'au rattachement : un box ne porte qu'un locataire à la
+    // fois, sauf contrat dont la sortie a déjà pris effet.
+    const { data: autres, error: erreurLecture } = await supabase
+      .from("sr_contrats")
+      .select("id, date_debut, date_fin")
+      .eq("box_id", saisie.boxId);
+
+    if (erreurLecture) return fail(erreurLecture.message);
+
+    const periode = periodeCourante();
+    if ((autres ?? []).some((c) => contratDuPour(periode, c.date_debut, c.date_fin))) {
+      return fail("Ce box est déjà rattaché à un autre locataire.");
+    }
+
+    const { error } = await supabase.from("sr_contrats").insert({
+      locataire_id: saisie.locataireId,
+      box_id: saisie.boxId,
+      loyer_mensuel_eur: loyer,
+      date_debut: premierJour(saisie.periodeEffet),
+      date_fin: null,
+    });
+
+    if (error) return fail(error.message);
+
+    // La répartition ne s'applique qu'après la création : si celle-ci échoue,
+    // le contrat d'origine garde son loyer et rien n'est perdu.
+    if (saisie.source) {
+      const { error: erreurSource } = await supabase
+        .from("sr_contrats")
+        .update({
+          loyer_mensuel_eur: Math.round(Number(saisie.source.loyerNouveau)),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", saisie.source.contratId);
+
+      if (erreurSource) {
+        return fail(
+          `Le second box a été créé, mais le loyer d'origine n'a pas pu être ajusté : ${erreurSource.message}`
+        );
+      }
+    }
+
+    revalidatePath("/suivi");
+    revalidatePath("/suivi/box");
+    revalidatePath("/suivi/tableau-de-bord");
+    return ok;
+  } catch (erreur) {
+    return fail(erreur instanceof Error ? erreur.message : "Affectation impossible.");
+  }
+}

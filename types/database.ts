@@ -314,6 +314,8 @@ export type SrBox = {
   numero: string;
   batiment: string;
   surface_m2: number | null;
+  /** Tarif de référence, facultatif. Le loyer facturé reste celui du contrat. */
+  tarif_indicatif_eur: number | null;
   unit_id: string | null;
   created_at: string;
 };

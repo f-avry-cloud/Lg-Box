@@ -38,7 +38,7 @@ import {
   type BoxRattachable,
   type DetailOccupation,
   type Periodicite,
-  type ContratSansBox,
+  type CandidatAffectation,
   type DemandeReservation,
   type Reglement,
   type StatsTableauDeBord,
@@ -258,7 +258,7 @@ export async function listeBox(): Promise<GroupeBatiment[]> {
   const periode = periodeCourante();
 
   const [boxRes, contratsRes, reglementsRes] = await Promise.all([
-    supabase.from("sr_box").select("id, numero, batiment, surface_m2, unit_id"),
+    supabase.from("sr_box").select("id, numero, batiment, surface_m2, tarif_indicatif_eur, unit_id"),
     supabase
       .from("sr_contrats")
       .select(
@@ -325,7 +325,7 @@ export async function listeBox(): Promise<GroupeBatiment[]> {
       surface_m2: b.surface_m2,
       // Le carnet ne connaît que deux états : occupé par un locataire, ou non.
       statut: occupant ? ("loue" as const) : ("libre" as const),
-      prix_mensuel_standard: 0,
+      tarif_indicatif_eur: b.tarif_indicatif_eur,
       locataire: occupant?.detail.nom ?? null,
       contrat_id: occupant?.contratId ?? null,
       detail: occupant?.detail ?? null,
@@ -405,7 +405,7 @@ function demoBoxListe(): BoxListe[] {
       batiment: b.batiment,
       surface_m2: b.surface_m2,
       statut: occupant ? ("loue" as const) : ("libre" as const),
-      prix_mensuel_standard: occupant?.loyer ?? 0,
+      tarif_indicatif_eur: null,
       locataire: occupant?.detail.nom ?? null,
       contrat_id: null,
       detail: occupant?.detail ?? null,
@@ -579,58 +579,6 @@ export async function boxRattachables(): Promise<BoxRattachable[]> {
 }
 
 
-/**
- * Les contrats du carnet qui attendent encore leur box (24 aujourd'hui).
- *
- * Sert à l'affectation dans le sens box → locataire, celui dans lequel
- * l'exploitant raisonne : il ouvre un box qu'il vient d'identifier sur le
- * terrain et lui donne son occupant.
- */
-export async function contratsSansBox(): Promise<ContratSansBox[]> {
-  if (estModeDemo()) {
-    return demoLignesMois(periodeCourante())
-      .filter((l) => l.box_numero === null)
-      .map((l) => ({
-        contrat_id: l.contrat_id,
-        locataire_id: l.locataire_id,
-        nom: l.nom,
-        societe: l.societe,
-        loyer_mensuel_eur: l.loyer_mensuel_eur,
-        date_debut: demoContrat(l.contrat_id)?.date_debut ?? null,
-      }))
-      .sort((a, b) => a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }));
-  }
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("sr_contrats")
-    .select("id, loyer_mensuel_eur, date_debut, sr_locataires (id, nom, societe)")
-    .is("box_id", null)
-    .is("date_fin", null);
-
-  if (error) throw new Error(error.message);
-
-  type Joint = {
-    id: string;
-    loyer_mensuel_eur: number;
-    date_debut: string | null;
-    sr_locataires: { id: string; nom: string; societe: string | null } | null;
-  };
-
-  return ((data ?? []) as unknown as Joint[])
-    .filter((c) => c.sr_locataires !== null)
-    .map((c) => ({
-      contrat_id: c.id,
-      locataire_id: c.sr_locataires!.id,
-      nom: c.sr_locataires!.nom,
-      societe: c.sr_locataires!.societe,
-      loyer_mensuel_eur: c.loyer_mensuel_eur,
-      date_debut: c.date_debut,
-    }))
-    .sort((a, b) => a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }));
-}
-
-
 // ---------------------------------------------------------------------------
 // Plan interactif
 // ---------------------------------------------------------------------------
@@ -653,7 +601,7 @@ export async function planParBatiment(): Promise<GroupePlan[]> {
   const supabase = await createClient();
 
   const [boxRes, geoRes, contratsRes] = await Promise.all([
-    supabase.from("sr_box").select("id, numero, batiment, surface_m2, unit_id"),
+    supabase.from("sr_box").select("id, numero, batiment, surface_m2, tarif_indicatif_eur, unit_id"),
     supabase
       .from("units")
       .select("id, floor, pos_x, pos_y, largeur_cm, profondeur_cm, rotation_deg"),
@@ -876,4 +824,112 @@ export async function destinatairesFactures(periode: string): Promise<Destinatai
       dejaEnvoye: expedies.has(c.id),
     }))
     .sort((a, b) => a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }));
+}
+
+
+// ---------------------------------------------------------------------------
+// Affectation : tous les locataires, logés ou non
+// ---------------------------------------------------------------------------
+
+/**
+ * Les locataires auxquels on peut affecter un box, avec ce qu'ils louent déjà.
+ *
+ * La version précédente ne listait que les contrats **en attente** de box :
+ * un locataire déjà logé y était introuvable, et lui donner un second box
+ * impossible. Or c'est précisément le cas qui faussait les loyers —
+ * un bail sur deux box replié sur un seul contrat au montant global.
+ */
+export async function candidatsAffectation(): Promise<CandidatAffectation[]> {
+  if (estModeDemo()) {
+    // Tous les locataires, logés compris : c'est justement le locataire déjà
+    // logé qu'il faut pouvoir retrouver pour lui donner un second box.
+    const parLocataireDemo = new Map<string, CandidatAffectation>();
+    for (const l of demoLignesMois(periodeCourante())) {
+      const candidat = parLocataireDemo.get(l.locataire_id) ?? {
+        locataire_id: l.locataire_id,
+        nom: l.nom,
+        societe: l.societe,
+        contrat_libre: null,
+        contrats_loges: [],
+      };
+
+      if (l.box_numero) {
+        candidat.contrats_loges.push({
+          contrat_id: l.contrat_id,
+          box_numero: l.box_numero,
+          loyer_mensuel_eur: l.loyer_mensuel_eur,
+        });
+      } else if (!candidat.contrat_libre) {
+        candidat.contrat_libre = {
+          contrat_id: l.contrat_id,
+          loyer_mensuel_eur: l.loyer_mensuel_eur,
+          date_debut: demoContrat(l.contrat_id)?.date_debut ?? null,
+        };
+      }
+
+      parLocataireDemo.set(l.locataire_id, candidat);
+    }
+
+    return [...parLocataireDemo.values()].sort((a, b) =>
+      a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" })
+    );
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("sr_contrats")
+    .select(
+      "id, locataire_id, box_id, loyer_mensuel_eur, date_debut, date_fin, sr_locataires (id, nom, societe), sr_box (numero)"
+    );
+
+  if (error) throw new Error(error.message);
+
+  type Joint = {
+    id: string;
+    box_id: string | null;
+    loyer_mensuel_eur: number;
+    date_debut: string | null;
+    date_fin: string | null;
+    sr_locataires: { id: string; nom: string; societe: string | null } | null;
+    sr_box: { numero: string } | null;
+  };
+
+  const periode = periodeCourante();
+  const parLocataire = new Map<string, CandidatAffectation>();
+
+  for (const c of (data ?? []) as unknown as Joint[]) {
+    const l = c.sr_locataires;
+    if (!l) continue;
+    // Un contrat dont la sortie a pris effet ne compte plus : ni comme
+    // logement en cours, ni comme contrat en attente de box.
+    if (!contratDuPour(periode, c.date_debut, c.date_fin)) continue;
+
+    const candidat = parLocataire.get(l.id) ?? {
+      locataire_id: l.id,
+      nom: l.nom,
+      societe: l.societe,
+      contrat_libre: null,
+      contrats_loges: [],
+    };
+
+    if (c.box_id) {
+      candidat.contrats_loges.push({
+        contrat_id: c.id,
+        box_numero: c.sr_box?.numero ?? null,
+        loyer_mensuel_eur: c.loyer_mensuel_eur,
+      });
+    } else if (!candidat.contrat_libre) {
+      candidat.contrat_libre = {
+        contrat_id: c.id,
+        loyer_mensuel_eur: c.loyer_mensuel_eur,
+        date_debut: c.date_debut,
+      };
+    }
+
+    parLocataire.set(l.id, candidat);
+  }
+
+  return [...parLocataire.values()].sort((a, b) =>
+    a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" })
+  );
 }

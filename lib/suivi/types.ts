@@ -41,6 +41,8 @@ export type Box = {
   surface_m2: number | null;
 };
 
+/** Le loyer se lit sur le contrat, jamais sur le box : voir `tarif_indicatif_eur`. */
+
 export type Contrat = {
   id: string;
   locataire_id: string;
@@ -110,7 +112,14 @@ export type BoxListe = {
   batiment: string | null;
   surface_m2: number | null;
   statut: "libre" | "loue" | "reserve" | "hors_service";
-  prix_mensuel_standard: number;
+  /**
+   * Tarif mensuel de référence du box, facultatif.
+   *
+   * Indicatif au sens strict : il pré-remplit un loyer à l'affectation et
+   * donne un prix aux box libres, mais le loyer réellement facturé est celui
+   * du contrat, qui peut y déroger sans justification.
+   */
+  tarif_indicatif_eur: number | null;
   /** Locataire en place, quand le box est loué. */
   locataire: string | null;
   /** Contrat qui occupe ce box — nécessaire pour l'en détacher. */
@@ -207,16 +216,34 @@ export type BoxRattachable = {
   dejaRattacheA: string | null;
 };
 
-/** Un contrat encore sans box, proposé à l'affectation depuis l'écran Box. */
-export type ContratSansBox = {
-  contrat_id: string;
+/**
+ * Un locataire proposé à l'affectation d'un box, depuis l'écran Box.
+ *
+ * Deux cas, et c'est toute la logique de l'écran :
+ *  - il a un contrat sans box → on lui rattache celui-ci (rien à créer) ;
+ *  - il est déjà logé → il faut un **second contrat**, avec son propre loyer,
+ *    puisqu'un contrat ne porte qu'un box. C'est ce chemin qui manquait, et
+ *    sans lui une location à deux box restait repliée sur un loyer global.
+ */
+export type CandidatAffectation = {
   locataire_id: string;
   nom: string;
   societe: string | null;
-  loyer_mensuel_eur: number;
-  /** Date d'entrée déjà connue : l'affectation propose de la conserver. */
-  date_debut: string | null;
+  /** Contrat en attente de box, s'il y en a un. */
+  contrat_libre: {
+    contrat_id: string;
+    loyer_mensuel_eur: number;
+    date_debut: string | null;
+  } | null;
+  /** Contrats déjà logés : sources possibles d'une répartition de loyer. */
+  contrats_loges: Array<{
+    contrat_id: string;
+    box_numero: string | null;
+    loyer_mensuel_eur: number;
+  }>;
 };
+
+
 
 // ---------------------------------------------------------------------------
 // Écran Demandes de réservation

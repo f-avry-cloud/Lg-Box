@@ -69,6 +69,7 @@ Dans le SQL Editor Supabase, exécuter **une fois** :
 supabase/migrations/014_suivi_reglements.sql
 supabase/migrations/015_sr_periodicite.sql
 supabase/migrations/016_sr_facturation.sql
+supabase/migrations/017_sr_tarif_et_second_box.sql
 ```
 
 (Sur une base neuve, `supabase/schema.sql` contient déjà ces tables : rien de
@@ -202,6 +203,82 @@ du carnet non reliés (voir plus haut) échappent donc à cette détection.
   pas rentré : il ne compte pas dans l'encaissé et laisse le loyer entier dans
   le reste à encaisser. Il se distingue d'« attendu » par le seul fait qu'on a
   demandé son dû au locataire.
+
+## Où vit le loyer, et pourquoi
+
+**Sur le contrat, jamais sur le box.** `sr_contrats.loyer_mensuel_eur` porte le
+montant, et un contrat pointe vers **un seul** box. Un locataire à deux box a
+donc **deux contrats** — c'est la maille du back-office
+(`contracts.prix_mensuel` + un seul `unit_id`), et la seule qui sache dire ce
+que rapporte un box donné.
+
+Le loyer n'est calculé nulle part : il vient de la colonne
+`loyer_mensuel_eur` du CSV d'import, et se modifie ensuite à la main.
+
+### Le défaut trouvé sur les données de départ
+
+L'architecture était bonne, l'import ne l'a pas respectée. Le CSV comportait
+des baux **sur deux box tenant sur une seule ligne**, avec le montant global :
+ils sont entrés comme **un** contrat, rattaché à **un** box, au loyer des deux.
+
+- **GAU Joël** : correct — deux lignes au CSV, donc deux contrats, box 9 à
+  180 € et box 3 à 120 €.
+- **CALONNE Eric** : replié — **un** contrat à **270 €** sur le box 11, avec
+  la mention `second box à identifier (contrat portant sur 2 box)` déjà
+  présente dans le fichier d'origine. La fiche du box 11 annonçait donc 270 €,
+  qui est le loyer de deux box.
+
+Le back-office ne fait pas mieux sur ce cas : il a deux contrats, 130 € sur le
+box 11 et **0 €** sur une unité fictive `CTR-012`. Les deux systèmes se
+contredisent (130 contre 270) et aucun ne connaît le loyer réel du second box.
+
+L'arithmétique laisse penser qu'il y a d'autres cas : **27 box sans contrat**
+pour seulement **23 contrats sans box**. Au moins quatre box ne trouveront
+jamais preneur dans le carnet tel qu'il est.
+
+Conséquences : le total mensuel (8 710 €) reste juste, mais le loyer **par
+box** est faux, le second box est compté libre, et le chiffre d'affaires par
+box aussi.
+
+### Donner un second box à un locataire
+
+Le vrai manque n'était pas dans le schéma, il était dans l'application : elle
+savait rattacher un box à un contrat existant, pas **créer un second
+contrat**. Le cas était donc incorrigible depuis le téléphone.
+
+« Affecter un locataire » liste désormais **tous** les locataires, pas
+seulement ceux qui attendent un box, et se dédouble selon celui qu'on choisit :
+
+| Le locataire | Ce qui se passe |
+|---|---|
+| attend un box | son contrat est rattaché, avec sa date d'effet |
+| est déjà logé | un **second contrat** est créé, avec son propre loyer |
+
+Dans le second cas, l'écran demande d'où vient ce loyer :
+
+- **loyer supplémentaire** — le locataire paiera davantage (cas d'une vraie
+  location de plus) ;
+- **réparti depuis un box existant** — le montant global couvrait déjà les
+  deux, on abaisse d'autant le contrat d'origine (cas de correction).
+
+Le champ « loyer restant » se déduit tout seul du loyer saisi, de sorte que le
+total retombe sur ses pieds sans soustraction à faire ; il reste modifiable, et
+la valeur saisie prime alors. Le **total du locataire avant → après** est
+affiché en permanence, en orange dès qu'il bouge : les deux gestes se
+ressemblent à l'écran et n'ont rien à voir dans les comptes.
+
+Les calculs sont isolés dans `lib/suivi/affectation.ts` (11 tests, bâtis sur
+les cas réels GAU et CALONNE).
+
+### Le tarif indicatif du box
+
+`sr_box.tarif_indicatif_eur`, facultatif, modifiable dans la fiche du box.
+
+Il **propose** un loyer à l'affectation et donne un prix aux box libres. Il ne
+le fixe pas : le loyer facturé reste celui du contrat, qui peut y déroger sans
+justification. Aucun tarif n'a été rempli d'office — 26 des 67 box n'ont pas
+même de surface connue, et un montant deviné qui s'installe dans les comptes
+est pire qu'une case vide.
 
 ## Le cycle du mois : réclamer, envoyer, encaisser
 

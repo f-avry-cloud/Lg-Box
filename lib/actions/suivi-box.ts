@@ -44,7 +44,21 @@ export type SaisieBox = {
   batiment: string;
   /** null = surface inconnue, ce qui est un état légitime et fréquent. */
   surface_m2: number | null;
+  /**
+   * Tarif de référence, facultatif et non contraignant : il pré-remplit un
+   * loyer à l'affectation, il ne le fixe pas. Le loyer facturé reste celui du
+   * contrat, qui peut y déroger sans justification.
+   */
+  tarif_indicatif_eur: number | null;
 };
+
+function verifieTarif(tarif: number | null): string | null {
+  if (tarif === null) return null;
+  if (!Number.isFinite(tarif) || tarif <= 0) {
+    return "Le tarif indicatif doit être un nombre positif.";
+  }
+  return null;
+}
 
 export async function modifieBox(boxId: string, saisie: SaisieBox): Promise<ActionResult> {
   const refus = await autorise();
@@ -58,10 +72,18 @@ export async function modifieBox(boxId: string, saisie: SaisieBox): Promise<Acti
   const erreurSurface = verifieSurface(saisie.surface_m2);
   if (erreurSurface) return fail(erreurSurface);
 
+  const erreurTarif = verifieTarif(saisie.tarif_indicatif_eur);
+  if (erreurTarif) return fail(erreurTarif);
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("sr_box")
-    .update({ numero, batiment, surface_m2: saisie.surface_m2 })
+    .update({
+      numero,
+      batiment,
+      surface_m2: saisie.surface_m2,
+      tarif_indicatif_eur: saisie.tarif_indicatif_eur,
+    })
     .eq("id", boxId);
 
   if (error) {
@@ -85,10 +107,16 @@ export async function creeBox(saisie: SaisieBox): Promise<ActionResult> {
   const erreurSurface = verifieSurface(saisie.surface_m2);
   if (erreurSurface) return fail(erreurSurface);
 
+  const erreurTarif = verifieTarif(saisie.tarif_indicatif_eur);
+  if (erreurTarif) return fail(erreurTarif);
+
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("sr_box")
-    .insert({ numero, batiment, surface_m2: saisie.surface_m2 });
+  const { error } = await supabase.from("sr_box").insert({
+    numero,
+    batiment,
+    surface_m2: saisie.surface_m2,
+    tarif_indicatif_eur: saisie.tarif_indicatif_eur,
+  });
 
   if (error) {
     if (error.code === "23505") return fail(`Le box ${numero} existe déjà dans ${batiment}.`);
