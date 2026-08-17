@@ -15,6 +15,7 @@ import { parseSeedCsv, type SeedData } from "@/lib/suivi/seed-csv";
 import type {
   Box,
   Contrat,
+  DemandeReservation,
   FicheLocataire,
   LigneMois,
   Locataire,
@@ -158,6 +159,7 @@ export function demoUpsertReglement(
     date_encaissement: patch.date_encaissement ?? existant?.date_encaissement ?? null,
     moyen: patch.moyen ?? existant?.moyen ?? null,
     note: patch.note ?? existant?.note ?? null,
+    date_facturation: patch.date_facturation ?? existant?.date_facturation ?? null,
     updated_at: new Date().toISOString(),
   };
   s.reglements.set(k, suivant);
@@ -210,4 +212,71 @@ export function demoBoxAvecOccupant(): Array<{
       loyer: contrat?.loyer_mensuel_eur ?? 0,
     };
   });
+}
+
+/**
+ * Les règlements de l'année, avec le loyer de leur contrat : de quoi calculer
+ * le cumul encaissé sans que l'appelant ait à refaire la jointure.
+ */
+export function demoReglementsDeLAnnee(
+  annee: number
+): Array<{ statut: Reglement["statut"]; montant_encaisse_eur: number; loyer_mensuel_eur: number }> {
+  const s = store();
+  return [...s.reglements.values()]
+    .filter((r) => r.periode.startsWith(`${annee}-`))
+    .map((r) => ({
+      statut: r.statut,
+      montant_encaisse_eur: r.montant_encaisse_eur,
+      loyer_mensuel_eur: s.contrats.get(r.contrat_id)?.loyer_mensuel_eur ?? 0,
+    }));
+}
+
+/**
+ * Trois demandes fictives pour que l'écran « Demandes » soit démontrable sans
+ * base. Numéros en +33 6 39 98 xx xx (plage réservée aux fictions par
+ * l'ARCEP) et adresses en example.org : composer l'un ou écrire à l'autre ne
+ * peut atteindre personne.
+ */
+export function demoDemandes(): DemandeReservation[] {
+  const jour = (recul: number): string => {
+    const d = new Date();
+    d.setDate(d.getDate() - recul);
+    return d.toISOString();
+  };
+
+  return [
+    {
+      id: "demo-demande-1",
+      nom: "MARTEL Claire",
+      email: "claire.martel@example.org",
+      telephone: "+33639980142",
+      taille_souhaitee: "10 m²",
+      date_souhaitee: null,
+      message: "Bonjour, je cherche un box pour stocker des meubles pendant des travaux.",
+      statut: "nouvelle",
+      created_at: jour(1),
+    },
+    {
+      id: "demo-demande-2",
+      nom: "BRUNET Thomas",
+      email: "t.brunet@example.org",
+      telephone: "+33639980287",
+      taille_souhaitee: "5 m²",
+      date_souhaitee: null,
+      message: null,
+      statut: "nouvelle",
+      created_at: jour(4),
+    },
+    {
+      id: "demo-demande-3",
+      nom: "SARL DELAUNAY",
+      email: "contact@example.org",
+      telephone: "+33639980355",
+      taille_souhaitee: "20 m² ou plus",
+      date_souhaitee: null,
+      message: "Archives de l'entreprise, besoin d'un accès en semaine.",
+      statut: "contactee",
+      created_at: jour(12),
+    },
+  ];
 }

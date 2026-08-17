@@ -4,6 +4,9 @@
 
 import { BOX_A_IDENTIFIER, type LigneMois, type ReglementStatut } from "@/lib/suivi/types";
 
+/** Ce qu'il faut d'un règlement pour en tirer un montant encaissé. */
+export type EtatReglement = { statut: ReglementStatut; montant_encaisse_eur: number };
+
 export type TotauxMois = {
   /** Somme encaissée sur le mois, en euros entiers. */
   encaisse: number;
@@ -23,17 +26,44 @@ export function statutLigne(ligne: LigneMois): ReglementStatut {
   return ligne.reglement?.statut ?? "attendu";
 }
 
-/** Montant réellement encaissé sur une ligne. */
-export function encaisseLigne(ligne: LigneMois): number {
-  const reglement = ligne.reglement;
+/**
+ * La règle d'encaissement, isolée pour qu'un seul endroit la connaisse : le
+ * total du mois et le cumul annuel doivent compter les mêmes euros.
+ */
+export function montantEncaisse(
+  reglement: EtatReglement | null,
+  loyerMensuel: number
+): number {
   if (!reglement) return 0;
   // Un « payé » sans montant saisi vaut le loyer plein : le geste courant est
   // un tap unique, sans passer par la feuille de saisie.
   if (reglement.statut === "paye") {
-    return reglement.montant_encaisse_eur || ligne.loyer_mensuel_eur;
+    return reglement.montant_encaisse_eur || loyerMensuel;
   }
   if (reglement.statut === "partiel") return reglement.montant_encaisse_eur;
+  // « facturé » signifie réclamé, pas encaissé : il ne compte pas dans le
+  // total encaissé, et laisse le loyer entier dans le reste à encaisser.
   return 0;
+}
+
+/** Montant réellement encaissé sur une ligne. */
+export function encaisseLigne(ligne: LigneMois): number {
+  return montantEncaisse(ligne.reglement, ligne.loyer_mensuel_eur);
+}
+
+/**
+ * Cumul encaissé sur une série de règlements — le chiffre d'affaires depuis
+ * le 1er janvier, quand on lui passe les douze périodes de l'année.
+ *
+ * Le loyer accompagne chaque règlement parce qu'un « payé » sans montant vaut
+ * le loyer du contrat : sans lui, un mois pointé d'un tap compterait zéro.
+ */
+export function cumuleEncaisse(
+  reglements: Array<EtatReglement & { loyer_mensuel_eur: number }>
+): number {
+  let total = 0;
+  for (const r of reglements) total += montantEncaisse(r, r.loyer_mensuel_eur);
+  return total;
 }
 
 export function calculeTotaux(lignes: LigneMois[]): TotauxMois {
@@ -51,6 +81,38 @@ export function calculeTotaux(lignes: LigneMois[]): TotauxMois {
   }
 
   return { encaisse, reste, regles, total: lignes.length };
+}
+
+/**
+ * Ce que la facturation groupée du mois changerait, pour l'annoncer avant de
+ * la déclencher : on ne demande pas « confirmez-vous ? » sans dire sur combien
+ * de locataires et pour quel montant.
+ */
+export type ResumeFacturation = {
+  /** Lignes encore « attendu », donc concernées par le bouton. */
+  aFacturer: number;
+  /** Lignes déjà passées en « facturé » (le bouton est rejouable). */
+  dejaFacturees: number;
+  /** Somme des loyers à réclamer. */
+  montant: number;
+};
+
+export function resumeFacturation(lignes: LigneMois[]): ResumeFacturation {
+  let aFacturer = 0;
+  let dejaFacturees = 0;
+  let montant = 0;
+
+  for (const ligne of lignes) {
+    const statut = statutLigne(ligne);
+    if (statut === "attendu") {
+      aFacturer += 1;
+      montant += ligne.loyer_mensuel_eur;
+    } else if (statut === "facture") {
+      dejaFacturees += 1;
+    }
+  }
+
+  return { aFacturer, dejaFacturees, montant };
 }
 
 export type FiltreMois = "tous" | "regles" | "attente";

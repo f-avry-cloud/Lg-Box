@@ -6,7 +6,10 @@ import { Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { vibre } from "@/components/suivi/bouton-encaissement";
+import { ChoixDateEffet } from "@/components/suivi/choix-date-effet";
 import { FeuilleModale } from "@/components/suivi/feuille-modale";
+import { Button } from "@/components/ui/button";
+import { periodeCourante } from "@/lib/suivi/period";
 import { rattacheBoxAuContrat } from "@/lib/actions/suivi";
 import { estBatimentATraiter, type BoxRattachable } from "@/lib/suivi/types";
 import { cn } from "@/lib/utils";
@@ -19,16 +22,22 @@ import { cn } from "@/lib/utils";
  */
 export function FeuilleRattachement({
   contratId,
+  dateDebutContrat,
   boxDisponibles,
   onFermer,
 }: {
   contratId: string | null;
+  /** Date d'entrée déjà enregistrée sur le contrat, s'il y en a une. */
+  dateDebutContrat: string | null;
   boxDisponibles: BoxRattachable[];
   onFermer: () => void;
 }) {
   const router = useRouter();
   const [recherche, setRecherche] = useState("");
   const [enCours, demarreTransition] = useTransition();
+  // Box choisi, en attente de sa date d'effet.
+  const [boxChoisi, setBoxChoisi] = useState<BoxRattachable | null>(null);
+  const [periodeEffet, setPeriodeEffet] = useState<string | null>(null);
 
   const groupes = useMemo(() => {
     const terme = recherche.trim().toLocaleLowerCase("fr");
@@ -63,9 +72,15 @@ export function FeuilleRattachement({
 
   if (!contratId) return null;
 
+  const choisit = (box: BoxRattachable) => {
+    // Deuxième temps : à partir de quand le loyer de ce box est dû.
+    setBoxChoisi(box);
+    setPeriodeEffet(dateDebutContrat ? null : periodeCourante());
+  };
+
   const rattache = (box: BoxRattachable) => {
     demarreTransition(async () => {
-      const resultat = await rattacheBoxAuContrat(contratId, box.box_id);
+      const resultat = await rattacheBoxAuContrat(contratId, box.box_id, periodeEffet);
       if (!resultat.success) {
         vibre(60);
         toast.error(resultat.error ?? "Rattachement impossible.");
@@ -77,6 +92,38 @@ export function FeuilleRattachement({
       router.refresh();
     });
   };
+
+  if (boxChoisi) {
+    return (
+      <FeuilleModale ouverte titre={`Box ${boxChoisi.numero}`} onFermer={onFermer}>
+        <ChoixDateEffet
+          dateDebutActuelle={dateDebutContrat}
+          valeur={periodeEffet}
+          onChange={setPeriodeEffet}
+          desactive={enCours}
+        />
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-14 flex-1"
+            disabled={enCours}
+            onClick={() => setBoxChoisi(null)}
+          >
+            Retour
+          </Button>
+          <Button
+            type="button"
+            className="h-14 flex-1"
+            disabled={enCours}
+            onClick={() => rattache(boxChoisi)}
+          >
+            Rattacher
+          </Button>
+        </div>
+      </FeuilleModale>
+    );
+  }
 
   return (
     <FeuilleModale ouverte titre="Rattacher un box" onFermer={onFermer}>
@@ -121,7 +168,7 @@ export function FeuilleRattachement({
                   key={box.box_id}
                   type="button"
                   disabled={pris || enCours}
-                  onClick={() => rattache(box)}
+                  onClick={() => choisit(box)}
                   title={pris ? `Déjà rattaché à ${box.dejaRattacheA}` : undefined}
                   className={cn(
                     "suivi-tap flex min-h-16 flex-col items-center justify-center rounded-xl border px-1 text-sm font-semibold",

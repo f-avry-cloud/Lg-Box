@@ -32,6 +32,13 @@ Le mode démo s'active de deux façons :
 | `data/locataires_demo.csv` | oui | Même structure, noms pseudonymisés, coordonnées de test. |
 | `lib/suivi/demo-data.ts` | oui | Le CSV de démo embarqué dans le bundle (généré). |
 
+L'onglet Demandes se démontre aussi sans base, sur trois demandes fictives
+(`demoDemandes`) : numéros de la plage `+33 6 39 98 xx xx` réservée aux
+fictions par l'ARCEP, adresses en `example.org`. Les composer ou leur écrire
+ne peut atteindre personne. L'envoi groupé des factures, lui, est masqué en
+mode démo : sans base, il n'y a ni paramétrage à régler ni destinataire à
+servir.
+
 Le dépôt GitHub est **public** : le fichier réel n'y est pas versionné. Déposez-le
 en local dans `data/locataires_seed.csv` — le mode démo l'utilise en priorité s'il
 le trouve, sinon il se rabat sur le jeu pseudonymisé. Les deux produisent
@@ -60,6 +67,9 @@ Dans le SQL Editor Supabase, exécuter **une fois** :
 
 ```
 supabase/migrations/014_suivi_reglements.sql
+supabase/migrations/015_sr_periodicite.sql
+supabase/migrations/016_sr_facturation.sql
+supabase/migrations/017_sr_tarif_et_second_box.sql
 ```
 
 (Sur une base neuve, `supabase/schema.sql` contient déjà ces tables : rien de
@@ -189,6 +199,164 @@ du carnet non reliés (voir plus haut) échappent donc à cette détection.
 - **Montants entiers en euros.** Pas de centimes dans l'interface.
 - **Un « reste à encaisser » n'est jamais négatif** : une régularisation
   supérieure au loyer gonfle l'encaissé, pas le reste.
+- **« Facturé » n'est pas « encaissé ».** Le statut marque un loyer réclamé,
+  pas rentré : il ne compte pas dans l'encaissé et laisse le loyer entier dans
+  le reste à encaisser. Il se distingue d'« attendu » par le seul fait qu'on a
+  demandé son dû au locataire.
+
+## Où vit le loyer, et pourquoi
+
+**Sur le contrat, jamais sur le box.** `sr_contrats.loyer_mensuel_eur` porte le
+montant, et un contrat pointe vers **un seul** box. Un locataire à deux box a
+donc **deux contrats** — c'est la maille du back-office
+(`contracts.prix_mensuel` + un seul `unit_id`), et la seule qui sache dire ce
+que rapporte un box donné.
+
+Le loyer n'est calculé nulle part : il vient de la colonne
+`loyer_mensuel_eur` du CSV d'import, et se modifie ensuite à la main.
+
+### Le défaut trouvé sur les données de départ
+
+L'architecture était bonne, l'import ne l'a pas respectée. Le CSV comportait
+des baux **sur deux box tenant sur une seule ligne**, avec le montant global :
+ils sont entrés comme **un** contrat, rattaché à **un** box, au loyer des deux.
+
+- **GAU Joël** : correct — deux lignes au CSV, donc deux contrats, box 9 à
+  180 € et box 3 à 120 €.
+- **CALONNE Eric** : replié — **un** contrat à **270 €** sur le box 11, avec
+  la mention `second box à identifier (contrat portant sur 2 box)` déjà
+  présente dans le fichier d'origine. La fiche du box 11 annonçait donc 270 €,
+  qui est le loyer de deux box.
+
+Le back-office ne fait pas mieux sur ce cas : il a deux contrats, 130 € sur le
+box 11 et **0 €** sur une unité fictive `CTR-012`. Les deux systèmes se
+contredisent (130 contre 270) et aucun ne connaît le loyer réel du second box.
+
+L'arithmétique laisse penser qu'il y a d'autres cas : **27 box sans contrat**
+pour seulement **23 contrats sans box**. Au moins quatre box ne trouveront
+jamais preneur dans le carnet tel qu'il est.
+
+Conséquences : le total mensuel (8 710 €) reste juste, mais le loyer **par
+box** est faux, le second box est compté libre, et le chiffre d'affaires par
+box aussi.
+
+### Donner un second box à un locataire
+
+Le vrai manque n'était pas dans le schéma, il était dans l'application : elle
+savait rattacher un box à un contrat existant, pas **créer un second
+contrat**. Le cas était donc incorrigible depuis le téléphone.
+
+« Affecter un locataire » liste désormais **tous** les locataires, pas
+seulement ceux qui attendent un box, et se dédouble selon celui qu'on choisit :
+
+| Le locataire | Ce qui se passe |
+|---|---|
+| attend un box | son contrat est rattaché, avec sa date d'effet |
+| est déjà logé | un **second contrat** est créé, avec son propre loyer |
+
+Dans le second cas, l'écran demande d'où vient ce loyer :
+
+- **loyer supplémentaire** — le locataire paiera davantage (cas d'une vraie
+  location de plus) ;
+- **réparti depuis un box existant** — le montant global couvrait déjà les
+  deux, on abaisse d'autant le contrat d'origine (cas de correction).
+
+Le champ « loyer restant » se déduit tout seul du loyer saisi, de sorte que le
+total retombe sur ses pieds sans soustraction à faire ; il reste modifiable, et
+la valeur saisie prime alors. Le **total du locataire avant → après** est
+affiché en permanence, en orange dès qu'il bouge : les deux gestes se
+ressemblent à l'écran et n'ont rien à voir dans les comptes.
+
+Les calculs sont isolés dans `lib/suivi/affectation.ts` (11 tests, bâtis sur
+les cas réels GAU et CALONNE).
+
+### Le tarif indicatif du box
+
+`sr_box.tarif_indicatif_eur`, facultatif, modifiable dans la fiche du box.
+
+Il **propose** un loyer à l'affectation et donne un prix aux box libres. Il ne
+le fixe pas : le loyer facturé reste celui du contrat, qui peut y déroger sans
+justification. Aucun tarif n'a été rempli d'office — 26 des 67 box n'ont pas
+même de surface connue, et un montant deviné qui s'installe dans les comptes
+est pire qu'une case vide.
+
+## Le cycle du mois : réclamer, envoyer, encaisser
+
+Trois gestes, dans cet ordre, tous depuis le tableau de bord.
+
+### 1. Passer le mois en facturé
+
+Un bouton, une confirmation. La confirmation annonce le nombre exact de
+locataires et le montant réclamé — le geste touche une soixantaine de lignes
+d'un coup, on ne demande pas « confirmez-vous ? » sans dire quoi.
+
+Deux garde-fous portent tout le reste :
+
+- **rien n'est écrasé.** Seuls les mois encore « attendu » (aucune ligne en
+  base) passent à « facturé ». Un mois déjà réglé, partiel ou facturé garde son
+  état, et le bouton est donc rejouable sans dégât ;
+- **la liste facturée est exactement celle du mois** (`lignesDuMois`), qui
+  applique déjà « tout mois commencé est dû » et les dates d'effet : un
+  locataire qui n'entre qu'en M+1 n'est pas facturé en M.
+
+Le geste se défait : « Annuler la facturation du mois » ne retire que les
+lignes restées « facturé », jamais un loyer rentré entre-temps.
+
+### 2. Envoyer les factures par mail
+
+L'envoi groupé est **la seule action de l'app qui sorte du site**. Elle écrit à
+de vraies personnes et rien ne se rattrape, d'où quatre garde-fous :
+
+1. rien ne part sans paramétrage complet — expéditeur, objet, corps ;
+2. rien ne part sans confirmation, avec sous les yeux le nombre de
+   destinataires et le message **tel qu'il partira**, variables remplacées sur
+   le premier destinataire réel ;
+3. seuls les loyers passés en « facturé » sont concernés : envoyer la facture
+   est le second temps du geste, après l'avoir réclamée ;
+4. chaque envoi est journalisé (`sr_envois_facture`) et un contrat déjà servi
+   pour la période est écarté — rejouer le bouton ne relance personne.
+
+Le message se paramètre depuis le téléphone (« Paramétrer le mail ») :
+expéditeur, adresse de réponse, copie cachée, objet, corps. Quatre variables
+sont remplacées à l'envoi : `{nom}`, `{mois}`, `{box}`, `{loyer}`. Une variable
+inconnue est laissée visible plutôt que remplacée par du vide — mieux vaut un
+`{loyerr}` repéré dans l'aperçu qu'un trou silencieux dans un mail parti à
+soixante personnes.
+
+L'envoi passe par Resend, comme les autres mails du site, et exige donc
+`RESEND_API_KEY` ainsi qu'un domaine d'expédition vérifié. Sans clé, l'action
+refuse d'agir et le dit.
+
+### 3. Encaisser
+
+Le pointage habituel, dans l'onglet Règlements ou depuis la fiche d'un box.
+
+### Le chiffre d'affaires depuis le 1er janvier
+
+Le tableau de bord affiche le cumul encaissé de l'année, à côté du mois qui
+seul ne dit pas où l'on en est de l'exercice. Il est calculé avec **la même
+règle que le total mensuel** (`cumuleEncaisse`, `lib/suivi/totals.ts`) : un
+mois pointé d'un tap, sans montant saisi, vaut le loyer plein. Compter
+autrement afficherait un chiffre annuel proche de zéro sur un carnet pointé
+au doigt.
+
+## Les demandes de réservation
+
+Les demandes du formulaire public (`reservation_requests`, table du
+back-office) ont leur onglet : les non traitées d'abord, puis les plus
+récentes. Une demande s'ouvre sur sa taille souhaitée, sa date, son message —
+et **exactement les mêmes gestes que pour un locataire en place** : appeler,
+SMS, e-mail, copier le numéro. Le bloc de contact est partagé
+(`components/suivi/bloc-contact.tsx`) plutôt que recopié : c'est le même
+geste, il doit se comporter pareil aux deux endroits.
+
+Le statut avance depuis la feuille — nouvelle, contactée, convertie, refusée.
+C'est le seul point où l'app mobile écrit hors de ses tables `sr_*` : une
+demande se traite le téléphone à la main, souvent debout dans l'allée, et la
+marquer « contactée » ailleurs qu'à l'endroit où on vient d'appeler ne se fait
+pas. L'écriture passe par l'action existante du back-office
+(`updateReservationStatus`), à laquelle on n'ajoute que la revalidation des
+écrans mobiles.
 
 ## La fiche d'un box
 
@@ -228,6 +396,18 @@ choisi). Jusque-là, le contrat continue d'apparaître dans le carnet et le box
 reste occupé ; ensuite, le box se libère de lui-même et redevient
 attribuable. Un bandeau rappelle la sortie prévue, avec un bouton pour
 l'annuler.
+
+### La date d'effet, à l'entrée comme à la sortie
+
+Affecter un locataire à un box demande, en second temps, **à partir de quel
+mois le loyer est dû** : mois en cours, M+1 ou M+2. Sans ce choix, un locataire
+rattaché aujourd'hui pour une entrée au 1er du mois prochain se retrouverait
+facturé ce mois-ci par le bouton du tableau de bord.
+
+Quand le contrat porte déjà une date d'entrée, une quatrième option —
+**« Date d'entrée inchangée »** — est proposée et sélectionnée d'office :
+rattacher tardivement le box d'un locataire en place depuis trois ans ne doit
+pas réécrire son ancienneté.
 
 À côté, **« Mauvaise affectation — retirer sans échéance »** coupe le lien
 immédiatement. Sémantique différente : ce n'est pas un départ, c'est une
@@ -349,12 +529,16 @@ base, avec une session `admin` ou `employee`.
   et n'écrivent rien dans `activity_log`.
 - Les pages `/suivi` sont marquées `noindex, nofollow`.
 - Le CSV réel n'est pas versionné (voir plus haut).
+- Une exception assumée : `sr_envois_facture` conserve l'adresse servie et la
+  date de chaque facture envoyée. C'est le prix du garde-fou anti-relance —
+  sans cette trace, rejouer le bouton écrirait deux fois à tout le monde.
 
 ## Hors périmètre
 
-Pas de quittances, pas de relances automatiques, pas d'export comptable, pas de
-gestion des entrées et sorties, pas de plan des box. Ces fonctions restent dans
-le back-office.
+Pas de quittances, pas de relances **automatiques** (l'envoi groupé des
+factures est déclenché à la main, et seulement à la main), pas d'export
+comptable, pas de pièce jointe PDF : le mail de facture est un texte, pas un
+document. Ces fonctions restent dans le back-office.
 
 ## Écart connu sur les données de départ
 

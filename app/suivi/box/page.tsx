@@ -2,7 +2,7 @@ import { ListeBox } from "@/components/suivi/liste-box";
 import {
   batimentsConnus,
   boxModifiables,
-  contratsSansBox,
+  candidatsAffectation,
   listeBox,
   planParBatiment,
 } from "@/lib/suivi/repository";
@@ -10,10 +10,10 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function BoxPage() {
-  const [groupes, batiments, enAttente, plan] = await Promise.all([
+  const [groupes, batiments, candidats, plan] = await Promise.all([
     listeBox(),
     batimentsConnus(),
-    contratsSansBox(),
+    candidatsAffectation(),
     planParBatiment(),
   ]);
 
@@ -22,7 +22,7 @@ export default async function BoxPage() {
       groupes={groupes}
       modifiable={boxModifiables()}
       batiments={batiments}
-      contratsSansBox={enAttente}
+      candidats={candidats}
       plan={plan}
     />
   );

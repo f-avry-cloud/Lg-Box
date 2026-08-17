@@ -1,8 +1,17 @@
 import Link from "next/link";
-import { AlertTriangle, Inbox, LogOut, Warehouse } from "lucide-react";
+import { AlertTriangle, Inbox, LogOut, TrendingUp, Warehouse } from "lucide-react";
 
+import { BlocEnvoiFactures } from "@/components/suivi/bloc-envoi-factures";
+import { BoutonFacturation } from "@/components/suivi/bouton-facturation";
+
+import { aEnvoyer, resumeEnvoi } from "@/lib/suivi/mail";
 import { labelPeriode, isPeriode, periodeCourante } from "@/lib/suivi/period";
-import { estModeDemo, statsTableauDeBord } from "@/lib/suivi/repository";
+import {
+  destinatairesFactures,
+  estModeDemo,
+  parametresMail,
+  statsTableauDeBord,
+} from "@/lib/suivi/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +23,15 @@ export default async function TableauDeBordPage({
   const { mois } = await searchParams;
   const periode = mois && isPeriode(mois) ? mois : periodeCourante();
 
-  const stats = await statsTableauDeBord(periode);
+  const [stats, parametres, destinataires] = await Promise.all([
+    statsTableauDeBord(periode),
+    parametresMail(),
+    destinatairesFactures(periode),
+  ]);
+
+  // L'aperçu se calcule sur le premier destinataire réel : le message montré
+  // avant l'envoi est alors exactement celui qui partira.
+  const premier = aEnvoyer(destinataires)[0] ?? null;
   const modeDemo = estModeDemo();
   const attendu = stats.encaisse + stats.reste;
   const progression = attendu === 0 ? 0 : Math.round((stats.encaisse / attendu) * 100);
@@ -67,6 +84,43 @@ export default async function TableauDeBordPage({
           </p>
         </Link>
 
+        {/* Chiffre d'affaires encaissé depuis le 1er janvier : le cumul de
+            l'exercice, à côté du mois qui, seul, ne dit pas où l'on en est. */}
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2 text-[var(--suivi-gris)]">
+            <TrendingUp className="size-5" aria-hidden />
+            <span className="text-sm font-semibold uppercase tracking-wide">
+              {`Encaissé depuis le 1er janvier ${stats.annee}`}
+            </span>
+          </div>
+          <p className="mt-1 text-3xl font-bold tabular-nums text-foreground">
+            {stats.caAnnuel.toLocaleString("fr-FR")} €
+          </p>
+          <p className="mt-0.5 text-sm text-[var(--suivi-gris)]">
+            {`Cumul des règlements pointés sur l'année ${stats.annee}`}
+          </p>
+        </div>
+
+        {/* Facturation groupée du mois */}
+        <BoutonFacturation
+          periode={periode}
+          aFacturer={stats.aFacturer}
+          dejaFacturees={stats.dejaFacturees}
+          montant={stats.montantAFacturer}
+        />
+
+        {/* Envoi groupé des factures — la seule action qui sorte du site.
+            Masquée en démo : sans base, il n'y a ni paramétrage à régler ni
+            destinataire à servir. */}
+        {!modeDemo && (
+          <BlocEnvoiFactures
+            periode={periode}
+            parametres={parametres}
+            resume={resumeEnvoi(destinataires)}
+            apercu={premier ? { nom: premier.nom, box: premier.box, loyer: premier.loyer } : null}
+          />
+        )}
+
         {/* Occupation */}
         <Link
           href="/suivi/box"
@@ -116,19 +170,23 @@ export default async function TableauDeBordPage({
             alerte={stats.contratsEnPreavis > 0}
           />
 
-          <Tuile
-            icone={<Inbox className="size-5" aria-hidden />}
-            libelle="Demandes de réservation"
-            valeur={String(stats.demandesNouvelles)}
-            detail={
-              stats.demandesNouvelles > 0 ? "À traiter dans le back-office" : "Aucune nouvelle demande"
-            }
-            alerte={stats.demandesNouvelles > 0}
-          />
+          <Link href="/suivi/demandes" className="suivi-tap block active:opacity-80">
+            <Tuile
+              icone={<Inbox className="size-5" aria-hidden />}
+              libelle="Demandes de réservation"
+              valeur={String(stats.demandesNouvelles)}
+              detail={
+                stats.demandesNouvelles > 0
+                  ? "À rappeler — toucher pour ouvrir"
+                  : "Aucune nouvelle demande"
+              }
+              alerte={stats.demandesNouvelles > 0}
+            />
+          </Link>
         </div>
 
         <p className="px-1 pt-1 text-center text-sm text-[var(--suivi-gris)]">
-          Facturation, contrats et rapports restent dans le back-office.
+          Contrats, documents et rapports restent dans le back-office.
         </p>
       </div>
     </div>

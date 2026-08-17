@@ -3,7 +3,7 @@
 // d'encaissement manipule locataire / box / contrat / règlement, pas
 // customer / unit / contract / invoice.
 
-export type ReglementStatut = "attendu" | "paye" | "partiel" | "retard";
+export type ReglementStatut = "attendu" | "facture" | "paye" | "partiel" | "retard";
 export type MoyenPaiement = "virement" | "cheque" | "especes" | "CB" | "autre";
 
 export const MOYENS_PAIEMENT: readonly MoyenPaiement[] = [
@@ -41,6 +41,8 @@ export type Box = {
   surface_m2: number | null;
 };
 
+/** Le loyer se lit sur le contrat, jamais sur le box : voir `tarif_indicatif_eur`. */
+
 export type Contrat = {
   id: string;
   locataire_id: string;
@@ -58,6 +60,8 @@ export type Reglement = {
   statut: ReglementStatut;
   montant_encaisse_eur: number;
   date_encaissement: string | null;
+  /** Date de réclamation, posée par la facturation groupée du mois. */
+  date_facturation: string | null;
   moyen: MoyenPaiement | null;
   note: string | null;
   updated_at: string;
@@ -108,7 +112,14 @@ export type BoxListe = {
   batiment: string | null;
   surface_m2: number | null;
   statut: "libre" | "loue" | "reserve" | "hors_service";
-  prix_mensuel_standard: number;
+  /**
+   * Tarif mensuel de référence du box, facultatif.
+   *
+   * Indicatif au sens strict : il pré-remplit un loyer à l'affectation et
+   * donne un prix aux box libres, mais le loyer réellement facturé est celui
+   * du contrat, qui peut y déroger sans justification.
+   */
+  tarif_indicatif_eur: number | null;
   /** Locataire en place, quand le box est loué. */
   locataire: string | null;
   /** Contrat qui occupe ce box — nécessaire pour l'en détacher. */
@@ -177,6 +188,13 @@ export type StatsTableauDeBord = {
   reste: number;
   contratsRegles: number;
   contratsTotal: number;
+  /** Année de la période affichée, et cumul encaissé depuis son 1er janvier. */
+  annee: number;
+  caAnnuel: number;
+  /** Ce que la facturation groupée du mois changerait. */
+  aFacturer: number;
+  dejaFacturees: number;
+  montantAFacturer: number;
   /** Back-office. */
   impayesMontant: number;
   impayesClients: number;
@@ -198,11 +216,76 @@ export type BoxRattachable = {
   dejaRattacheA: string | null;
 };
 
-/** Un contrat encore sans box, proposé à l'affectation depuis l'écran Box. */
-export type ContratSansBox = {
-  contrat_id: string;
+/**
+ * Un locataire proposé à l'affectation d'un box, depuis l'écran Box.
+ *
+ * Deux cas, et c'est toute la logique de l'écran :
+ *  - il a un contrat sans box → on lui rattache celui-ci (rien à créer) ;
+ *  - il est déjà logé → il faut un **second contrat**, avec son propre loyer,
+ *    puisqu'un contrat ne porte qu'un box. C'est ce chemin qui manquait, et
+ *    sans lui une location à deux box restait repliée sur un loyer global.
+ */
+export type CandidatAffectation = {
   locataire_id: string;
   nom: string;
   societe: string | null;
-  loyer_mensuel_eur: number;
+  /** Contrat en attente de box, s'il y en a un. */
+  contrat_libre: {
+    contrat_id: string;
+    loyer_mensuel_eur: number;
+    date_debut: string | null;
+  } | null;
+  /** Contrats déjà logés : sources possibles d'une répartition de loyer. */
+  contrats_loges: Array<{
+    contrat_id: string;
+    box_numero: string | null;
+    loyer_mensuel_eur: number;
+  }>;
 };
+
+
+
+// ---------------------------------------------------------------------------
+// Écran Demandes de réservation
+// ---------------------------------------------------------------------------
+
+// Les demandes viennent du formulaire public (table `reservation_requests` du
+// back-office). L'app mobile les lit et fait avancer leur statut : c'est le
+// seul point où elle écrit hors de ses tables sr_*, parce qu'une demande se
+// traite depuis le téléphone, souvent debout dans l'allée, et que la marquer
+// « contactée » ailleurs qu'à l'endroit où on vient d'appeler ne se fait pas.
+
+export type StatutDemande = "nouvelle" | "contactee" | "convertie" | "refusee";
+
+export type DemandeReservation = {
+  id: string;
+  nom: string;
+  email: string;
+  telephone: string | null;
+  taille_souhaitee: string | null;
+  date_souhaitee: string | null;
+  message: string | null;
+  statut: StatutDemande;
+  created_at: string;
+};
+
+export const STATUT_DEMANDE_LABELS: Record<StatutDemande, string> = {
+  nouvelle: "Nouvelle",
+  contactee: "Contactée",
+  convertie: "Convertie",
+  refusee: "Refusée",
+};
+
+export const STATUTS_DEMANDE: readonly StatutDemande[] = [
+  "nouvelle",
+  "contactee",
+  "convertie",
+  "refusee",
+] as const;
+
+export function couleurStatutDemande(statut: StatutDemande): string {
+  if (statut === "nouvelle") return "var(--suivi-orange)";
+  if (statut === "convertie") return "var(--suivi-vert)";
+  if (statut === "refusee") return "var(--suivi-gris)";
+  return "var(--primary)";
+}

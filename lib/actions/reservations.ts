@@ -17,5 +17,9 @@ export async function updateReservationStatus(
   if (error) return fail(error.message);
   revalidatePath("/admin/reservations");
   revalidatePath("/admin");
+  // L'écran mobile lit les mêmes demandes : sans cette ligne, un statut changé
+  // depuis le téléphone y resterait affiché à l'ancien état.
+  revalidatePath("/suivi/demandes");
+  revalidatePath("/suivi/tableau-de-bord");
   return ok;
 }

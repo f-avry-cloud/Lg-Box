@@ -2,19 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CheckCircle2, LayoutDashboard, Warehouse } from "lucide-react";
+import { CheckCircle2, Inbox, LayoutDashboard, Warehouse } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 /**
  * Barre d'onglets collée en bas : sur un téléphone tenu d'une main, c'est la
- * seule zone atteignable au pouce sans changer de prise. Les trois écrans du
+ * seule zone atteignable au pouce sans changer de prise. Les écrans du
  * quotidien y sont à un tap, dans l'ordre où on les consulte.
  */
 const ONGLETS = [
   { href: "/suivi/tableau-de-bord", libelle: "Tableau", icone: LayoutDashboard },
   { href: "/suivi/box", libelle: "Box", icone: Warehouse },
   { href: "/suivi", libelle: "Règlements", icone: CheckCircle2, exact: true },
+  { href: "/suivi/demandes", libelle: "Demandes", icone: Inbox },
 ];
 
 export function BarreOnglets() {

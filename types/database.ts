@@ -314,6 +314,8 @@ export type SrBox = {
   numero: string;
   batiment: string;
   surface_m2: number | null;
+  /** Tarif de référence, facultatif. Le loyer facturé reste celui du contrat. */
+  tarif_indicatif_eur: number | null;
   unit_id: string | null;
   created_at: string;
 };
@@ -336,12 +338,37 @@ export type SrReglement = {
   id: string;
   contrat_id: string;
   periode: string;
-  statut: "attendu" | "paye" | "partiel" | "retard";
+  statut: "attendu" | "facture" | "paye" | "partiel" | "retard";
   montant_encaisse_eur: number;
   date_encaissement: string | null;
+  date_facturation: string | null;
   moyen: "virement" | "cheque" | "especes" | "CB" | "autre" | null;
   note: string | null;
   updated_at: string;
+};
+
+// Paramétrage du mail de facture : une seule ligne, garantie par la clé
+// primaire booléenne contrainte à `true` (migration 016).
+export type SrMailParametres = {
+  id: boolean;
+  expediteur_nom: string;
+  expediteur_email: string;
+  repondre_a: string | null;
+  copie_email: string | null;
+  objet: string;
+  corps: string;
+  updated_at: string;
+};
+
+// Journal des envois : un mail parti ne se rattrape pas, on garde trace.
+export type SrEnvoiFacture = {
+  id: string;
+  contrat_id: string;
+  periode: string;
+  destinataire: string;
+  statut: "envoye" | "echec";
+  erreur: string | null;
+  created_at: string;
 };
 
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
@@ -376,6 +403,8 @@ export type Database = {
       sr_box: Table<SrBox>;
       sr_contrats: Table<SrContrat>;
       sr_reglements: Table<SrReglement>;
+      sr_mail_parametres: Table<SrMailParametres>;
+      sr_envois_facture: Table<SrEnvoiFacture>;
     };
     Views: Record<string, never>;
     Functions: {

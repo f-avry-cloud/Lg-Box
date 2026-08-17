@@ -16,7 +16,7 @@ function box(
     batiment,
     surface_m2: surface,
     statut: "libre",
-    prix_mensuel_standard: 0,
+    tarif_indicatif_eur: null,
     locataire: null,
     contrat_id: null,
     detail: null,
