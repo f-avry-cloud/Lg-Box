@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Maximize2, MapPin } from "lucide-react";
 
+import { FloorPlanBackground } from "@/components/units/floor-plan-background";
 import { vibre } from "@/components/suivi/bouton-encaissement";
 import {
   borneTranslation,
@@ -10,6 +11,7 @@ import {
   calculeCadre,
   estPlace,
   etiquette,
+  niveauDominant,
   statsBatiment,
   taillePolice,
   ZOOM_MIN,
@@ -61,6 +63,8 @@ export function PlanInteractif({
   const places = useMemo(() => boxes.filter(estPlace), [boxes]);
   const nonPlaces = useMemo(() => boxes.filter((b) => !estPlace(b)), [boxes]);
   const cadre = useMemo(() => calculeCadre(boxes), [boxes]);
+  // Les murs relevés du bâtiment, partagés avec le plan du back-office.
+  const niveau = useMemo(() => niveauDominant(boxes), [boxes]);
   const stats = useMemo(() => statsBatiment(boxes), [boxes]);
 
   const reinitialise = () => {
@@ -216,6 +220,13 @@ export function PlanInteractif({
             role="img"
             aria-label={`Plan de ${groupe.batiment} — ${stats.occupes} box occupés sur ${stats.total}`}
           >
+            {/*
+              Fond de plan : murs, sols et portes relevés. Le même composant
+              que le back-office — le plan doit être le même dessin, pas une
+              seconde interprétation qui dériverait de l'original.
+            */}
+            {niveau && <FloorPlanBackground floor={niveau} />}
+
             {places.map((box) => {
               const police = taillePolice(box.largeur, box.profondeur);
               const centreX = box.x + box.largeur / 2;

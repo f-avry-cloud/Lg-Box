@@ -6,6 +6,7 @@ import {
   calculeCadre,
   estPlace,
   etiquette,
+  niveauDominant,
   statsBatiment,
   taillePolice,
   type BoxPlan,
@@ -20,6 +21,7 @@ function boxPlan(numero: string, geo: Partial<BoxPlan> = {}): BoxPlan {
     occupe: false,
     locataire: null,
     contrat_id: null,
+    floor: "rez_de_chaussee",
     x: 0,
     y: 0,
     largeur: 300,
@@ -152,5 +154,36 @@ describe("borneTranslation", () => {
     expect(borneTranslation(500, 2, 400)).toBe(200);
     expect(borneTranslation(-500, 2, 400)).toBe(-200);
     expect(borneTranslation(50, 2, 400)).toBe(50);
+  });
+});
+
+describe("niveauDominant", () => {
+  it("rend le niveau des box placés", () => {
+    expect(niveauDominant([boxPlan("1", { floor: "premier_etage" })])).toBe("premier_etage");
+  });
+
+  it("ignore les box non placés, qui n'ont pas de géométrie à habiller", () => {
+    expect(
+      niveauDominant([
+        boxPlan("1", { floor: "sous_sol", x: null, largeur: null }),
+        boxPlan("2", { floor: "rez_de_chaussee" }),
+      ])
+    ).toBe("rez_de_chaussee");
+  });
+
+  it("retient le niveau majoritaire, pas le premier venu", () => {
+    // Une donnée aberrante isolée ne doit pas faire afficher les murs du
+    // mauvais étage sous tout un bâtiment.
+    expect(
+      niveauDominant([
+        boxPlan("1", { floor: "sous_sol" }),
+        boxPlan("2", { floor: "premier_etage" }),
+        boxPlan("3", { floor: "premier_etage" }),
+      ])
+    ).toBe("premier_etage");
+  });
+
+  it("rend null quand aucun box placé ne porte de niveau", () => {
+    expect(niveauDominant([boxPlan("1", { floor: null })])).toBeNull();
   });
 });

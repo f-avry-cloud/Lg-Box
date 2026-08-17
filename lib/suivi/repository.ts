@@ -8,6 +8,7 @@
 // écrans et les Server Actions ne connaissent que cette interface.
 
 import { createClient } from "@/lib/supabase/server";
+import type { UnitFloor } from "@/types/database";
 import {
   demoBoxAvecOccupant,
   demoContrat,
@@ -539,7 +540,7 @@ export async function planParBatiment(): Promise<GroupePlan[]> {
     supabase.from("sr_box").select("id, numero, batiment, surface_m2, unit_id"),
     supabase
       .from("units")
-      .select("id, pos_x, pos_y, largeur_cm, profondeur_cm, rotation_deg"),
+      .select("id, floor, pos_x, pos_y, largeur_cm, profondeur_cm, rotation_deg"),
     supabase
       .from("sr_contrats")
       .select("id, box_id, sr_locataires (nom)")
@@ -553,6 +554,7 @@ export async function planParBatiment(): Promise<GroupePlan[]> {
 
   type Geo = {
     id: string;
+    floor: UnitFloor;
     pos_x: number | null;
     pos_y: number | null;
     largeur_cm: number | null;
@@ -582,6 +584,7 @@ export async function planParBatiment(): Promise<GroupePlan[]> {
       occupe: occupant !== null,
       locataire: occupant?.nom ?? null,
       contrat_id: occupant?.contratId ?? null,
+      floor: geo?.floor ?? null,
       x: geo?.pos_x ?? null,
       y: geo?.pos_y ?? null,
       largeur: geo?.largeur_cm ?? null,
@@ -635,6 +638,7 @@ function planDemo(): GroupePlan[] {
       occupe: b.locataire !== null,
       locataire: b.locataire,
       contrat_id: b.contrat_id,
+      floor: null,
       x: colonne * 350,
       y: rangee * 350,
       largeur: 300,

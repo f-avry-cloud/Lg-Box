@@ -4,6 +4,8 @@
 // L'unité est le centimètre, comme dans le plan du back-office : 1 unité SVG
 // = 1 cm. Aucune échelle codée en dur — c'est le viewBox qui cadre.
 
+import type { UnitFloor } from "@/types/database";
+
 export type BoxPlan = {
   id: string;
   numero: string;
@@ -12,6 +14,8 @@ export type BoxPlan = {
   occupe: boolean;
   locataire: string | null;
   contrat_id: string | null;
+  /** Niveau du box, qui détermine le fond de plan (murs relevés). */
+  floor: UnitFloor | null;
   /** Géométrie, absente pour les box non placés sur le plan. */
   x: number | null;
   y: number | null;
@@ -135,4 +139,29 @@ export function borneTranslation(translation: number, zoom: number, taille: numb
   // `|| 0` neutralise le -0 que produit Math.max(-0, …) : sans lui, la
   // transformation CSS contiendrait « translate(-0px) ».
   return borne || 0;
+}
+
+
+/**
+ * Niveau d'un groupe de box, pour choisir le fond de plan.
+ *
+ * Un bâtiment tient sur un seul niveau, mais on prend le plus représenté
+ * plutôt que le premier venu : une donnée aberrante isolée ne doit pas faire
+ * afficher les murs du mauvais étage.
+ */
+export function niveauDominant(boxes: BoxPlan[]): UnitFloor | null {
+  const comptes = new Map<UnitFloor, number>();
+  for (const b of boxes) {
+    if (b.floor && estPlace(b)) comptes.set(b.floor, (comptes.get(b.floor) ?? 0) + 1);
+  }
+
+  let meilleur: UnitFloor | null = null;
+  let max = 0;
+  for (const [floor, n] of comptes) {
+    if (n > max) {
+      max = n;
+      meilleur = floor;
+    }
+  }
+  return meilleur;
 }
