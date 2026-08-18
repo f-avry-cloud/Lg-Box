@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Copy, Mail, MessageSquare, Phone } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import { vibre } from "@/components/suivi/bouton-encaissement";
@@ -11,6 +11,7 @@ import {
   FeuilleEncaissement,
   type SaisieEncaissement,
 } from "@/components/suivi/feuille-encaissement";
+import { BlocContact } from "@/components/suivi/bloc-contact";
 import { FeuilleRattachement } from "@/components/suivi/feuille-rattachement";
 import { Button } from "@/components/ui/button";
 import {
@@ -299,35 +300,13 @@ export function FicheLocataireVue({
           Contacter
         </h2>
         {locataire.telephone || locataire.email ? (
-          <>
-            <div className="grid grid-cols-3 gap-2">
-              <BoutonContact
-                href={locataire.telephone ? `tel:${locataire.telephone}` : null}
-                icone={<Phone className="size-6" />}
-                libelle="Appeler"
-              />
-              <BoutonContact
-                href={locataire.telephone ? `sms:${locataire.telephone}` : null}
-                icone={<MessageSquare className="size-6" />}
-                libelle="SMS"
-              />
-              <BoutonContact
-                href={locataire.email ? `mailto:${locataire.email}` : null}
-                icone={<Mail className="size-6" />}
-                libelle="E-mail"
-              />
-            </div>
-
-            {/*
-              iOS réserve les liens tel: et sms: à l'app d'appel par défaut du
-              système (Réglages → Apps → Apps par défaut). Aucune page web ne
-              peut forcer une autre app. Copier le numéro reste donc le repli
-              fiable quand on veut composer depuis une app de second numéro.
-            */}
-            {locataire.telephone && (
-              <BoutonCopier valeur={locataire.telephone} libelle="Copier le numéro" />
-            )}
-          </>
+          /*
+            Le bloc partagé plutôt qu'une seconde série de boutons : appeler
+            depuis la fiche et appeler depuis un box doivent passer par le même
+            chemin, donc par le même raccourci Onoff. La copie qui vivait ici
+            avait déjà divergé du bloc commun.
+          */
+          <BlocContact telephone={locataire.telephone} email={locataire.email} />
         ) : (
           <p className="rounded-xl border border-dashed border-border p-3 t-meta">
             Aucune coordonnée renseignée.
@@ -488,61 +467,5 @@ export function FicheLocataireVue({
         />
       )}
     </div>
-  );
-}
-
-/** Copie dans le presse-papier, avec repli sur les navigateurs sans API. */
-function BoutonCopier({ valeur, libelle }: { valeur: string; libelle: string }) {
-  return (
-    <button
-      type="button"
-      onClick={async () => {
-        try {
-          if (navigator.clipboard?.writeText) {
-            await navigator.clipboard.writeText(valeur);
-          } else {
-            // Safari hors contexte sécurisé : pas de presse-papier moderne.
-            throw new Error("presse-papier indisponible");
-          }
-          vibre();
-          toast.success(`${valeur} copié.`);
-        } catch {
-          toast.error("Copie impossible — sélectionnez le numéro à la main.");
-        }
-      }}
-      className="suivi-tap mt-2 flex min-h-12 w-full items-center justify-center gap-2 suivi-carte text-sm font-semibold text-foreground active:bg-secondary"
-    >
-      <Copy className="size-4" aria-hidden />
-      {libelle}
-    </button>
-  );
-}
-
-function BoutonContact({
-  href,
-  icone,
-  libelle,
-}: {
-  href: string | null;
-  icone: React.ReactNode;
-  libelle: string;
-}) {
-  if (!href) {
-    return (
-      <span className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border t-meta opacity-60">
-        {icone}
-        {libelle}
-      </span>
-    );
-  }
-
-  return (
-    <a
-      href={href}
-      className="suivi-tap flex min-h-16 flex-col items-center justify-center gap-1 suivi-carte text-sm font-semibold text-primary active:bg-secondary"
-    >
-      {icone}
-      {libelle}
-    </a>
   );
 }

@@ -596,6 +596,74 @@ l'échelle se laissent surcharger par les utilitaires, comme il se doit.
 - Balayage horizontal sur la liste = mois précédent / suivant, avec un seuil de
   70 px et un rejet des gestes majoritairement verticaux.
 
+## Appels et SMS par la ligne du centre
+
+L'exploitant passe ses appels professionnels depuis un second numéro (Onoff).
+Or **iOS réserve `tel:` et `sms:` à l'app d'appel par défaut du système** :
+aucune page web ne peut router un appel vers une app tierce. Composer depuis
+l'app revenait donc à appeler avec le numéro personnel.
+
+Le détour est un **raccourci iOS**, créé côté téléphone, que la page déclenche
+par son schéma d'URL — le raccourci, lui, a le droit d'ouvrir Onoff :
+
+| Geste | Raccourci | URL construite |
+|---|---|---|
+| Appeler | `Appel ONOFF` | `shortcuts://run-shortcut?name=Appel%20ONOFF&input=…` |
+| SMS | `SMS ONOFF` | `shortcuts://run-shortcut?name=SMS%20ONOFF&input=…` |
+
+Le numéro est passé en **entrée texte** du raccourci — la variable `[NUMERO]`
+côté iOS.
+
+### Le nettoyage du numéro
+
+`nettoieNumero` (`lib/suivi/telephone.ts`) réduit le numéro aux chiffres, plus
+le `+` s'il précède le premier chiffre :
+
+| Saisie | Passé au raccourci |
+|---|---|
+| `06 12 34 56 78` | `0612345678` |
+| `+33 6 12 34 56 78` | `+33612345678` |
+| `06.12.34.56.78` | `0612345678` |
+| `(+33) 6 12 34 56 78` | `+33612345678` |
+| `06+12345678` | `0612345678` |
+
+Un espace laissé dans l'entrée fait échouer la composition **sans message
+d'erreur** — le genre de panne qu'on met une heure à comprendre.
+
+La forme n'est jamais convertie : un national reste national, un international
+reste international. Deviner l'indicatif d'un numéro qu'on n'a pas saisi
+soi-même, c'est se tromper un jour sur un numéro étranger. Les 57 numéros
+repris sont d'ailleurs déjà propres — 56 en `+33…`, un en `0…`, aucun
+séparateur ; le nettoyage sert aux saisies manuelles à venir.
+
+Le `+` est encodé (`%2B`) dans l'URL : non encodé, il serait relu comme une
+espace par l'analyseur de la chaîne de requête, et le raccourci recevrait un
+numéro amputé de son indicatif.
+
+### Repli, et pourquoi le lien reste un `tel:`
+
+Le HTML garde un `tel:` / `sms:` ordinaire. Sur iOS **seulement**, le clic est
+détourné vers le raccourci. Trois raisons :
+
+- sur Android et sur ordinateur, `shortcuts://` ne mène nulle part — le lien
+  natif doit rester ;
+- l'appui long conserve ses usages (copier, ajouter aux contacts) ;
+- la détection se fait **au clic**, pas au rendu : le HTML est alors identique
+  côté serveur et côté navigateur, donc rien à réconcilier à l'hydratation.
+
+Vérifié au navigateur sur quatre profils : iPhone et iPad récent → clic
+intercepté ; Android et Mac de bureau → lien natif suivi. L'iPad moderne se
+déclare « Macintosh » : on le distingue d'un Mac par la présence d'un écran
+tactile.
+
+### Un seul bloc de contact
+
+`components/suivi/bloc-contact.tsx` sert désormais partout — locataires en
+place, demandes de réservation, campagne de reprise, et la fiche du locataire,
+qui avait sa propre série de boutons. Cette copie avait déjà divergé : sans
+cette unification, le raccourci Onoff aurait marché à trois endroits sur
+quatre.
+
 ## La marque
 
 Le logo fourni est un JPEG de 392 × 391 sur fond blanc. Les déclinaisons sont
