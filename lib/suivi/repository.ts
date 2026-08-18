@@ -26,6 +26,7 @@ import { estPlace, type BoxPlan } from "@/lib/suivi/plan";
 import { BOX_REFERENCE_CSV } from "@/lib/suivi/box-reference";
 import { contratDuPour } from "@/lib/suivi/contrat";
 import type { DestinataireFacture, ParametresMail } from "@/lib/suivi/mail";
+import type { EtatReprise, LocataireReprise } from "@/lib/suivi/reprise";
 import { parsePeriode, periodeCourante, premierJour } from "@/lib/suivi/period";
 import {
   type Box,
@@ -932,4 +933,85 @@ export async function candidatsAffectation(): Promise<CandidatAffectation[]> {
   return [...parLocataire.values()].sort((a, b) =>
     a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" })
   );
+}
+
+
+// ---------------------------------------------------------------------------
+// Reprise du centre — temporaire (voir lib/suivi/reprise.ts)
+// ---------------------------------------------------------------------------
+
+/**
+ * Tous les locataires du carnet, avec leurs box et l'avancement de la
+ * campagne d'appels.
+ *
+ * On part de `sr_locataires` et non des contrats : il faut prévenir chaque
+ * personne une fois, pas une fois par box — et un locataire saisi à la main
+ * pendant la campagne n'a pas encore de contrat du tout.
+ */
+export async function listeReprise(): Promise<LocataireReprise[]> {
+  if (estModeDemo()) {
+    return demoLignesMois(periodeCourante()).map((l) => ({
+      locataire_id: l.locataire_id,
+      nom: l.nom,
+      societe: l.societe,
+      telephone: null,
+      email: null,
+      box: l.box_numero ? [l.box_numero] : [],
+      etat: { contacte: false, message_laisse: false, note: null },
+    }));
+  }
+
+  const supabase = await createClient();
+
+  const [locatairesRes, contratsRes, etatsRes] = await Promise.all([
+    supabase.from("sr_locataires").select("id, nom, societe, telephone, email"),
+    supabase.from("sr_contrats").select("locataire_id, date_debut, date_fin, sr_box (numero)"),
+    supabase
+      .from("sr_reprise_contacts")
+      .select("locataire_id, contacte, message_laisse, note"),
+  ]);
+
+  if (locatairesRes.error) throw new Error(locatairesRes.error.message);
+  if (contratsRes.error) throw new Error(contratsRes.error.message);
+  if (etatsRes.error) throw new Error(etatsRes.error.message);
+
+  type ContratBox = {
+    locataire_id: string;
+    date_debut: string | null;
+    date_fin: string | null;
+    sr_box: { numero: string } | null;
+  };
+
+  const periode = periodeCourante();
+  const boxParLocataire = new Map<string, string[]>();
+  for (const c of (contratsRes.data ?? []) as unknown as ContratBox[]) {
+    // Un contrat déjà sorti ne dit plus où trouver la personne sur le site.
+    if (!c.sr_box?.numero || !contratDuPour(periode, c.date_debut, c.date_fin)) continue;
+    const liste = boxParLocataire.get(c.locataire_id);
+    if (liste) liste.push(c.sr_box.numero);
+    else boxParLocataire.set(c.locataire_id, [c.sr_box.numero]);
+  }
+
+  const etats = new Map<string, EtatReprise>();
+  for (const e of etatsRes.data ?? []) {
+    etats.set(e.locataire_id, {
+      contacte: e.contacte,
+      message_laisse: e.message_laisse,
+      note: e.note,
+    });
+  }
+
+  return (locatairesRes.data ?? []).map((l) => ({
+    locataire_id: l.id,
+    nom: l.nom,
+    societe: l.societe,
+    telephone: l.telephone,
+    email: l.email,
+    box: (boxParLocataire.get(l.id) ?? []).sort((a, b) =>
+      a.localeCompare(b, "fr", { numeric: true })
+    ),
+    // Aucune ligne d'avancement = personne n'a encore été appelé. L'absence
+    // vaut « à contacter », comme l'absence de règlement vaut « attendu ».
+    etat: etats.get(l.id) ?? { contacte: false, message_laisse: false, note: null },
+  }));
 }

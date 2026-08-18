@@ -70,6 +70,7 @@ supabase/migrations/014_suivi_reglements.sql
 supabase/migrations/015_sr_periodicite.sql
 supabase/migrations/016_sr_facturation.sql
 supabase/migrations/017_sr_tarif_et_second_box.sql
+supabase/migrations/018_sr_reprise.sql
 ```
 
 (Sur une base neuve, `supabase/schema.sql` contient déjà ces tables : rien de
@@ -491,6 +492,55 @@ plan faussement complet. C'est le signal qu'il faut renseigner son `unit_id`.
 
 En mode démo, faute de géométrie, une grille régulière est fabriquée pour
 éprouver le rendu et les gestes. Elle ne décrit pas le site.
+
+## Reprise du centre — écran temporaire
+
+Une campagne d'appels, pas une fonction du carnet : prévenir chaque locataire,
+un par un, du changement de propriétaire. Onglet **Reprise**.
+
+On descend une liste, on appelle, on coche. L'écran est fait pour cela :
+
+- **ce qui reste à faire remonte en tête**, puis l'alphabétique — une campagne
+  se mène en descendant une liste, pas en cherchant les trous dedans ;
+- **deux marques indépendantes** : « prévenu du changement » et « message
+  laissé ». Elles ne s'excluent pas — on laisse un message, puis on finit par
+  avoir la personne, et les deux faits comptent. Un statut unique aurait
+  obligé à effacer le premier pour enregistrer le second ;
+- **un encart d'observations**, enregistré à la perte du focus ;
+- **les coordonnées se corrigent sur place** : c'est en appelant qu'on
+  découvre les numéros faux, et devoir changer d'écran pour les réparer, c'est
+  ne pas les réparer ;
+- **« Ajouter un locataire non renseigné »** crée un locataire sans contrat ni
+  box — le cas est fréquent en reprise, et exiger le contrat à cet instant
+  ferait perdre l'information. Le box et le loyer se rattachent ensuite depuis
+  l'écran Box.
+- L'avancement reste en tête d'écran, et la recherche porte aussi sur le
+  **numéro de box** et le **téléphone** : on part souvent d'un box devant
+  lequel on se trouve, ou d'un numéro qui rappelle.
+
+Un locataire **sans aucune coordonnée** est signalé comme tel dans sa fiche,
+plutôt que de traîner en bas de liste sans qu'on comprenne pourquoi il n'avance
+jamais.
+
+### Ce qu'il faudra supprimer, le jour venu
+
+Tout est isolé pour partir d'un bloc :
+
+| À supprimer | |
+|---|---|
+| `app/suivi/reprise/` | l'écran |
+| `components/suivi/liste-reprise.tsx` | la liste et la fiche d'appel |
+| `lib/suivi/reprise.ts` + son test | statuts, tri, avancement |
+| `lib/actions/suivi-reprise.ts` | **sauf `modifieLocataire`** |
+| `listeReprise()` dans `lib/suivi/repository.ts` | la lecture |
+| l'entrée « Reprise » de `barre-onglets.tsx` | l'onglet |
+| `drop table sr_reprise_contacts` | l'avancement de campagne |
+
+`modifieLocataire` est la seule pièce à conserver : corriger un nom, un numéro
+ou un e-mail n'a rien de temporaire, et il serait absurde de perdre ce chemin
+avec la campagne. Le reste ne laisse aucune trace — la note de campagne vit
+dans `sr_reprise_contacts`, pas dans `sr_locataires.observations`, précisément
+pour que « rappeler samedi » ne survive pas à la reprise.
 
 ## Typographie et échelle
 

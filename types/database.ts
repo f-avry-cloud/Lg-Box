@@ -371,6 +371,18 @@ export type SrEnvoiFacture = {
   created_at: string;
 };
 
+// Temporaire — campagne d'information des locataires (changement de
+// propriétaire). Se supprime avec l'onglet /suivi/reprise.
+export type SrRepriseContact = {
+  locataire_id: string;
+  contacte: boolean;
+  contacte_le: string | null;
+  message_laisse: boolean;
+  message_laisse_le: string | null;
+  note: string | null;
+  updated_at: string;
+};
+
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row;
   Insert: Insert;
@@ -405,6 +417,7 @@ export type Database = {
       sr_reglements: Table<SrReglement>;
       sr_mail_parametres: Table<SrMailParametres>;
       sr_envois_facture: Table<SrEnvoiFacture>;
+      sr_reprise_contacts: Table<SrRepriseContact>;
     };
     Views: Record<string, never>;
     Functions: {

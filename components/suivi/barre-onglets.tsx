@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CheckCircle2, Inbox, LayoutDashboard, Warehouse } from "lucide-react";
+import { CheckCircle2, Inbox, LayoutDashboard, PhoneCall, Warehouse } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -16,6 +16,9 @@ const ONGLETS = [
   { href: "/suivi/box", libelle: "Box", icone: Warehouse },
   { href: "/suivi", libelle: "Règlements", icone: CheckCircle2, exact: true },
   { href: "/suivi/demandes", libelle: "Demandes", icone: Inbox },
+  // TEMPORAIRE — campagne de reprise du centre. Se retire avec l'écran
+  // /suivi/reprise une fois tous les locataires prévenus.
+  { href: "/suivi/reprise", libelle: "Reprise", icone: PhoneCall },
 ];
 
 export function BarreOnglets() {
@@ -40,11 +43,11 @@ export function BarreOnglets() {
               href={href}
               aria-current={actif ? "page" : undefined}
               className={cn(
-                "suivi-tap flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 py-1 text-xs font-semibold",
+                "suivi-tap flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-1 text-[0.6875rem] font-medium",
                 actif ? "text-primary" : "text-[var(--suivi-gris)]"
               )}
             >
-              <Icone className={cn("size-6", actif && "fill-primary/10")} />
+              <Icone className={cn("size-5", actif && "fill-primary/10")} />
               {libelle}
             </Link>
           );
