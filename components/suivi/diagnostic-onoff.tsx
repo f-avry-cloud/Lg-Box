@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Copy } from "lucide-react";
 import { toast } from "sonner";
 
+import { GuideRaccourci } from "@/components/suivi/guide-raccourci";
 import { RACCOURCI_APPEL, RACCOURCI_SMS, nettoieNumero } from "@/lib/suivi/telephone";
 
 /**
@@ -71,11 +72,14 @@ export function DiagnosticOnoff() {
         <p className="t-etiquette">Page temporaire</p>
         <h1 className="t-titre mt-0.5">Essai des raccourcis Onoff</h1>
         <p className="t-meta mt-2">
-          Touchez chaque variante et dites-moi laquelle passe le numéro sans vous le redemander.
+          D&apos;abord le mode d&apos;emploi du raccourci, ensuite les quatre variantes d&apos;URL.
         </p>
       </div>
 
       <div className="suivi-scroll-simple space-y-4 px-5 pb-5">
+        <GuideRaccourci />
+
+        <p className="t-etiquette pt-2">Les quatre variantes d&apos;URL</p>
         <div className="suivi-carte p-4">
           <label className="t-etiquette mb-1 block" htmlFor="diag-numero">
             Numéro d&apos;essai
@@ -136,16 +140,10 @@ export function DiagnosticOnoff() {
           </div>
         ))}
 
-        <div className="suivi-carte p-4">
-          <p className="t-corps font-medium">Si aucune ne marche</p>
-          <p className="t-meta mt-1">
-            Le problème est alors dans le raccourci, pas dans l&apos;app. Ouvrez « {raccourci} »
-            dans Raccourcis et regardez le champ <strong>Destinataire</strong> de l&apos;action
-            d&apos;envoi : s&apos;il est réglé sur <strong>« Demander à chaque fois »</strong>, iOS
-            posera la question quoi qu&apos;on lui envoie. Il faut y placer la variable
-            <strong> « Entrée de raccourci »</strong>.
-          </p>
-        </div>
+        <p className="t-meta pt-1 text-center">
+          Page temporaire — elle disparaîtra une fois la bonne forme connue.
+        </p>
+
       </div>
     </>
   );
