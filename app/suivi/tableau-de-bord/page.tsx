@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronRight, Inbox, LogOut, TrendingUp, Warehouse } from "lucide-react";
 
 import { BlocEnvoiFactures } from "@/components/suivi/bloc-envoi-factures";
+import { Logo } from "@/components/suivi/logo";
 import { BoutonFacturation } from "@/components/suivi/bouton-facturation";
 import { aEnvoyer, resumeEnvoi } from "@/lib/suivi/mail";
 import { labelPeriode, isPeriode, periodeCourante } from "@/lib/suivi/period";
@@ -48,9 +49,14 @@ export default async function TableauDeBordPage({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <header className="suivi-safe-top sticky top-0 z-30 bg-[var(--background)]/90 px-5 pb-3 pt-4 backdrop-blur-md">
-        <p className="t-etiquette">{labelPeriode(periode)}</p>
-        <h1 className="t-titre mt-0.5">Tableau de bord</h1>
+      {/* La marque n'apparaît que sur l'écran d'accueil de l'app : répétée en
+          tête de chaque écran, elle deviendrait du papier peint. */}
+      <header className="suivi-safe-top sticky top-0 z-30 flex items-center gap-3 bg-[var(--background)]/90 px-5 pb-3 pt-4 backdrop-blur-md">
+        <Logo taille={38} />
+        <div className="min-w-0">
+          <p className="t-etiquette">{labelPeriode(periode)}</p>
+          <h1 className="t-titre mt-0.5">Tableau de bord</h1>
+        </div>
       </header>
 
       {modeDemo && (

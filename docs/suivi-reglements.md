@@ -596,6 +596,54 @@ l'échelle se laissent surcharger par les utilitaires, comme il se doit.
 - Balayage horizontal sur la liste = mois précédent / suivant, avec un seuil de
   70 px et un rejet des gestes majoritairement verticaux.
 
+## La marque
+
+Le logo fourni est un JPEG de 392 × 391 sur fond blanc. Les déclinaisons sont
+produites par `scripts/generate-icones.mjs`, à relancer seulement si le logo
+change — les fichiers sont versionnés dans `public/suivi/`, le build n'en
+dépend pas.
+
+| Fichier | Usage | Occupation |
+|---|---|---|
+| `apple-touch-icon.png` (180) | écran d'accueil iOS | 76 % |
+| `icone-192.png`, `icone-512.png` | manifeste PWA | 76 % |
+| `icone-512-maskable.png` | Android, découpe circulaire | 58 % |
+| `favicon-32.png` | onglet de navigateur | 92 % |
+| `logo-256.png` | la marque dans l'interface | 80 % |
+
+Trois contraintes expliquent ces proportions :
+
+- **iOS masque l'icône** par un carré à coins très arrondis. Au-delà de ~76 %,
+  les angles du cube se font rogner.
+- **Android va plus loin** sur les icônes « maskable » : la zone sûre est un
+  cercle, d'où les 58 %.
+- **Fond blanc opaque partout.** iOS ne gère pas la transparence sur l'icône
+  d'accueil — un fond transparent y devient noir.
+
+Dans l'interface, la marque garde son fond blanc dans une tuile arrondie. La
+rendre transparente ferait passer le sable du fond dans les séparations
+blanches à l'intérieur du cube, et changerait le dessin.
+
+Elle n'apparaît que sur l'écran d'accueil de l'app et sur la page de
+connexion : répétée en tête de chaque écran, elle deviendrait du papier peint.
+
+### Le défaut qui empêchait l'icône d'apparaître
+
+Les fichiers d'icônes existaient déjà, mais **`apple-touch-icon` n'était
+déclarée nulle part** — ni dans le layout, ni ailleurs. Safari ne lit que
+cette balise pour l'écran d'accueil ; le manifeste ne lui suffit pas. Un
+raccourci posé avant cette correction affichait donc une capture de la page au
+lieu d'une icône. La déclaration est désormais dans les `metadata` de
+`app/suivi/layout.tsx`.
+
+### Qualité de la source
+
+Le logo d'origine fait 392 px de côté. Les icônes de 512 px sont donc
+légèrement agrandies (facteur 1,5, rééchantillonnage Lanczos). C'est
+acceptable à l'œil, mais si vous disposez du fichier vectoriel — un SVG, un
+PDF ou un AI —, le repasser dans le script donnerait des bords parfaitement
+nets à toutes les tailles.
+
 ## Installation sur l'écran d'accueil (iOS)
 
 Ouvrir `https://<votre-domaine>/suivi` dans Safari → **Partager** → **Sur

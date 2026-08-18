@@ -13,6 +13,17 @@ export const metadata: Metadata = {
   title: "LG BOX — Mobile",
   description: "Gestion LG BOX au format téléphone : tableau de bord, box, règlements.",
   manifest: "/suivi/manifest.webmanifest",
+  // Sans cette déclaration, iOS pose une capture de la page sur l'écran
+  // d'accueil au lieu d'une icône : le manifeste ne suffit pas, Safari lit
+  // `apple-touch-icon` et rien d'autre. Les fichiers existaient déjà mais
+  // n'étaient référencés nulle part.
+  icons: {
+    icon: [
+      { url: "/suivi/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/suivi/icone-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/suivi/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
     title: "LG BOX",
