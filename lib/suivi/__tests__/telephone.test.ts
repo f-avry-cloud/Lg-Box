@@ -53,11 +53,20 @@ describe("nettoieNumero", () => {
 describe("liens de raccourci", () => {
   it("encode le nom du raccourci, espace comprise", () => {
     expect(lienAppelOnoff("0612345678")).toBe(
-      "shortcuts://run-shortcut?name=Appel%20ONOFF&input=0612345678"
+      "shortcuts://run-shortcut?name=Appel%20ONOFF&input=text&text=0612345678"
     );
     expect(lienSmsOnoff("0612345678")).toBe(
-      "shortcuts://run-shortcut?name=SMS%20ONOFF&input=0612345678"
+      "shortcuts://run-shortcut?name=SMS%20ONOFF&input=text&text=0612345678"
     );
+  });
+
+  it("annonce le type de source dans `input`, jamais le numéro", () => {
+    // `input` porte « text » ou « clipboard ». Y glisser le numéro fait lancer
+    // le raccourci sans entrée : il réclame alors la valeur dans une fenêtre
+    // qui ne mène nulle part, sans le moindre message d'erreur.
+    const lien = lienSmsOnoff("0612345678")!;
+    expect(lien).toContain("&input=text&");
+    expect(lien).not.toContain("input=0612345678");
   });
 
   it("encode le + du numéro", () => {
@@ -65,12 +74,12 @@ describe("liens de raccourci", () => {
     // chaîne de requête, et le raccourci recevrait « 33612345678 » précédé
     // d'un blanc.
     expect(lienSmsOnoff("+33 6 12 34 56 78")).toBe(
-      "shortcuts://run-shortcut?name=SMS%20ONOFF&input=%2B33612345678"
+      "shortcuts://run-shortcut?name=SMS%20ONOFF&input=text&text=%2B33612345678"
     );
   });
 
   it("nettoie avant de construire le lien", () => {
-    expect(lienAppelOnoff("06.12.34.56.78")).toContain("input=0612345678");
+    expect(lienAppelOnoff("06.12.34.56.78")).toContain("text=0612345678");
   });
 
   it("rend null sans numéro exploitable", () => {

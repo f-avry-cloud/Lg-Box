@@ -608,11 +608,25 @@ par son schéma d'URL — le raccourci, lui, a le droit d'ouvrir Onoff :
 
 | Geste | Raccourci | URL construite |
 |---|---|---|
-| Appeler | `Appel ONOFF` | `shortcuts://run-shortcut?name=Appel%20ONOFF&input=…` |
-| SMS | `SMS ONOFF` | `shortcuts://run-shortcut?name=SMS%20ONOFF&input=…` |
+| Appeler | `Appel ONOFF` | `shortcuts://run-shortcut?name=Appel%20ONOFF&input=text&text=…` |
+| SMS | `SMS ONOFF` | `shortcuts://run-shortcut?name=SMS%20ONOFF&input=text&text=…` |
 
 Le numéro est passé en **entrée texte** du raccourci — la variable `[NUMERO]`
 côté iOS.
+
+### Le piège des deux paramètres
+
+`input` ne porte pas le contenu : il porte le **type de source**, `text` ou
+`clipboard`. Le contenu voyage dans `text`.
+
+La première version écrivait `input=+33612345678`, et l'erreur ne produisait
+aucun message : iOS ne reconnaissait pas de source valide, lançait le raccourci
+**sans entrée**, et l'action qui référence « Entrée de raccourci » réclamait la
+valeur manquante dans une fenêtre — « Destinataire » — dont le bouton OK ne
+menait nulle part, faute de valeur à valider.
+
+Un test vérifie désormais que `input` vaut toujours `text` et ne contient
+jamais le numéro.
 
 ### Le nettoyage du numéro
 

@@ -51,17 +51,30 @@ export function nettoieNumero(numero: string | null | undefined): string | null 
   return international ? `+${chiffres}` : chiffres;
 }
 
-/** L'URL qui déclenche un raccourci iOS, numéro passé en entrée. */
+/**
+ * L'URL qui déclenche un raccourci iOS, numéro passé en entrée.
+ *
+ * Deux paramètres, et pas un seul — c'est le piège du schéma :
+ *
+ *   `input` ne porte pas le contenu, il porte le **type de source** :
+ *   `text` ou `clipboard`. Le contenu, lui, voyage dans `text`.
+ *
+ * Y mettre le numéro directement (`input=+33612345678`) ne produit aucune
+ * erreur visible : iOS ne reconnaît pas de source valide, lance le raccourci
+ * **sans entrée**, et l'action qui référence « Entrée de raccourci » réclame
+ * alors la valeur manquante dans une fenêtre qui ne mène nulle part.
+ *
+ * `encodeURIComponent` est indispensable sur les deux valeurs : le nom
+ * contient une espace, et le numéro un `+` — qui, non encodé, serait relu
+ * comme une espace par l'analyseur de la chaîne de requête.
+ */
 export function lienRaccourci(nomRaccourci: string, numero: string | null): string | null {
   const propre = nettoieNumero(numero);
   if (!propre) return null;
 
-  // `encodeURIComponent` est indispensable sur les deux : le nom contient une
-  // espace, et le numéro un `+` — qui, non encodé, serait relu comme une
-  // espace par l'analyseur de la chaîne de requête.
   return `shortcuts://run-shortcut?name=${encodeURIComponent(
     nomRaccourci
-  )}&input=${encodeURIComponent(propre)}`;
+  )}&input=text&text=${encodeURIComponent(propre)}`;
 }
 
 export function lienAppelOnoff(numero: string | null): string | null {
