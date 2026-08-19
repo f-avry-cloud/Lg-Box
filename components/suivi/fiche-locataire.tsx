@@ -302,9 +302,8 @@ export function FicheLocataireVue({
         {locataire.telephone || locataire.email ? (
           /*
             Le bloc partagé plutôt qu'une seconde série de boutons : appeler
-            depuis la fiche et appeler depuis un box doivent passer par le même
-            chemin, donc par le même raccourci Onoff. La copie qui vivait ici
-            avait déjà divergé du bloc commun.
+            depuis la fiche et appeler depuis un box sont le même geste. La
+            copie qui vivait ici avait déjà divergé du bloc commun.
           */
           <BlocContact telephone={locataire.telephone} email={locataire.email} />
         ) : (

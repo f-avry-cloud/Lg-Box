@@ -4,14 +4,7 @@ import { Copy, Mail, MessageSquare, Phone } from "lucide-react";
 import { toast } from "sonner";
 
 import { vibre } from "@/components/suivi/bouton-encaissement";
-import {
-  estIOS,
-  lienAppelOnoff,
-  lienSms,
-  lienSmsOnoff,
-  lienTel,
-  nettoieNumero,
-} from "@/lib/suivi/telephone";
+import { lienSms, lienTel, nettoieNumero } from "@/lib/suivi/telephone";
 
 /**
  * Joindre quelqu'un : appeler, envoyer un SMS, écrire, copier le numéro.
@@ -20,21 +13,17 @@ import {
  * la campagne de reprise — c'est le même geste, il doit se faire pareil
  * partout.
  *
- * **Appels et SMS passent par la ligne du centre, pas par le numéro
- * personnel.** iOS réserve `tel:` et `sms:` à l'app d'appel par défaut du
- * système : aucune page web ne peut router un appel vers Onoff. Le détour est
- * un raccourci iOS — « Appel ONOFF » et « SMS ONOFF » — que la page déclenche
- * par son schéma d'URL, et qui a le droit, lui, d'ouvrir l'app métier.
+ * Liens natifs : `tel:` et `sms:` ouvrent l'app Téléphone et l'app Messages,
+ * partout et sans condition.
  *
- * Le lien reste un `tel:` / `sms:` ordinaire dans le HTML : c'est le repli sur
- * Android et sur ordinateur, et c'est ce qui rend l'appui long utile (copier,
- * ajouter aux contacts). Sur iOS seulement, le clic est détourné vers le
- * raccourci.
+ * Un détour par les Raccourcis iOS a été tenté pour router les appels vers
+ * Onoff — la ligne du centre — puis retiré : Onoff ne se laisse pas piloter
+ * par Raccourcis. Régler Onoff comme app d'appel par défaut d'iOS ferait
+ * l'affaire, mais ce réglage est global : les appels personnels partiraient
+ * aussi de cette ligne.
  *
- * La détection se fait **au moment du clic**, pas au rendu : le rendu est
- * alors identique côté serveur et côté navigateur — donc pas d'hydratation à
- * réconcilier — et l'appareil est de toute façon connu quand le doigt touche
- * l'écran.
+ * D'où l'importance du bouton « Copier le numéro » juste en dessous : c'est
+ * lui le chemin vers Onoff, en deux gestes plutôt qu'un.
  */
 export function BlocContact({
   telephone,
@@ -47,28 +36,16 @@ export function BlocContact({
 }) {
   const numero = nettoieNumero(telephone);
 
-  // Sur iOS, le clic ouvre le raccourci. Ailleurs, on laisse le lien natif
-  // faire son travail — le rediriger vers `shortcuts://` n'y mènerait nulle
-  // part.
-  const detourne = (cible: string | null) => (evenement: React.MouseEvent) => {
-    if (!cible) return;
-    if (!estIOS(navigator.userAgent, navigator.maxTouchPoints)) return;
-    evenement.preventDefault();
-    window.location.href = cible;
-  };
-
   return (
     <div className={className}>
       <div className="grid grid-cols-3 gap-2">
         <Contact
           href={lienTel(numero)}
-          onClick={detourne(lienAppelOnoff(numero))}
           icone={<Phone className="size-5" />}
           libelle="Appeler"
         />
         <Contact
           href={lienSms(numero)}
-          onClick={detourne(lienSmsOnoff(numero))}
           icone={<MessageSquare className="size-5" />}
           libelle="SMS"
         />
@@ -104,12 +81,10 @@ export function BlocContact({
 
 function Contact({
   href,
-  onClick,
   icone,
   libelle,
 }: {
   href: string | null;
-  onClick?: (evenement: React.MouseEvent) => void;
   icone: React.ReactNode;
   libelle: string;
 }) {
@@ -125,7 +100,6 @@ function Contact({
   return (
     <a
       href={href}
-      onClick={onClick}
       className="suivi-tap flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background text-xs font-semibold text-primary active:bg-secondary"
     >
       {icone}
