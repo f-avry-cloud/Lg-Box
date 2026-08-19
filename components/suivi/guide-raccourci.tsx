@@ -45,8 +45,46 @@ export function GuideRaccourci() {
       </Section>
 
       <Section
+        cle="simple"
+        titre="La recette qui ne peut pas échouer (3 actions)"
+        ouvert={ouvert === "simple"}
+        onBascule={bascule}
+      >
+        <p>
+          Le raccourci que je vous ai d&apos;abord décrit remplit le champ{" "}
+          <strong>Destinataire</strong>{" "}
+          de l&apos;action Onoff. Or ce champ attend
+          vraisemblablement un <strong>contact</strong>, pas du texte — et c&apos;est là que iOS
+          s&apos;arrête pour vous le réclamer.
+        </p>
+        <p>
+          Cette version-ci ne remplit aucun champ typé, donc rien ne peut coincer :
+        </p>
+        <Etape n={1}>
+          Action <strong>« Texte »</strong>, avec la variable{" "}
+          <strong>« Entrée de raccourci »</strong> dedans.
+        </Etape>
+        <Etape n={2}>
+          Action <strong>« Copier dans le presse-papiers »</strong>.
+        </Etape>
+        <Etape n={3}>
+          Action <strong>« Ouvrir l&apos;app »</strong>, et choisissez <strong>Onoff</strong>.
+        </Etape>
+        <p>
+          Onoff s&apos;ouvre avec le numéro déjà copié : vous le collez dans le champ de
+          destinataire. Un tap de plus qu&apos;un appel direct, mais ça marche à tous les coups,
+          et <strong>sans rien changer à votre app d&apos;appel par défaut</strong> — vos appels
+          personnels continuent de partir de votre ligne.
+        </p>
+        <p className="rounded-lg bg-[var(--secondary)]/60 px-3 py-2">
+          Montez celle-ci d&apos;abord. Si elle fonctionne, on saura que le problème venait bien
+          du champ Destinataire, et on pourra tenter la version directe ensuite.
+        </p>
+      </Section>
+
+      <Section
         cle="sms"
-        titre={`Monter « ${RACCOURCI_SMS} », étape par étape`}
+        titre={`Version directe — si Onoff expose ses propres actions`}
         ouvert={ouvert === "sms"}
         onBascule={bascule}
       >
@@ -67,13 +105,15 @@ export function GuideRaccourci() {
         </Etape>
         <Etape n={4}>
           Troisième action : cherchez <strong>Onoff</strong>{" "}
-          dans la recherche d&apos;actions et prenez son action d&apos;envoi de message. C&apos;est l&apos;étape à vérifier en premier
-          — voir la section suivante si Onoff n&apos;apparaît pas.
+          dans la recherche d&apos;actions et prenez son action d&apos;envoi de message. Si rien
+          n&apos;apparaît à ce nom, cette version est impossible — restez sur la recette à trois
+          actions.
         </Etape>
         <Etape n={5}>
           Dans cette action, touchez le champ <strong>Destinataire</strong>. S&apos;il contient
           « Demander à chaque fois », <strong>supprimez ce jeton</strong>, puis insérez la
-          variable <strong>NUMERO</strong>. C&apos;est l&apos;étape qui manque presque toujours.
+          variable <strong>NUMERO</strong>. Si le champ refuse le texte et n&apos;accepte que des
+          contacts, c&apos;est perdu : revenez à la recette à trois actions.
         </Etape>
         <Etape n={6}>
           Touchez le <strong>(i)</strong> en bas, et désactivez{" "}
@@ -139,10 +179,9 @@ export function GuideRaccourci() {
           <strong>Onoff</strong>. Soit ses actions apparaissent, soit il n&apos;y a rien.
         </p>
         <p>
-          S&apos;il n&apos;y a rien, le repli reste le bouton{" "}
-          <strong>« Copier le numéro »</strong> de l&apos;app : un tap pour copier, puis coller
-          dans Onoff. C&apos;est moins direct, mais c&apos;est fiable — et c&apos;est pour cela
-          que ce bouton existe depuis le début.
+          S&apos;il n&apos;y a rien, ce n&apos;est pas bloquant : la recette à trois actions
+          n&apos;a besoin d&apos;aucune action Onoff. Elle se contente d&apos;ouvrir l&apos;app,
+          ce que Raccourcis sait faire pour n&apos;importe quelle app installée.
         </p>
         <p>
           Dites-moi ce que la recherche affiche : si Onoff propose des actions, je peux adapter la
