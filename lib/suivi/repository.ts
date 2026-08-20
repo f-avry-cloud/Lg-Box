@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { UnitFloor } from "@/types/database";
 import {
   demoBoxAvecOccupant,
+  demoCharges,
   demoContrat,
   demoDemandes,
   demoEnregistreObservations,
@@ -21,12 +22,14 @@ import {
   demoUpsertReglement,
 } from "@/lib/suivi/demo-store";
 import { calculeTotaux, cumuleEncaisse, resumeFacturation } from "@/lib/suivi/totals";
+import { chargesCumulees, chargesDuMois, totalCharges } from "@/lib/suivi/charges";
 import { groupeParBatiment, parseBoxReferenceCsv } from "@/lib/suivi/box";
 import { estPlace, type BoxPlan } from "@/lib/suivi/plan";
 import { BOX_REFERENCE_CSV } from "@/lib/suivi/box-reference";
 import { contratDuPour } from "@/lib/suivi/contrat";
 import type { DestinataireFacture, ParametresMail } from "@/lib/suivi/mail";
 import type { EtatReprise, LocataireReprise } from "@/lib/suivi/reprise";
+import type { Charge } from "@/lib/suivi/charges";
 import { parsePeriode, periodeCourante, premierJour } from "@/lib/suivi/period";
 import {
   type Box,
@@ -455,7 +458,11 @@ export async function caDepuisJanvier(annee: number): Promise<number> {
 
 export async function statsTableauDeBord(periode: string): Promise<StatsTableauDeBord> {
   const { annee } = parsePeriode(periode);
-  const [lignes, caAnnuel] = await Promise.all([lignesDuMois(periode), caDepuisJanvier(annee)]);
+  const [lignes, caAnnuel, charges] = await Promise.all([
+    lignesDuMois(periode),
+    caDepuisJanvier(annee),
+    listeCharges(),
+  ]);
   const totaux = calculeTotaux(lignes);
   const facturation = resumeFacturation(lignes);
 
@@ -474,6 +481,8 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
     aFacturer: facturation.aFacturer,
     dejaFacturees: facturation.dejaFacturees,
     montantAFacturer: facturation.montant,
+    chargesDuMois: totalCharges(chargesDuMois(charges, periode)),
+    chargesCumulees: chargesCumulees(charges, periode),
     impayesMontant: 0,
     impayesClients: 0,
     contratsEnPreavis: 0,
@@ -1013,5 +1022,34 @@ export async function listeReprise(): Promise<LocataireReprise[]> {
     // Aucune ligne d'avancement = personne n'a encore été appelé. L'absence
     // vaut « à contacter », comme l'absence de règlement vaut « attendu ».
     etat: etats.get(l.id) ?? { contacte: false, message_laisse: false, note: null },
+  }));
+}
+
+
+// ---------------------------------------------------------------------------
+// Charges du centre
+// ---------------------------------------------------------------------------
+
+/**
+ * Toutes les charges saisies, sans filtre de période : le filtrage se fait
+ * dans `lib/suivi/charges.ts`, qui est pur et testé. Le volume l'autorise
+ * largement — une exploitation de cette taille compte quelques dizaines de
+ * lignes, pas des milliers.
+ */
+export async function listeCharges(): Promise<Charge[]> {
+  if (estModeDemo()) return demoCharges();
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("sr_charges")
+    .select("id, libelle, montant_eur, categorie, recurrente, periode_debut, periode_fin, note");
+
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((c) => ({
+    ...c,
+    // `numeric` revient en chaîne depuis PostgREST : sans cette conversion,
+    // les additions concaténeraient au lieu d'additionner.
+    montant_eur: Number(c.montant_eur),
   }));
 }

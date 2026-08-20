@@ -383,6 +383,20 @@ export type SrRepriseContact = {
   updated_at: string;
 };
 
+// Charges du centre — récurrentes ou ponctuelles (migration 019).
+export type SrCharge = {
+  id: string;
+  libelle: string;
+  montant_eur: number;
+  categorie: string;
+  recurrente: boolean;
+  periode_debut: string;
+  periode_fin: string | null;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row;
   Insert: Insert;
@@ -418,6 +432,7 @@ export type Database = {
       sr_mail_parametres: Table<SrMailParametres>;
       sr_envois_facture: Table<SrEnvoiFacture>;
       sr_reprise_contacts: Table<SrRepriseContact>;
+      sr_charges: Table<SrCharge>;
     };
     Views: Record<string, never>;
     Functions: {

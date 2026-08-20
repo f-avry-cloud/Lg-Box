@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, Inbox, LogOut, TrendingUp, Warehouse } from "lucide-react";
+import { ChevronRight, Inbox, LogOut, Scale, TrendingUp, Warehouse } from "lucide-react";
 
 import { BlocEnvoiFactures } from "@/components/suivi/bloc-envoi-factures";
 import { Logo } from "@/components/suivi/logo";
@@ -42,6 +42,12 @@ export default async function TableauDeBordPage({
   const modeDemo = estModeDemo();
   const attendu = stats.encaisse + stats.reste;
   const progression = attendu === 0 ? 0 : Math.round((stats.encaisse / attendu) * 100);
+
+  // Cash-flow : ce qui rentre moins ce qui sort. Le cumul annuel se compare au
+  // même mois des deux côtés — `chargesCumulees` s'arrête au mois affiché,
+  // comme `caAnnuel`.
+  const solde = stats.encaisse - stats.chargesDuMois;
+  const soldeAnnuel = stats.caAnnuel - stats.chargesCumulees;
 
   // L'aperçu se calcule sur le premier destinataire réel : le message montré
   // avant l'envoi est alors exactement celui qui partira.
@@ -142,6 +148,46 @@ export default async function TableauDeBordPage({
             alerte={stats.demandesNouvelles > 0}
           />
         </div>
+
+        {/* Ce qui reste une fois les charges payées. Placé juste après les
+            recettes, parce que c'est la même question poursuivie jusqu'au
+            bout : ce qui rentre, puis ce qu'il en reste. */}
+        <Link
+          href={`/suivi/charges?mois=${periode}`}
+          className="suivi-tap suivi-carte block p-4 active:bg-[var(--secondary)]/40"
+        >
+          <div className="flex items-center gap-1.5 text-[var(--suivi-gris)]">
+            <Scale className="size-4" aria-hidden />
+            <span className="t-etiquette">Résultat du mois</span>
+            <ChevronRight className="ml-auto size-3.5 opacity-50" aria-hidden />
+          </div>
+
+          <p
+            className="t-chiffre mt-1.5"
+            style={{ color: solde >= 0 ? "var(--suivi-vert)" : "var(--destructive)" }}
+          >
+            {solde >= 0 ? "+" : "−"}
+            {Math.abs(solde).toLocaleString("fr-FR")} €
+          </p>
+
+          <p className="t-meta mt-0.5">
+            {stats.chargesDuMois > 0 ? (
+              <>
+                après{" "}
+                <span className="t-nombre">
+                  {stats.chargesDuMois.toLocaleString("fr-FR")} €
+                </span>{" "}
+                de charges · {soldeAnnuel >= 0 ? "+" : "−"}
+                <span className="t-nombre">
+                  {Math.abs(soldeAnnuel).toLocaleString("fr-FR")} €
+                </span>{" "}
+                depuis janvier
+              </>
+            ) : (
+              "aucune charge saisie — appuyer pour les renseigner"
+            )}
+          </p>
+        </Link>
 
         {stats.impayesMontant > 0 && (
           <div className="suivi-carte flex items-baseline justify-between p-4">

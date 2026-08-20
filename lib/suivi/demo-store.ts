@@ -10,6 +10,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import type { Charge } from "@/lib/suivi/charges";
 import { DEMO_CSV } from "@/lib/suivi/demo-data";
 import { parseSeedCsv, type SeedData } from "@/lib/suivi/seed-csv";
 import type {
@@ -278,5 +279,21 @@ export function demoDemandes(): DemandeReservation[] {
       statut: "contactee",
       created_at: jour(12),
     },
+  ];
+}
+
+/**
+ * Quelques charges plausibles pour un centre de cette taille, afin que l'écran
+ * et le résultat mensuel soient démontrables sans base. Montants inventés — le
+ * bandeau du mode démo le dit.
+ */
+export function demoCharges(): Charge[] {
+  const annee = new Date().getFullYear();
+  return [
+    { id: "d1", libelle: "Loyer du terrain", montant_eur: 2400, categorie: "loyer", recurrente: true, periode_debut: `${annee}-01`, periode_fin: null, note: null },
+    { id: "d2", libelle: "Assurance multirisque", montant_eur: 180, categorie: "assurance", recurrente: true, periode_debut: `${annee}-01`, periode_fin: null, note: null },
+    { id: "d3", libelle: "Électricité", montant_eur: 240, categorie: "energie", recurrente: true, periode_debut: `${annee}-01`, periode_fin: null, note: null },
+    { id: "d4", libelle: "Télésurveillance", montant_eur: 89, categorie: "abonnements", recurrente: true, periode_debut: `${annee}-01`, periode_fin: null, note: null },
+    { id: "d5", libelle: "Réfection d'une porte", montant_eur: 640, categorie: "entretien", recurrente: false, periode_debut: `${annee}-08`, periode_fin: `${annee}-08`, note: "Bât III, box 4" },
   ];
 }

@@ -364,6 +364,66 @@ mois pointé d'un tap, sans montant saisi, vaut le loyer plein. Compter
 autrement afficherait un chiffre annuel proche de zéro sur un carnet pointé
 au doigt.
 
+## Les charges, et le résultat du mois
+
+Le carnet savait ce qui rentre. Sans ce qui sort, il ne pouvait rien dire du
+résultat — le seul chiffre qui intéresse vraiment un exploitant. L'écran
+**Charges** (`/suivi/charges`, atteint depuis le tableau de bord) le donne.
+
+### Récurrente ou ponctuelle
+
+L'essentiel des charges d'un centre est récurrent : loyer du terrain,
+assurance, électricité, télésurveillance. Devoir les ressaisir chaque mois
+serait le meilleur moyen qu'elles cessent d'être saisies. Une charge
+récurrente se déclare **une fois**, avec un mois de début, et court jusqu'à ce
+qu'on lui pose une fin.
+
+Une charge ponctuelle — des travaux, un achat — ne pèse que sur son seul mois.
+La base l'impose (`sr_charges_ponctuelle_check`) : sa fin est son début, ce qui
+évite qu'une « ponctuelle » se mette à courir six mois par accident de saisie
+sans que rien ne le signale.
+
+### Arrêter n'est pas supprimer
+
+Poser une fin à une charge la retire des mois suivants **et laisse intacts les
+mois qu'elle a déjà pesés**. La supprimer efface aussi le passé, et donc les
+résultats déjà consultés. La suppression est réservée aux saisies erronées ;
+c'est pourquoi le bouton le dit (« efface aussi les mois passés ») et demande
+confirmation.
+
+### Le cumul s'arrête au mois affiché
+
+Le point délicat, et celui qui aurait faussé tout le reste : le cumul des
+recettes s'arrête au mois affiché — on ne peut pas encaisser l'avenir. Le cumul
+des charges doit s'arrêter au même endroit. Comparer douze mois de charges à
+huit mois de recettes donnerait un résultat faux, et faux dans le sens qui
+inquiète. `chargesCumulees` (`lib/suivi/charges.ts`) additionne donc de janvier
+au mois affiché, celui-ci compris, et pas au-delà.
+
+### Le mois de début se choisit librement
+
+Le sélecteur est un `input type="month"` — il rend exactement une chaîne
+`AAAA-MM`, la forme même des périodes, et ouvre le sélecteur natif sur iPhone.
+Trois raccourcis l'accompagnent (mois précédent, mois courant, janvier de
+l'exercice) parce qu'une charge récurrente court le plus souvent depuis le
+début de l'année : la borner au mois courant priverait de sens le cumul
+« depuis janvier ».
+
+### Table propre à l'app
+
+`sr_charges`, et non la table `expenses` du back-office : la règle du projet
+reste que l'app mobile n'écrit pas dans le back-office, et `expenses`
+enregistre des dépenses **datées**, une ligne par sortie, sans notion de
+récurrence — dont tout dépend ici. Les deux pourront être rapprochées plus
+tard ; rien dans la migration ne l'empêche.
+
+### Sur le tableau de bord
+
+Une carte « Résultat du mois » affiche le solde et, en une ligne, les charges
+du mois et le cumul depuis janvier. Elle mène à l'écran. Tant qu'aucune charge
+n'est saisie, elle le dit plutôt que d'afficher un solde flatteur égal aux
+recettes.
+
 ## Les demandes de réservation
 
 Les demandes du formulaire public (`reservation_requests`, table du

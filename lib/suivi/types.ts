@@ -195,6 +195,13 @@ export type StatsTableauDeBord = {
   aFacturer: number;
   dejaFacturees: number;
   montantAFacturer: number;
+  /**
+   * Charges du mois affiché, et cumul depuis le 1er janvier — arrêté au même
+   * mois que les recettes, sans quoi le solde annuel opposerait douze mois de
+   * charges à huit mois de recettes.
+   */
+  chargesDuMois: number;
+  chargesCumulees: number;
   /** Back-office. */
   impayesMontant: number;
   impayesClients: number;
