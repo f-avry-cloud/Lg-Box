@@ -6,7 +6,7 @@ import {
   chargesDuMois,
   estTerminee,
   parCategorie,
-  resultat,
+  cashFlow,
   totalCharges,
   trieCharges,
   type Charge,
@@ -114,13 +114,13 @@ describe("chargesCumulees", () => {
   });
 });
 
-describe("resultat", () => {
-  it("soustrait les charges des recettes", () => {
-    expect(resultat(8710, 2300)).toEqual({ recettes: 8710, charges: 2300, solde: 6410 });
+describe("cashFlow", () => {
+  it("soustrait les charges des encaissements", () => {
+    expect(cashFlow(8710, 2300)).toEqual({ entrees: 8710, sorties: 2300, solde: 6410 });
   });
 
   it("rend un solde négatif quand le mois coûte plus qu'il ne rapporte", () => {
-    expect(resultat(1000, 4200).solde).toBe(-3200);
+    expect(cashFlow(1000, 4200).solde).toBe(-3200);
   });
 });
 

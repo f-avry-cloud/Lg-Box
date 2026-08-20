@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, Inbox, LogOut, Scale, TrendingUp, Warehouse } from "lucide-react";
+import { ChevronRight, Inbox, LogOut, TrendingUp, Wallet, Warehouse } from "lucide-react";
 
 import { BlocEnvoiFactures } from "@/components/suivi/bloc-envoi-factures";
 import { Logo } from "@/components/suivi/logo";
@@ -43,9 +43,10 @@ export default async function TableauDeBordPage({
   const attendu = stats.encaisse + stats.reste;
   const progression = attendu === 0 ? 0 : Math.round((stats.encaisse / attendu) * 100);
 
-  // Cash-flow : ce qui rentre moins ce qui sort. Le cumul annuel se compare au
-  // même mois des deux côtés — `chargesCumulees` s'arrête au mois affiché,
-  // comme `caAnnuel`.
+  // Cash-flow : ce qui rentre moins ce qui sort — de la trésorerie, pas un
+  // résultat comptable, puisque les entrées sont les encaissements pointés et
+  // non les loyers facturés. Le cumul annuel se compare au même mois des deux
+  // côtés : `chargesCumulees` s'arrête au mois affiché, comme `caAnnuel`.
   const solde = stats.encaisse - stats.chargesDuMois;
   const soldeAnnuel = stats.caAnnuel - stats.chargesCumulees;
 
@@ -157,8 +158,8 @@ export default async function TableauDeBordPage({
           className="suivi-tap suivi-carte block p-4 active:bg-[var(--secondary)]/40"
         >
           <div className="flex items-center gap-1.5 text-[var(--suivi-gris)]">
-            <Scale className="size-4" aria-hidden />
-            <span className="t-etiquette">Résultat du mois</span>
+            <Wallet className="size-4" aria-hidden />
+            <span className="t-etiquette">Cash-flow du mois</span>
             <ChevronRight className="ml-auto size-3.5 opacity-50" aria-hidden />
           </div>
 

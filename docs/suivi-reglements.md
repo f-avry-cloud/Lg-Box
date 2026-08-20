@@ -364,11 +364,23 @@ mois pointé d'un tap, sans montant saisi, vaut le loyer plein. Compter
 autrement afficherait un chiffre annuel proche de zéro sur un carnet pointé
 au doigt.
 
-## Les charges, et le résultat du mois
+## Les charges, et le cash-flow du mois
 
-Le carnet savait ce qui rentre. Sans ce qui sort, il ne pouvait rien dire du
-résultat — le seul chiffre qui intéresse vraiment un exploitant. L'écran
+Le carnet savait ce qui rentre. Sans ce qui sort, il ne pouvait rien dire de
+la trésorerie — le seul chiffre qui intéresse vraiment un exploitant. L'écran
 **Charges** (`/suivi/charges`, atteint depuis le tableau de bord) le donne.
+
+### Cash-flow, et non résultat
+
+La nuance n'est pas pédante, et elle est écrite dans l'écran. Les entrées sont
+les **encaissements pointés au carnet**, comptés le jour où l'argent arrive et
+non le jour où le loyer est dû. Les sorties sont les charges qui pèsent sur le
+mois. C'est de la trésorerie.
+
+Un résultat comptable partirait du **facturé** — chaque loyer courant sur son
+mois, payé ou non — et intégrerait des amortissements que ce carnet ne connaît
+pas. `cashFlow()` porte donc ce nom, ses champs s'appellent `entrees` et
+`sorties`, et l'écran écrit « Charges payées », pas « Charges ».
 
 ### Récurrente ou ponctuelle
 
@@ -419,7 +431,7 @@ tard ; rien dans la migration ne l'empêche.
 
 ### Sur le tableau de bord
 
-Une carte « Résultat du mois » affiche le solde et, en une ligne, les charges
+Une carte « Cash-flow du mois » affiche le solde et, en une ligne, les charges
 du mois et le cumul depuis janvier. Elle mène à l'écran. Tant qu'aucune charge
 n'est saisie, elle le dit plutôt que d'afficher un solde flatteur égal aux
 recettes.

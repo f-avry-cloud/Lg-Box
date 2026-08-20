@@ -90,15 +90,27 @@ export function chargesCumulees(charges: Charge[], periode: string): number {
   return total;
 }
 
-export type Resultat = {
-  recettes: number;
-  charges: number;
-  /** Recettes moins charges. Négatif quand le mois coûte plus qu'il ne rapporte. */
+/**
+ * Ce qui est réellement entré, moins ce qui est réellement sorti.
+ *
+ * **Du cash-flow, pas un résultat comptable** — et la nuance n'est pas
+ * pédante. Les recettes viennent du carnet d'encaissement : elles comptent le
+ * jour où l'argent est pointé, pas le jour où le loyer est dû. Un résultat
+ * comptable partirait du facturé, ferait courir chaque loyer sur son mois
+ * qu'il soit payé ou non, et intégrerait des amortissements que ce carnet ne
+ * connaît pas. Ce que cet écran donne, c'est la trésorerie du mois.
+ */
+export type CashFlow = {
+  /** Encaissements pointés sur la période. */
+  entrees: number;
+  /** Charges pesant sur la période. */
+  sorties: number;
+  /** Entrées moins sorties. Négatif quand le mois coûte plus qu'il ne rapporte. */
   solde: number;
 };
 
-export function resultat(recettes: number, charges: number): Resultat {
-  return { recettes, charges, solde: recettes - charges };
+export function cashFlow(entrees: number, sorties: number): CashFlow {
+  return { entrees, sorties, solde: entrees - sorties };
 }
 
 /** Un poste du récapitulatif par catégorie. */

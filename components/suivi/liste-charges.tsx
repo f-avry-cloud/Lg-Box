@@ -21,7 +21,7 @@ import {
   chargesCumulees,
   chargesDuMois,
   parCategorie,
-  resultat,
+  cashFlow,
   totalCharges,
   trieCharges,
   type CategorieCharge,
@@ -72,8 +72,8 @@ export function ListeCharges({
   const totalMois = totalCharges(duMois);
   const totalCumule = chargesCumulees(charges, periode);
 
-  const mois = resultat(encaisseDuMois, totalMois);
-  const annee = resultat(encaisseCumule, totalCumule);
+  const mois = cashFlow(encaisseDuMois, totalMois);
+  const annee = cashFlow(encaisseCumule, totalCumule);
   const postes = parCategorie(duMois);
 
   // Raccourci de saisie : une charge récurrente court le plus souvent depuis
@@ -159,9 +159,11 @@ export function ListeCharges({
       </header>
 
       <div className="suivi-scroll-simple space-y-3 px-5 pb-5">
-        {/* Le solde du mois : la raison d'être de l'écran. */}
+        {/* Le solde du mois : la raison d'être de l'écran. « Cash-flow » et
+            non « résultat » : les entrées sont ce qui est pointé au carnet, pas
+            ce qui est facturé, et rien ici n'amortit quoi que ce soit. */}
         <section className="suivi-carte p-5">
-          <span className="t-etiquette">Résultat {dePeriode(periode)}</span>
+          <span className="t-etiquette">Cash-flow {dePeriode(periode)}</span>
           <p
             className="t-hero mt-2"
             style={{
@@ -172,14 +174,14 @@ export function ListeCharges({
             {Math.abs(mois.solde).toLocaleString("fr-FR")} €
           </p>
           <dl className="mt-3 space-y-1">
-            <Ligne libelle="Encaissé" montant={mois.recettes} />
-            <Ligne libelle="Charges" montant={-mois.charges} />
+            <Ligne libelle="Encaissé" montant={mois.entrees} />
+            <Ligne libelle="Charges payées" montant={-mois.sorties} />
           </dl>
         </section>
 
-        {/* Le cumul de l'exercice, arrêté au même mois que les recettes. */}
+        {/* Le cumul de l'exercice, arrêté au même mois que les encaissements. */}
         <section className="suivi-carte p-4">
-          <span className="t-etiquette">Résultat cumulé depuis janvier</span>
+          <span className="t-etiquette">Cash-flow cumulé depuis janvier</span>
           <p
             className="t-chiffre mt-1.5"
             style={{ color: annee.solde >= 0 ? "var(--suivi-vert)" : "var(--destructive)" }}
@@ -188,12 +190,18 @@ export function ListeCharges({
             {Math.abs(annee.solde).toLocaleString("fr-FR")} €
           </p>
           <dl className="mt-2 space-y-1">
-            <Ligne libelle="Encaissé" montant={annee.recettes} />
-            <Ligne libelle="Charges" montant={-annee.charges} />
+            <Ligne libelle="Encaissé" montant={annee.entrees} />
+            <Ligne libelle="Charges payées" montant={-annee.sorties} />
           </dl>
           <p className="t-meta mt-2">
-            Recettes et charges s&apos;arrêtent au même mois : comparer une année entière de
-            charges à des recettes partielles donnerait un résultat faux.
+            Encaissements et charges s&apos;arrêtent au même mois : comparer une année entière
+            de charges à des encaissements partiels donnerait un chiffre faux.
+          </p>
+          {/* Dit une fois, en bas de l'écran : ce n'est pas un résultat
+              comptable, et personne ne doit le prendre pour tel. */}
+          <p className="t-meta mt-2">
+            Trésorerie, pas résultat comptable : on compte l&apos;argent entré et sorti, non
+            les loyers facturés ni les amortissements.
           </p>
         </section>
 
