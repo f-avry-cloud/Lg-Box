@@ -207,6 +207,8 @@ export type StatsTableauDeBord = {
   impayesClients: number;
   contratsEnPreavis: number;
   demandesNouvelles: number;
+  /** Personnes en liste d'attente — celles qu'on rappelle quand un box se libère. */
+  demandesEnAttente: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -262,17 +264,29 @@ export type CandidatAffectation = {
 // traite depuis le téléphone, souvent debout dans l'allée, et que la marquer
 // « contactée » ailleurs qu'à l'endroit où on vient d'appeler ne se fait pas.
 
-export type StatutDemande = "nouvelle" | "contactee" | "convertie" | "refusee";
+export type StatutDemande =
+  | "nouvelle"
+  | "contactee"
+  | "convertie"
+  | "refusee"
+  /**
+   * Le centre est plein. La personne n'est pas refusée : elle attend qu'un box
+   * se libère. Sans ce statut, « contactée » la faisait disparaître de la liste
+   * à traiter, et elle était perdue le jour où un box se libérait.
+   */
+  | "liste_attente";
 
 export type DemandeReservation = {
   id: string;
   nom: string;
-  email: string;
+  email: string | null;
   telephone: string | null;
   taille_souhaitee: string | null;
   date_souhaitee: string | null;
   message: string | null;
   statut: StatutDemande;
+  /** 'formulaire' (page publique) ou 'manuelle' (notée depuis le téléphone). */
+  origine: string;
   created_at: string;
 };
 
@@ -281,11 +295,13 @@ export const STATUT_DEMANDE_LABELS: Record<StatutDemande, string> = {
   contactee: "Contactée",
   convertie: "Convertie",
   refusee: "Refusée",
+  liste_attente: "Liste d'attente",
 };
 
 export const STATUTS_DEMANDE: readonly StatutDemande[] = [
   "nouvelle",
   "contactee",
+  "liste_attente",
   "convertie",
   "refusee",
 ] as const;
@@ -294,5 +310,8 @@ export function couleurStatutDemande(statut: StatutDemande): string {
   if (statut === "nouvelle") return "var(--suivi-orange)";
   if (statut === "convertie") return "var(--suivi-vert)";
   if (statut === "refusee") return "var(--suivi-gris)";
+  // L'attente n'est ni une urgence ni un aboutissement : une couleur à part,
+  // qui ne se confond avec aucune des deux.
+  if (statut === "liste_attente") return "var(--suivi-bleu)";
   return "var(--primary)";
 }

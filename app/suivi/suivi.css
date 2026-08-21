@@ -16,6 +16,9 @@
   --suivi-vert: #1f7a45;
   --suivi-orange: #b5580d;
   --suivi-gris: #6d6559;
+  /* Bleu ardoise : l'attente, qui n'est ni une urgence (orange) ni un
+     aboutissement (vert) et ne doit se confondre avec ni l'un ni l'autre. */
+  --suivi-bleu: #3d5a80;
   /* Gris plus clair, pour les mentions qui accompagnent sans réclamer. */
   --suivi-gris-clair: #938a7c;
   /* Filet plus discret que --border, pour séparer sans encadrer. */

@@ -9,7 +9,13 @@ export type ContractStatus = "brouillon" | "actif" | "en_preavis" | "resilie";
 export type InvoiceStatus = "brouillon" | "emise" | "payee" | "en_retard" | "annulee";
 export type PaymentMethod = "virement" | "carte" | "especes" | "cheque" | "prelevement";
 export type PaymentStatus = "valide" | "en_attente" | "echoue";
-export type ReservationStatus = "nouvelle" | "contactee" | "convertie" | "refusee";
+export type ReservationStatus =
+  | "nouvelle"
+  | "contactee"
+  | "convertie"
+  | "refusee"
+  /** Le centre est plein : la personne attend qu'un box se libère. */
+  | "liste_attente";
 export type DocumentType = "contrat" | "facture" | "piece_identite" | "autre";
 export type UnitFloor = "sous_sol" | "rez_de_chaussee" | "premier_etage";
 export type BankTransactionStatus = "non_rapproche" | "rapproche" | "ignore";
@@ -185,12 +191,15 @@ export type Payment = {
 export type ReservationRequest = {
   id: string;
   nom: string;
-  email: string;
+  /** Facultatif depuis 020 : une inscription prise au téléphone n'en a pas toujours. */
+  email: string | null;
   telephone: string | null;
   taille_souhaitee: string | null;
   date_souhaitee: string | null;
   message: string | null;
   statut: ReservationStatus;
+  /** 'formulaire' (page publique) ou 'manuelle' (saisie depuis /suivi). */
+  origine: string;
   created_at: string;
 };
 

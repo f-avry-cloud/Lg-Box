@@ -43,6 +43,7 @@ const RESERVATION_LABELS: Record<ReservationStatus, { label: string; variant: "s
   contactee: { label: "Contactée", variant: "secondary" },
   convertie: { label: "Convertie", variant: "success" },
   refusee: { label: "Refusée", variant: "muted" },
+  liste_attente: { label: "Liste d'attente", variant: "secondary" },
 };
 
 const SIGNATURE_LABELS: Record<SignatureStatus, { label: string; variant: "success" | "warning" | "muted" }> = {

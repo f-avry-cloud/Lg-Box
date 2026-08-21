@@ -255,6 +255,7 @@ export function demoDemandes(): DemandeReservation[] {
       date_souhaitee: null,
       message: "Bonjour, je cherche un box pour stocker des meubles pendant des travaux.",
       statut: "nouvelle",
+      origine: "formulaire",
       created_at: jour(1),
     },
     {
@@ -266,6 +267,7 @@ export function demoDemandes(): DemandeReservation[] {
       date_souhaitee: null,
       message: null,
       statut: "nouvelle",
+      origine: "formulaire",
       created_at: jour(4),
     },
     {
@@ -277,7 +279,34 @@ export function demoDemandes(): DemandeReservation[] {
       date_souhaitee: null,
       message: "Archives de l'entreprise, besoin d'un accès en semaine.",
       statut: "contactee",
+      origine: "formulaire",
       created_at: jour(12),
+    },
+    // Deux inscriptions prises au téléphone : le centre est plein, elles
+    // attendent qu'un box se libère.
+    {
+      id: "demo-demande-4",
+      nom: "PRIEUR Sandrine",
+      email: null,
+      telephone: "+33639980421",
+      taille_souhaitee: "10 m²",
+      date_souhaitee: null,
+      message: "Rappelée le 12, attend un box bâtiment I de préférence.",
+      statut: "liste_attente",
+      origine: "manuelle",
+      created_at: jour(9),
+    },
+    {
+      id: "demo-demande-5",
+      nom: "GARNIER Paul",
+      email: "p.garnier@example.org",
+      telephone: "+33639980566",
+      taille_souhaitee: "5 m²",
+      date_souhaitee: null,
+      message: null,
+      statut: "liste_attente",
+      origine: "manuelle",
+      created_at: jour(21),
     },
   ];
 }

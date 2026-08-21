@@ -145,7 +145,15 @@ export default async function TableauDeBordPage({
             icone={<Inbox className="size-4" aria-hidden />}
             libelle="Demandes"
             valeur={String(stats.demandesNouvelles)}
-            detail={stats.demandesNouvelles > 0 ? "à rappeler" : "aucune nouvelle"}
+            // La liste d'attente ne s'affiche que si quelqu'un y figure : le
+            // centre étant plein, c'est elle qu'on consulte le jour où un box
+            // se libère, et il faut la savoir là sans ouvrir l'écran.
+            detail={[
+              stats.demandesNouvelles > 0 ? "à rappeler" : "aucune nouvelle",
+              stats.demandesEnAttente > 0 ? `${stats.demandesEnAttente} en attente` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
             alerte={stats.demandesNouvelles > 0}
           />
         </div>

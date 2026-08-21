@@ -454,6 +454,47 @@ pas. L'écriture passe par l'action existante du back-office
 (`updateReservationStatus`), à laquelle on n'ajoute que la revalidation des
 écrans mobiles.
 
+### La liste d'attente
+
+Le centre est plein. La plupart des gens qui appellent ne peuvent pas être
+servis, et ils ne sont pas refusés pour autant : ils attendent qu'un box se
+libère. Les quatre statuts d'origine ne savaient pas dire cela — « contactée »
+les faisait sortir de la liste à traiter, et ils étaient perdus le jour où un
+box se libérait. D'où un cinquième statut, `liste_attente`.
+
+**Une seule liste, pas deux.** Une demande venue du formulaire public et un
+appel noté à la volée décrivent la même chose ; la personne qui consulte la
+liste d'attente ne veut pas la consulter en deux endroits. L'inscription
+manuelle alimente donc `reservation_requests`, la table du back-office, et
+apparaît aussi dans `/admin/reservations`. Une colonne `origine` distingue
+`formulaire` de `manuelle` — le back-office annonce « les demandes reçues
+depuis la page publique », et une inscription prise au téléphone n'en est pas
+une.
+
+**L'e-mail devient facultatif** (migration 020). Le formulaire public l'exige,
+et c'est tenable derrière un écran ; au téléphone, non. Obliger à saisir une
+adresse reviendrait à en faire inventer, et une adresse inventée est pire
+qu'une case vide le jour où l'on cherche à joindre quelqu'un. Le nom seul est
+obligatoire, avec au moins un moyen de rappeler — numéro ou adresse.
+
+**Le tri s'inverse selon le groupe**, et c'est le point à ne pas rater
+(`lib/suivi/demandes.ts`) :
+
+- une demande *à traiter* se rappelle au plus vite : la plus récente devant ;
+- une *liste d'attente* se sert dans l'ordre d'arrivée. Celui qui a appelé en
+  janvier passe avant celui qui a appelé en juin, et l'afficher autrement
+  ferait rappeler le mauvais le jour venu.
+
+Le rang s'affiche donc à la place des initiales, en bleu ardoise — l'attente
+n'est ni une urgence (orange) ni un aboutissement (vert).
+
+**Les policies ont été resserrées** au passage. L'insertion publique était
+ouverte sans condition : n'importe qui pouvait poster une demande déjà
+« convertie », ou se déclarer notée au téléphone. Elle est désormais bornée à
+`statut = 'nouvelle' and origine = 'formulaire'`, et une policy distincte
+autorise le personnel à inscrire en liste d'attente. Vérifié en base sous
+`role anon`, dans une transaction annulée.
+
 ## La fiche d'un box
 
 Le parcours visé est court : **j'ouvre un box, je vois son statut, j'appelle le

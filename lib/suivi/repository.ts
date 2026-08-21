@@ -23,6 +23,7 @@ import {
 } from "@/lib/suivi/demo-store";
 import { calculeTotaux, cumuleEncaisse, resumeFacturation } from "@/lib/suivi/totals";
 import { chargesCumulees, chargesDuMois, totalCharges } from "@/lib/suivi/charges";
+import { trieDemandes } from "@/lib/suivi/demandes";
 import { groupeParBatiment, parseBoxReferenceCsv } from "@/lib/suivi/box";
 import { estPlace, type BoxPlan } from "@/lib/suivi/plan";
 import { BOX_REFERENCE_CSV } from "@/lib/suivi/box-reference";
@@ -487,6 +488,7 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
     impayesClients: 0,
     contratsEnPreavis: 0,
     demandesNouvelles: 0,
+    demandesEnAttente: 0,
   };
 
   if (estModeDemo()) {
@@ -501,7 +503,7 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
   // L'occupation se lit sur le référentiel de l'app (67 box réels), pas sur
   // `units` : celle-ci contient encore 70 lignes « À localiser » issues d'un
   // import, qui gonfleraient le total et écraseraient le taux.
-  const [total, loues, impayes, preavis, demandes] = await Promise.all([
+  const [total, loues, impayes, preavis, demandes, attente] = await Promise.all([
     supabase.from("sr_box").select("id", { count: "exact", head: true }),
     supabase
       .from("sr_contrats")
@@ -514,6 +516,10 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
       .from("reservation_requests")
       .select("id", { count: "exact", head: true })
       .eq("statut", "nouvelle"),
+    supabase
+      .from("reservation_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("statut", "liste_attente"),
   ]);
 
   const boxTotal = total.count ?? 0;
@@ -530,6 +536,7 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
     impayesClients: new Set(factures.map((f) => f.customer_id)).size,
     contratsEnPreavis: preavis.count ?? 0,
     demandesNouvelles: demandes.count ?? 0,
+    demandesEnAttente: attente.count ?? 0,
   };
 }
 
@@ -729,33 +736,30 @@ function planDemo(): GroupePlan[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Les demandes reçues par le formulaire public, les non traitées d'abord.
+ * Les demandes de réservation, à traiter d'abord puis en attente.
  *
- * Le tri place « nouvelle » en tête puis les plus récentes : c'est l'ordre
- * dans lequel on les rappelle, et il évite d'avoir à filtrer pour retrouver
- * celles qui attendent.
+ * Le tri vit dans `lib/suivi/demandes.ts` : il n'a rien d'évident, les deux
+ * premiers groupes se classant dans des sens opposés.
  */
 export async function demandesReservation(): Promise<DemandeReservation[]> {
-  // Sans base, l'écran se montre sur trois demandes fictives — numéros de la
+  // Sans base, l'écran se montre sur des demandes fictives — numéros de la
   // plage réservée aux fictions, adresses en example.org : les composer ne
   // peut atteindre personne.
-  if (estModeDemo()) return demoDemandes();
+  // Le tri s'applique aussi à la démo : sans lui, l'écran de démonstration
+  // montrait la file dans le désordre, avec le n° 2 au-dessus du n° 1.
+  if (estModeDemo()) return trieDemandes(demoDemandes());
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("reservation_requests")
-    .select("id, nom, email, telephone, taille_souhaitee, date_souhaitee, message, statut, created_at")
+    .select(
+      "id, nom, email, telephone, taille_souhaitee, date_souhaitee, message, statut, origine, created_at"
+    )
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
 
-  const demandes = (data ?? []) as DemandeReservation[];
-  return [...demandes].sort((a, b) => {
-    const aNouvelle = a.statut === "nouvelle";
-    const bNouvelle = b.statut === "nouvelle";
-    if (aNouvelle !== bNouvelle) return aNouvelle ? -1 : 1;
-    return b.created_at.localeCompare(a.created_at);
-  });
+  return trieDemandes((data ?? []) as DemandeReservation[]);
 }
 
 

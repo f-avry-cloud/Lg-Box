@@ -10,6 +10,7 @@ import type { ReservationStatus } from "@/types/database";
 const OPTIONS: { value: ReservationStatus; label: string }[] = [
   { value: "nouvelle", label: "Nouvelle" },
   { value: "contactee", label: "Contactée" },
+  { value: "liste_attente", label: "Liste d'attente" },
   { value: "convertie", label: "Convertie" },
   { value: "refusee", label: "Refusée" },
 ];
