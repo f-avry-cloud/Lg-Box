@@ -308,6 +308,31 @@ export function demoDemandes(): DemandeReservation[] {
       origine: "manuelle",
       created_at: jour(21),
     },
+    // Deux demandes closes : de quoi montrer le balayage des demandes traitées.
+    {
+      id: "demo-demande-6",
+      nom: "LEROY Marc",
+      email: "m.leroy@example.org",
+      telephone: "+33639980612",
+      taille_souhaitee: "5 m²",
+      date_souhaitee: null,
+      message: null,
+      statut: "convertie",
+      origine: "formulaire",
+      created_at: jour(45),
+    },
+    {
+      id: "demo-demande-7",
+      nom: "FONTAINE Alice",
+      email: "a.fontaine@example.org",
+      telephone: "+33639980733",
+      taille_souhaitee: "20 m² ou plus",
+      date_souhaitee: null,
+      message: "A trouvé ailleurs.",
+      statut: "refusee",
+      origine: "formulaire",
+      created_at: jour(60),
+    },
   ];
 }
 

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Inbox, Pencil, Ruler, UserPlus } from "lucide-react";
+import { CalendarDays, Inbox, Pencil, Ruler, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { BlocContact } from "@/components/suivi/bloc-contact";
@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import {
   ajouteEnListeAttente,
   modifieDemande,
+  purgeDemandesTraitees,
+  supprimeDemande,
   type SaisieAttente,
 } from "@/lib/actions/suivi-demandes";
 import { updateReservationStatus } from "@/lib/actions/reservations";
@@ -65,8 +67,16 @@ export function ListeDemandes({ demandes }: { demandes: DemandeReservation[] }) 
   // `null` = feuille fermée ; `{ id: null }` = ajout ; `{ id }` = correction.
   const [saisie, setSaisie] = useState<{ id: string | null; valeurs: SaisieAttente } | null>(null);
 
+  // Les deux suppressions demandent confirmation sur place : une feuille de
+  // dialogue par-dessus une feuille de dialogue serait pire que le risque.
+  const [confirmeSuppression, setConfirmeSuppression] = useState(false);
+  const [confirmePurge, setConfirmePurge] = useState(false);
+
   const nouvelles = demandes.filter((d) => d.statut === "nouvelle").length;
   const enAttente = nombreEnAttente(demandes);
+  const closes = demandes.filter(
+    (d) => d.statut === "convertie" || d.statut === "refusee"
+  ).length;
 
   const visibles = useMemo(() => {
     if (filtre === "attente") return demandes.filter((d) => d.statut === "nouvelle");
@@ -86,6 +96,43 @@ export function ListeDemandes({ demandes }: { demandes: DemandeReservation[] }) 
       }
       vibre();
       toast.success(`Demande ${STATUT_DEMANDE_LABELS[statut].toLocaleLowerCase("fr")}.`);
+      router.refresh();
+    });
+  };
+
+  const supprime = (id: string) => {
+    demarreTransition(async () => {
+      const resultat = await supprimeDemande(id);
+      if (!resultat.success) {
+        vibre(60);
+        toast.error(resultat.error ?? "Suppression impossible.");
+        return;
+      }
+      vibre();
+      toast.success("Demande supprimée.");
+      setConfirmeSuppression(false);
+      setOuverte(null);
+      router.refresh();
+    });
+  };
+
+  const purge = () => {
+    demarreTransition(async () => {
+      const resultat = await purgeDemandesTraitees();
+      if (!resultat.success) {
+        vibre(60);
+        toast.error(resultat.error);
+        return;
+      }
+      vibre();
+      toast.success(
+        resultat.supprimees === 0
+          ? "Rien à supprimer."
+          : `${resultat.supprimees} demande${resultat.supprimees > 1 ? "s" : ""} supprimée${
+              resultat.supprimees > 1 ? "s" : ""
+            }.`
+      );
+      setConfirmePurge(false);
       router.refresh();
     });
   };
@@ -137,7 +184,10 @@ export function ListeDemandes({ demandes }: { demandes: DemandeReservation[] }) 
               key={valeur}
               type="button"
               aria-pressed={filtre === valeur}
-              onClick={() => setFiltre(valeur)}
+              onClick={() => {
+                setFiltre(valeur);
+                setConfirmePurge(false);
+              }}
               className={cn(
                 "suivi-tap min-h-10 flex-1 rounded-full border px-1 text-xs font-semibold",
                 filtre === valeur
@@ -230,12 +280,63 @@ export function ListeDemandes({ demandes }: { demandes: DemandeReservation[] }) 
           <UserPlus className="size-5" aria-hidden />
           <span className="t-corps font-medium">Ajouter à la liste d&apos;attente</span>
         </button>
+
+        {/* Le ménage. Ne s'affiche que sur « Toutes », le seul filtre où l'on
+            voit ce qu'on s'apprête à supprimer — proposer un balayage de
+            lignes invisibles serait demander une confiance qu'on n'a pas à
+            demander. */}
+        {filtre === "toutes" &&
+          closes > 0 &&
+          (confirmePurge ? (
+            <div className="suivi-carte mt-2 p-4">
+              <p className="t-corps">
+                Supprimer définitivement {closes} demande{closes > 1 ? "s" : ""} convertie
+                {closes > 1 ? "s" : ""} ou refusée{closes > 1 ? "s" : ""} ?
+              </p>
+              <p className="t-meta mt-1">
+                Les nouvelles et la liste d&apos;attente ne sont pas touchées.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-12 flex-1"
+                  onClick={() => setConfirmePurge(false)}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="h-12 flex-1"
+                  disabled={enCours}
+                  onClick={purge}
+                >
+                  Supprimer
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmePurge(true)}
+              className="suivi-tap mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-medium text-[var(--suivi-gris)] active:bg-secondary"
+            >
+              <Trash2 className="size-4" aria-hidden />
+              {closes > 1
+                ? `Supprimer les ${closes} demandes traitées`
+                : "Supprimer la demande traitée"}
+            </button>
+          ))}
       </div>
 
       <FeuilleModale
         ouverte={demande !== null}
         titre={demande?.nom ?? ""}
-        onFermer={() => setOuverte(null)}
+        onFermer={() => {
+          setOuverte(null);
+          setConfirmeSuppression(false);
+        }}
       >
         {demande && (
           <>
@@ -307,6 +408,40 @@ export function ListeDemandes({ demandes }: { demandes: DemandeReservation[] }) 
                 </button>
               ))}
             </div>
+
+            {/* Une demande traitée ou devenue sans objet n'a pas à encombrer la
+                liste. La suppression est définitive, d'où la confirmation en
+                deux temps, comme pour une charge. */}
+            {confirmeSuppression ? (
+              <div className="mt-3 flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-12 flex-1"
+                  onClick={() => setConfirmeSuppression(false)}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="h-12 flex-1"
+                  disabled={enCours}
+                  onClick={() => supprime(demande.id)}
+                >
+                  Supprimer définitivement
+                </Button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmeSuppression(true)}
+                className="suivi-tap mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-medium text-[var(--destructive)] active:bg-secondary"
+              >
+                <Trash2 className="size-4" aria-hidden />
+                Supprimer cette demande
+              </button>
+            )}
           </>
         )}
       </FeuilleModale>

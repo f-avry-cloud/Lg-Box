@@ -495,6 +495,29 @@ ouverte sans condition : n'importe qui pouvait poster une demande déjà
 autorise le personnel à inscrire en liste d'attente. Vérifié en base sous
 `role anon`, dans une transaction annulée.
 
+### Supprimer une demande
+
+Une demande traitée ou devenue sans objet n'a pas à encombrer la liste. Deux
+chemins :
+
+- **une par une**, depuis sa fiche, en deux temps — la suppression est
+  définitive ;
+- **d'un coup**, sur le filtre « Toutes » : « Supprimer les N demandes
+  traitées » retire les converties et les refusées. Ni les nouvelles ni la
+  liste d'attente ne sont touchées, et le filtre est posé côté serveur, pas sur
+  une liste d'identifiants venue du téléphone qui pourrait être périmée d'un
+  rafraîchissement. Le bouton n'apparaît que sur « Toutes », le seul filtre où
+  l'on voit ce qu'on s'apprête à supprimer.
+
+**Le piège, qui valait qu'on s'y arrête** : la policy de suppression est
+réservée aux administrateurs (`is_admin()`), et un `delete` refusé par RLS ne
+remonte **aucune erreur** — la requête réussit, elle ne touche simplement
+aucune ligne. L'écran aurait annoncé « supprimée » sur une demande toujours
+là. D'où le `.select("id")` sur les deux actions : c'est le nombre de lignes
+rendues qui fait foi. La purge compte d'abord les lignes concernées, ce qui
+permet de distinguer deux zéros qui se ressemblent — rien à supprimer, et
+suppression refusée.
+
 ## La fiche d'un box
 
 Le parcours visé est court : **j'ouvre un box, je vois son statut, j'appelle le

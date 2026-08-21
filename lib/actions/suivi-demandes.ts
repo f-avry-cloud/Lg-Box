@@ -97,3 +97,86 @@ export async function modifieDemande(
   revalidatePath("/admin/reservations");
   return ok;
 }
+
+/**
+ * Supprime une demande.
+ *
+ * `.select("id")` n'est pas décoratif : la policy de suppression est réservée
+ * aux administrateurs, et une suppression refusée par RLS ne remonte **aucune
+ * erreur** — la requête réussit, elle ne touche simplement aucune ligne. Sans
+ * ce retour, l'écran annoncerait « supprimée » sur une demande toujours là.
+ */
+export async function supprimeDemande(demandeId: string): Promise<ActionResult> {
+  if (estModeDemo()) return fail("Suppression indisponible en mode démo.");
+  await requireStaff();
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("reservation_requests")
+    .delete()
+    .eq("id", demandeId)
+    .select("id");
+
+  if (error) return fail(error.message);
+  if (!data || data.length === 0) {
+    return fail("Suppression refusée — elle est réservée à l'administrateur.");
+  }
+
+  revalidatePath("/suivi/demandes");
+  revalidatePath("/suivi/tableau-de-bord");
+  revalidatePath("/admin/reservations");
+  return ok;
+}
+
+/** Ce que la purge a fait, pour que l'écran puisse le dire exactement. */
+export type ResultatPurge =
+  | { success: true; supprimees: number }
+  | { success: false; error: string };
+
+/**
+ * Supprime d'un coup les demandes closes — converties et refusées.
+ *
+ * Ni les nouvelles ni la liste d'attente ne sont touchées : ce sont
+ * précisément celles qu'on ne veut pas perdre par mégarde. Le filtre est posé
+ * côté serveur plutôt que sur une liste d'identifiants venue du téléphone, qui
+ * pourrait être périmée d'un rafraîchissement.
+ *
+ * Le décompte préalable sert à distinguer deux zéros qui se ressemblent : rien
+ * à supprimer, et suppression refusée par RLS — cette dernière ne remontant
+ * aucune erreur.
+ */
+export async function purgeDemandesTraitees(): Promise<ResultatPurge> {
+  if (estModeDemo()) return { success: false, error: "Suppression indisponible en mode démo." };
+  await requireStaff();
+
+  const supabase = await createClient();
+
+  const { count, error: erreurCompte } = await supabase
+    .from("reservation_requests")
+    .select("id", { count: "exact", head: true })
+    .in("statut", ["convertie", "refusee"]);
+
+  if (erreurCompte) return { success: false, error: erreurCompte.message };
+  if ((count ?? 0) === 0) return { success: true, supprimees: 0 };
+
+  const { data, error } = await supabase
+    .from("reservation_requests")
+    .delete()
+    .in("statut", ["convertie", "refusee"])
+    .select("id");
+
+  if (error) return { success: false, error: error.message };
+
+  const supprimees = data?.length ?? 0;
+  if (supprimees === 0) {
+    return {
+      success: false,
+      error: "Suppression refusée — elle est réservée à l'administrateur.",
+    };
+  }
+
+  revalidatePath("/suivi/demandes");
+  revalidatePath("/suivi/tableau-de-bord");
+  revalidatePath("/admin/reservations");
+  return { success: true, supprimees };
+}
