@@ -10,12 +10,14 @@ import { vibre } from "@/components/suivi/bouton-encaissement";
 import { FeuilleModale } from "@/components/suivi/feuille-modale";
 import { Button } from "@/components/ui/button";
 import {
-  creeLocataireSansContrat,
+  creeLocataire,
+  modifieLocataire,
+  type SaisieLocataire,
+} from "@/lib/actions/suivi-locataires";
+import {
   enregistreNoteReprise,
   marqueContacte,
   marqueMessageLaisse,
-  modifieLocataire,
-  type SaisieLocataire,
 } from "@/lib/actions/suivi-reprise";
 import {
   LIBELLE_REPRISE,
@@ -251,7 +253,7 @@ export function ListeReprise({ lignes }: { lignes: LocataireReprise[] }) {
           onValider={(saisie) =>
             demarreTransition(async () => {
               const fait = await agit(
-                creeLocataireSansContrat(saisie),
+                creeLocataire(saisie),
                 `${saisie.nom.trim()} ajouté à la liste.`
               );
               if (fait) setCreation(false);

@@ -4,10 +4,9 @@
 //
 // Tout ce fichier disparaîtra avec l'onglet /suivi/reprise et la table
 // `sr_reprise_contacts` une fois les locataires prévenus du changement de
-// propriétaire. Seule exception : `modifieLocataire`, qui touche aux vraies
-// coordonnées et mérite de survivre à la campagne — c'est pendant les appels
-// qu'on découvre les numéros faux, et il serait absurde de les corriger dans
-// un écran qu'on s'apprête à supprimer.
+// propriétaire. La correction des coordonnées et la création d'un locataire
+// n'ont, elles, rien de temporaire : elles vivent désormais dans
+// `suivi-locataires.ts`, et l'écran Reprise les emprunte le temps qu'il dure.
 
 import { revalidatePath } from "next/cache";
 
@@ -93,92 +92,4 @@ export async function enregistreNoteReprise(
   if (refus) return refus;
 
   return poseEtat(locataireId, { note: note.trim() || null });
-}
-
-export type SaisieLocataire = {
-  nom: string;
-  societe: string | null;
-  telephone: string | null;
-  email: string | null;
-};
-
-function verifieSaisie(saisie: SaisieLocataire): string | null {
-  if (!saisie.nom.trim()) return "Le nom est obligatoire.";
-  const email = saisie.email?.trim();
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return "L'adresse e-mail n'est pas valide.";
-  }
-  return null;
-}
-
-/**
- * Corrige les coordonnées d'un locataire.
- *
- * C'est en appelant qu'on découvre les numéros faux et les adresses périmées :
- * la correction doit se faire là, sans quitter l'écran ni attendre le
- * back-office. Touche `sr_locataires`, donc le carnet tout entier — c'est
- * voulu, ces coordonnées sont les mêmes partout.
- */
-export async function modifieLocataire(
-  locataireId: string,
-  saisie: SaisieLocataire
-): Promise<ActionResult> {
-  const erreur = verifieSaisie(saisie);
-  if (erreur) return fail(erreur);
-
-  const refus = await autorise();
-  if (refus) return refus;
-
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("sr_locataires")
-    .update({
-      nom: saisie.nom.trim(),
-      societe: saisie.societe?.trim() || null,
-      telephone: saisie.telephone?.trim() || null,
-      email: saisie.email?.trim() || null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", locataireId);
-
-  if (error) return fail(error.message);
-
-  rafraichit();
-  revalidatePath("/suivi");
-  revalidatePath("/suivi/box");
-  revalidatePath(`/suivi/locataire/${locataireId}`);
-  return ok;
-}
-
-/**
- * Ajoute un locataire absent du carnet, sans contrat ni box.
- *
- * Le cas est réel et fréquent en reprise : quelqu'un occupe un box sans
- * figurer dans le fichier repris. Il faut pouvoir le noter tout de suite,
- * quitte à lui rattacher son box et son loyer plus tard depuis l'écran Box —
- * exiger le contrat à cet instant ferait perdre l'information.
- */
-export async function creeLocataireSansContrat(
-  saisie: SaisieLocataire
-): Promise<ActionResult> {
-  const erreur = verifieSaisie(saisie);
-  if (erreur) return fail(erreur);
-
-  const refus = await autorise();
-  if (refus) return refus;
-
-  const supabase = await createClient();
-  const { error } = await supabase.from("sr_locataires").insert({
-    nom: saisie.nom.trim(),
-    societe: saisie.societe?.trim() || null,
-    telephone: saisie.telephone?.trim() || null,
-    email: saisie.email?.trim() || null,
-    actif: true,
-  });
-
-  if (error) return fail(error.message);
-
-  rafraichit();
-  revalidatePath("/suivi/box");
-  return ok;
 }

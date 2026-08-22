@@ -304,6 +304,65 @@ justification. Aucun tarif n'a été rempli d'office — 26 des 67 box n'ont pas
 même de surface connue, et un montant deviné qui s'installe dans les comptes
 est pire qu'une case vide.
 
+## L'annuaire des locataires
+
+Onglet **Locataires**. Il n'apporte aucune donnée nouvelle — le nom, le box et
+le loyer se lisaient déjà depuis la liste du mois, la fiche d'un box ou le
+plan. Ce qui manquait, c'était le chemin : partir d'un **nom** quand c'est tout
+ce qu'on a en tête, plutôt que de se rappeler dans quel box la personne se
+trouve.
+
+L'écran ne redouble donc pas la fiche existante : chaque ligne y mène. Il ne
+garde en propre que ce qui doit se faire sans naviguer — chercher, appeler,
+corriger un numéro, ajouter quelqu'un.
+
+### L'état se lit sur les contrats, jamais sur les box
+
+C'est le piège de cet écran, et il a bien failli passer. Un contrat peut courir
+sans que son box soit rattaché : **21 des 62 locataires** du carnet sont dans
+ce cas, hérités d'un import incomplet. Une première version jugeait l'état sur
+la présence d'un numéro de box — elle envoyait ces 21 personnes aux archives
+alors qu'elles paient tous les mois. `etatLocataire` compte donc les contrats
+en cours (`lib/suivi/locataires.ts`).
+
+Trois états pour deux onglets :
+
+| État | Ce que c'est | Où il apparaît |
+|---|---|---|
+| `actif` | au moins un contrat en cours | Actifs |
+| `sans_contrat` | noté à la volée, pas encore de contrat | Actifs, avec une pastille |
+| `archive` | tous les contrats terminés | Archivés |
+
+`sans_contrat` mérite d'exister à part : quelqu'un noté en attendant de lui
+établir son contrat n'est pas un ancien locataire, et l'archiver le ferait
+disparaître au moment précis où il faut penser à lui. Un contrat en cours sans
+box affiche « Box à identifier » dans son sous-titre, mais **pas** de pastille
+d'alerte — une alerte qui touche un tiers de la liste n'alerte plus personne.
+
+### La recherche
+
+Insensible aux accents et à la casse — on tape « eric » depuis un clavier de
+téléphone, pas « ÉRIC » — et elle porte sur le nom, la société, le téléphone,
+l'adresse **et le numéro de box**, qui est parfois tout ce dont on se souvient.
+Quand elle ne trouve rien, le bouton de création reprend le terme tapé
+(« Créer « ZORGLUB » ») : c'est exactement à ce moment-là qu'on s'aperçoit
+qu'il manque.
+
+### Deux actions déménagées
+
+`modifieLocataire` et `creeLocataire` vivaient dans `suivi-reprise.ts`, fichier
+destiné à disparaître avec la campagne de reprise. Elles n'ont rien de
+temporaire : corriger un numéro faux et noter un arrivant sont des gestes du
+quotidien. Elles sont désormais dans `lib/actions/suivi-locataires.ts`, et
+l'écran Reprise les emprunte le temps qu'il dure.
+
+### Un piège de barre d'onglets
+
+`/suivi/locataires` (l'annuaire) commence par `/suivi/locataire` (la fiche).
+L'onglet Règlements, qui s'allume sur la fiche, s'allumait donc aussi sur
+l'annuaire — deux onglets éclairés en même temps. La barre oblique finale de
+`/suivi/locataire/` n'est pas décorative.
+
 ## Le cycle du mois : réclamer, envoyer, encaisser
 
 Trois gestes, dans cet ordre, tous depuis le tableau de bord.

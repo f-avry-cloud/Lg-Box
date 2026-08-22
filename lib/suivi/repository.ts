@@ -24,6 +24,11 @@ import {
 import { calculeTotaux, cumuleEncaisse, resumeFacturation } from "@/lib/suivi/totals";
 import { chargesCumulees, chargesDuMois, totalCharges } from "@/lib/suivi/charges";
 import { trieDemandes } from "@/lib/suivi/demandes";
+import {
+  contratsEnCours,
+  trieLocataires,
+  type LocataireAnnuaire,
+} from "@/lib/suivi/locataires";
 import { groupeParBatiment, parseBoxReferenceCsv } from "@/lib/suivi/box";
 import { estPlace, type BoxPlan } from "@/lib/suivi/plan";
 import { BOX_REFERENCE_CSV } from "@/lib/suivi/box-reference";
@@ -760,6 +765,117 @@ export async function demandesReservation(): Promise<DemandeReservation[]> {
   if (error) throw new Error(error.message);
 
   return trieDemandes((data ?? []) as DemandeReservation[]);
+}
+
+
+// ---------------------------------------------------------------------------
+// Annuaire des locataires
+// ---------------------------------------------------------------------------
+
+/**
+ * Tous les locataires du carnet, avec leurs box en cours et leur loyer.
+ *
+ * L'écran n'apporte aucune donnée nouvelle — tout est déjà atteignable par la
+ * liste du mois, la fiche d'un box ou le plan. Il apporte un chemin : partir
+ * d'un nom. Deux requêtes suffisent, et le rapprochement se fait en mémoire :
+ * 62 locataires et autant de contrats, c'est moins coûteux qu'un aller-retour
+ * par locataire.
+ */
+export async function listeLocataires(): Promise<LocataireAnnuaire[]> {
+  const periode = periodeCourante();
+
+  if (estModeDemo()) {
+    const parNom = new Map<string, LocataireAnnuaire>();
+    for (const ligne of demoLignesMois(periode)) {
+      const deja = parNom.get(ligne.locataire_id);
+      if (deja) {
+        if (ligne.box_numero) deja.box.push(ligne.box_numero);
+        deja.loyer += ligne.loyer_mensuel_eur;
+        deja.enCours += 1;
+        deja.contrats += 1;
+        continue;
+      }
+      parNom.set(ligne.locataire_id, {
+        id: ligne.locataire_id,
+        nom: ligne.nom,
+        societe: ligne.societe,
+        telephone: null,
+        email: null,
+        box: ligne.box_numero ? [ligne.box_numero] : [],
+        enCours: 1,
+        loyer: ligne.loyer_mensuel_eur,
+        depuis: null,
+        partiLe: null,
+        contrats: 1,
+      });
+    }
+    return trieLocataires([...parNom.values()]);
+  }
+
+  const supabase = await createClient();
+
+  const [locatairesRes, contratsRes] = await Promise.all([
+    supabase
+      .from("sr_locataires")
+      .select("id, nom, societe, telephone, email, date_entree"),
+    supabase
+      .from("sr_contrats")
+      .select("locataire_id, box_id, loyer_mensuel_eur, date_debut, date_fin, sr_box (numero)"),
+  ]);
+
+  if (locatairesRes.error) throw new Error(locatairesRes.error.message);
+  if (contratsRes.error) throw new Error(contratsRes.error.message);
+
+  type ContratAnnuaire = {
+    locataire_id: string;
+    box_id: string | null;
+    loyer_mensuel_eur: number;
+    date_debut: string | null;
+    date_fin: string | null;
+    sr_box: { numero: string } | null;
+  };
+
+  const contratsParLocataire = new Map<string, ContratAnnuaire[]>();
+  for (const c of (contratsRes.data ?? []) as unknown as ContratAnnuaire[]) {
+    const liste = contratsParLocataire.get(c.locataire_id);
+    if (liste) liste.push(c);
+    else contratsParLocataire.set(c.locataire_id, [c]);
+  }
+
+  const annuaire = (locatairesRes.data ?? []).map((l) => {
+    const contrats = contratsParLocataire.get(l.id) ?? [];
+    const enCours = contratsEnCours(contrats, periode);
+
+    // La date de départ n'a de sens qu'une fois tout terminé : tant qu'un
+    // contrat court, afficher la fin du précédent laisserait croire à un
+    // départ qui n'a pas eu lieu.
+    const fins = contrats.map((c) => c.date_fin).filter((d): d is string => d !== null);
+    const partiLe =
+      enCours.length === 0 && fins.length === contrats.length && fins.length > 0
+        ? fins.sort().at(-1)!
+        : null;
+
+    const debuts = contrats.map((c) => c.date_debut).filter((d): d is string => d !== null);
+
+    return {
+      id: l.id,
+      nom: l.nom,
+      societe: l.societe,
+      telephone: l.telephone,
+      email: l.email,
+      box: enCours
+        .map((c) => c.sr_box?.numero)
+        .filter((n): n is string => Boolean(n))
+        .sort((a, b) => a.localeCompare(b, "fr", { numeric: true })),
+      enCours: enCours.length,
+      loyer: enCours.reduce((somme, c) => somme + c.loyer_mensuel_eur, 0),
+      depuis: debuts.length > 0 ? debuts.sort()[0] : l.date_entree,
+      partiLe,
+      contrats: contrats.length,
+    } satisfies LocataireAnnuaire;
+  });
+
+  return trieLocataires(annuaire);
 }
 
 

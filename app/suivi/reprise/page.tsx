@@ -10,7 +10,9 @@ export const dynamic = "force-dynamic";
  * écran, son onglet, `components/suivi/liste-reprise.tsx`,
  * `lib/suivi/reprise.ts`, `lib/actions/suivi-reprise.ts` et la table
  * `sr_reprise_contacts` se retirent d'un bloc, sans rien laisser derrière.
- * Seule `modifieLocataire` mérite d'être conservée ailleurs.
+ * La correction des coordonnées et la création d'un locataire ont déjà été
+ * sorties de là : elles vivent dans `lib/actions/suivi-locataires.ts`, que
+ * l'onglet Locataires utilise aussi.
  */
 export default async function ReprisePage() {
   const lignes = await listeReprise();

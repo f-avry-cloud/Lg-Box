@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CheckCircle2, Inbox, LayoutDashboard, PhoneCall, Warehouse } from "lucide-react";
+import { CheckCircle2, Inbox, LayoutDashboard, PhoneCall, Users, Warehouse } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,7 @@ const ONGLETS = [
   { href: "/suivi/tableau-de-bord", libelle: "Tableau", icone: LayoutDashboard },
   { href: "/suivi/box", libelle: "Box", icone: Warehouse },
   { href: "/suivi", libelle: "Règlements", icone: CheckCircle2, exact: true },
+  { href: "/suivi/locataires", libelle: "Locataires", icone: Users },
   { href: "/suivi/demandes", libelle: "Demandes", icone: Inbox },
   // TEMPORAIRE — campagne de reprise du centre. Se retire avec l'écran
   // /suivi/reprise une fois tous les locataires prévenus.
@@ -31,10 +32,13 @@ export function BarreOnglets() {
     >
       <div className="mx-auto flex max-w-2xl">
         {ONGLETS.map(({ href, libelle, icone: Icone, exact }) => {
-          // La fiche locataire vit sous /suivi/locataire : elle appartient à
-          // l'onglet Règlements, qui doit rester allumé pendant la consultation.
+          // La fiche locataire vit sous /suivi/locataire/<id> : elle appartient
+          // à l'onglet Règlements, qui doit rester allumé pendant la
+          // consultation. La barre oblique finale n'est pas décorative — sans
+          // elle, /suivi/locataires (l'annuaire) allumerait Règlements aussi,
+          // et deux onglets s'éclaireraient en même temps.
           const actif = exact
-            ? pathname === href || pathname.startsWith("/suivi/locataire")
+            ? pathname === href || pathname.startsWith("/suivi/locataire/")
             : pathname.startsWith(href);
 
           return (
