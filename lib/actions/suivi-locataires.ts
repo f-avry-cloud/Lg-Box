@@ -12,6 +12,7 @@ import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth";
 import { fail, ok, type ActionResult } from "@/lib/actions/result";
 import { createClient } from "@/lib/supabase/server";
+import { isPeriode, premierJour } from "@/lib/suivi/period";
 import { estModeDemo } from "@/lib/suivi/repository";
 
 export type SaisieLocataire = {
@@ -114,5 +115,49 @@ export async function creeLocataire(saisie: SaisieLocataire): Promise<ActionResu
   if (error) return fail(error.message);
 
   rafraichit();
+  return ok;
+}
+
+/**
+ * Donne un contrat à un locataire qui n'en a pas, sans exiger de box.
+ *
+ * Le carnet savait créer un contrat depuis un box libre, jamais depuis le
+ * locataire. Or les deux gestes ne surviennent pas au même moment : on note
+ * quelqu'un et son loyer bien avant de savoir quel box lui revient — c'est
+ * l'état de 21 contrats du carnet, et de tous ceux nés d'une reprise.
+ *
+ * Le rattachement du box se fait ensuite depuis l'écran Box, qui sait vérifier
+ * qu'il n'est pas déjà pris. Ici il n'y a rien à vérifier : un contrat sans box
+ * n'entre en conflit avec personne.
+ */
+export async function creeContratSansBox(saisie: {
+  locataireId: string;
+  loyer: number;
+  /** Mois d'effet, « AAAA-MM ». Le contrat court du premier jour de ce mois. */
+  periodeEffet: string;
+}): Promise<ActionResult> {
+  const loyer = Math.round(Number(saisie.loyer));
+  if (!Number.isFinite(loyer) || loyer <= 0) {
+    return fail("Le loyer doit être un nombre positif.");
+  }
+  if (!isPeriode(saisie.periodeEffet)) return fail("Le mois d'effet est invalide.");
+
+  if (estModeDemo()) return fail("Création indisponible en mode démo.");
+  await requireStaff();
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("sr_contrats").insert({
+    locataire_id: saisie.locataireId,
+    box_id: null,
+    loyer_mensuel_eur: loyer,
+    date_debut: premierJour(saisie.periodeEffet),
+    date_fin: null,
+    remarque: "Box à identifier",
+  });
+
+  if (error) return fail(error.message);
+
+  rafraichit(saisie.locataireId);
+  revalidatePath("/suivi/tableau-de-bord");
   return ok;
 }

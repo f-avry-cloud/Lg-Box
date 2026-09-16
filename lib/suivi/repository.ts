@@ -809,6 +809,23 @@ export async function listeLocataires(): Promise<LocataireAnnuaire[]> {
         contrats: 1,
       });
     }
+    // Un locataire sans contrat : l'état existe en vrai — quelqu'un noté à la
+    // volée en attendant de lui établir son bail — et c'est le seul que
+    // l'écran invite à corriger. La démo doit donc le montrer.
+    parNom.set("demo-sans-contrat", {
+      id: "demo-sans-contrat",
+      nom: "RENOUF Sylvain",
+      societe: null,
+      telephone: "+33639980877",
+      email: null,
+      box: [],
+      enCours: 0,
+      loyer: 0,
+      depuis: null,
+      partiLe: null,
+      contrats: 0,
+    });
+
     return trieLocataires([...parNom.values()]);
   }
 

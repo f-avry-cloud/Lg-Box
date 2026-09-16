@@ -339,6 +339,26 @@ disparaître au moment précis où il faut penser à lui. Un contrat en cours sa
 box affiche « Box à identifier » dans son sous-titre, mais **pas** de pastille
 d'alerte — une alerte qui touche un tiers de la liste n'alerte plus personne.
 
+### Créer un contrat, avec ou sans box
+
+Le carnet savait créer un contrat depuis un **box libre**, jamais depuis le
+locataire. Or les deux gestes ne surviennent pas au même moment : on note
+quelqu'un et son loyer bien avant de savoir quel box lui revient. C'était
+l'état de 21 contrats hérités de l'import, et de tous ceux nés d'une reprise.
+
+Deux chemins désormais, tous deux dans l'annuaire :
+
+- **à la création d'un locataire**, un loyer et un premier mois dû,
+  *facultatifs* — on note souvent quelqu'un avant de connaître son loyer, et
+  l'exiger ferait perdre la fiche. Sans loyer, le locataire est créé seul et
+  l'écran le dit ;
+- **après coup**, sur un locataire sans contrat : « Créer un contrat ».
+
+Le contrat naît sans box, avec la remarque « Box à identifier ». Le
+rattachement se fait depuis l'écran Box, qui sait vérifier que le box n'est pas
+déjà pris — vérification inutile ici, un contrat sans box n'entrant en conflit
+avec personne.
+
 ### La recherche
 
 Insensible aux accents et à la casse — on tape « eric » depuis un clavier de

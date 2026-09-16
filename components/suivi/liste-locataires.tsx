@@ -11,11 +11,14 @@ import { vibre } from "@/components/suivi/bouton-encaissement";
 import { FeuilleModale } from "@/components/suivi/feuille-modale";
 import { Button } from "@/components/ui/button";
 import {
+  creeContratSansBox,
   creeLocataire,
   modifieLocataire,
   type SaisieLocataire,
 } from "@/lib/actions/suivi-locataires";
+import { creeLocataireAvecContrat } from "@/lib/actions/suivi";
 import { formatDate } from "@/lib/format";
+import { labelPeriode, periodeCourante, shiftPeriode } from "@/lib/suivi/period";
 import {
   chercheLocataires,
   etatLocataire,
@@ -67,6 +70,14 @@ export function ListeLocataires({
     null
   );
 
+  // Contrat saisi en même temps que le locataire. Facultatif : on note souvent
+  // quelqu'un avant de connaître son loyer, et l'exiger ferait perdre la fiche.
+  const [loyer, setLoyer] = useState("");
+  const [periodeEffet, setPeriodeEffet] = useState(periodeCourante());
+
+  // Contrat donné après coup à un locataire qui n'en a pas.
+  const [contratPour, setContratPour] = useState<LocataireAnnuaire | null>(null);
+
   const archives = useMemo(
     () => filtreParEtat(locataires, "archives").length,
     [locataires]
@@ -79,12 +90,26 @@ export function ListeLocataires({
 
   const locataire = locataires.find((l) => l.id === ouvert) ?? null;
 
+  const champsContrat = { loyer, setLoyer, periodeEffet, setPeriodeEffet };
+
+  const montant = Number(loyer);
+  const loyerValide = loyer.trim() !== "" && Number.isFinite(montant) && montant > 0;
+
   const enregistre = () => {
     if (!saisie) return;
     demarreTransition(async () => {
+      // Trois chemins, et c'est le loyer qui décide : corriger une fiche,
+      // créer un locataire seul, ou le créer avec son contrat d'emblée.
       const resultat = saisie.id
         ? await modifieLocataire(saisie.id, saisie.valeurs)
-        : await creeLocataire(saisie.valeurs);
+        : loyerValide
+          ? await creeLocataireAvecContrat({
+              ...saisie.valeurs,
+              loyer: montant,
+              periodeEffet,
+              boxId: null,
+            })
+          : await creeLocataire(saisie.valeurs);
 
       if (!resultat.success) {
         vibre(60);
@@ -92,9 +117,43 @@ export function ListeLocataires({
         return;
       }
       vibre();
-      toast.success(saisie.id ? "Coordonnées mises à jour." : "Locataire ajouté.");
-      setSaisie(null);
-      setOuvert(null);
+      toast.success(
+        saisie.id
+          ? "Coordonnées mises à jour."
+          : loyerValide
+            ? "Locataire et contrat créés."
+            : "Locataire ajouté, sans contrat."
+      );
+      ferme();
+      router.refresh();
+    });
+  };
+
+  const ferme = () => {
+    setSaisie(null);
+    setOuvert(null);
+    setContratPour(null);
+    setLoyer("");
+    setPeriodeEffet(periodeCourante());
+  };
+
+  const ajouteContrat = () => {
+    if (!contratPour || !loyerValide) return;
+    demarreTransition(async () => {
+      const resultat = await creeContratSansBox({
+        locataireId: contratPour.id,
+        loyer: montant,
+        periodeEffet,
+      });
+
+      if (!resultat.success) {
+        vibre(60);
+        toast.error(resultat.error ?? "Création impossible.");
+        return;
+      }
+      vibre();
+      toast.success("Contrat créé. Le box se rattache depuis l'écran Box.");
+      ferme();
       router.refresh();
     });
   };
@@ -292,6 +351,23 @@ export function ListeLocataires({
               </Button>
             )}
 
+            {/* Un locataire sans contrat ne rapporte rien et n'apparaît dans
+                aucun mois : c'est le seul manque qui appelle un geste depuis
+                cet écran. */}
+            {modifiable && locataire.contrats === 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                className="mb-2 h-12 w-full"
+                onClick={() => {
+                  setContratPour(locataire);
+                  setOuvert(null);
+                }}
+              >
+                Créer un contrat
+              </Button>
+            )}
+
             {/* Le reste vit dans la fiche — règlements, contrats, sortie. La
                 dupliquer ici en ferait deux à tenir à jour. */}
             <Link
@@ -343,12 +419,17 @@ export function ListeLocataires({
               onChange={(email) => setSaisie({ ...saisie, valeurs: { ...saisie.valeurs, email } })}
             />
 
+            {/* Le contrat se saisit ici, sans box : le rattachement viendra
+                plus tard. Facultatif, parce qu'on note souvent quelqu'un avant
+                de connaître son loyer — l'exiger ferait perdre la fiche. */}
+            {!saisie.id && <BlocContrat {...champsContrat} />}
+
             <div className="flex gap-2">
               <Button
                 type="button"
                 variant="outline"
                 className="h-12 flex-1"
-                onClick={() => setSaisie(null)}
+                onClick={ferme}
               >
                 Annuler
               </Button>
@@ -362,15 +443,107 @@ export function ListeLocataires({
               </Button>
             </div>
 
-            {!saisie.id && (
+            {!saisie.id && !loyerValide && (
               <p className="t-meta mt-3">
-                Le locataire est créé sans box ni loyer. Le rattachement se fait depuis l&apos;écran
-                Box, qui porte aussi la date d&apos;effet et le montant.
+                Sans loyer, le locataire est créé seul : il faudra lui donner un contrat plus tard
+                pour qu&apos;il apparaisse dans les mois.
               </p>
             )}
           </>
         )}
       </FeuilleModale>
+
+      <FeuilleModale
+        ouverte={contratPour !== null}
+        titre={contratPour ? `Contrat de ${contratPour.nom}` : ""}
+        onFermer={ferme}
+      >
+        {contratPour && (
+          <>
+            <BlocContrat {...champsContrat} obligatoire />
+
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" className="h-12 flex-1" onClick={ferme}>
+                Annuler
+              </Button>
+              <Button
+                type="button"
+                className="h-12 flex-1"
+                disabled={enCours || !loyerValide}
+                onClick={ajouteContrat}
+              >
+                Créer le contrat
+              </Button>
+            </div>
+
+            <p className="t-meta mt-3">
+              Le contrat naît sans box. Le rattachement se fait depuis l&apos;écran Box, qui sait
+              vérifier qu&apos;il n&apos;est pas déjà pris.
+            </p>
+          </>
+        )}
+      </FeuilleModale>
+    </>
+  );
+}
+
+/**
+ * Loyer et mois d'effet — les deux seules choses qu'un contrat exige quand on
+ * ne lui donne pas de box.
+ */
+function BlocContrat({
+  loyer,
+  setLoyer,
+  periodeEffet,
+  setPeriodeEffet,
+  obligatoire,
+}: {
+  loyer: string;
+  setLoyer: (v: string) => void;
+  periodeEffet: string;
+  setPeriodeEffet: (v: string) => void;
+  obligatoire?: boolean;
+}) {
+  return (
+    <>
+      <label className="mb-3 block">
+        <span className="t-etiquette mb-1 block">
+          {obligatoire ? "Loyer mensuel (€)" : "Loyer mensuel (€) — facultatif"}
+        </span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          step="10"
+          value={loyer}
+          onChange={(e) => setLoyer(e.target.value)}
+          placeholder="140"
+          className="t-corps h-12 w-full rounded-xl border border-input bg-background px-3 tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+      </label>
+
+      <span className="t-etiquette mb-1 block">Premier mois dû</span>
+      <div className="mb-3 grid grid-cols-3 gap-2">
+        {[-1, 0, 1].map((decalage) => {
+          const cible = shiftPeriode(periodeCourante(), decalage);
+          return (
+            <button
+              key={cible}
+              type="button"
+              aria-pressed={periodeEffet === cible}
+              onClick={() => setPeriodeEffet(cible)}
+              className={cn(
+                "suivi-tap min-h-11 rounded-xl border text-xs font-medium",
+                periodeEffet === cible
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-[var(--suivi-trait)] bg-background active:bg-secondary"
+              )}
+            >
+              {labelPeriode(cible)}
+            </button>
+          );
+        })}
+      </div>
     </>
   );
 }

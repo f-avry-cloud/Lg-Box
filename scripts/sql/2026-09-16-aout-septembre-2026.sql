@@ -1,0 +1,33 @@
+-- Reprise du carnet sur la liste d'août 2026 fournie par l'exploitant.
+--
+-- Cette liste de 64 locataires fait foi : elle vient des feuilles de caisse,
+-- le carnet n'en était qu'un import approximatif. Le fichier n'est pas rejoué
+-- tel quel (les identifiants sont ceux de la base du 16/09/2026), il sert de
+-- trace de ce qui a été fait.
+--
+-- Sauvegarde préalable : sauvegarde_20260916_{locataires,contrats,reglements}.
+--
+-- 1. Loyers corrigés d'après la liste :
+--      CRESPIN-CADORET 130 -> 180 · EASY CASH 220 -> 110 · LE PAN 80 -> 160
+--
+-- 2. Sept locataires créés ou complétés, tous sans box — le rattachement se
+--    fait ensuite depuis l'écran Box :
+--      CHEVALIER Stéphanie (box 7, 170, sortie 31/08) · MARHIC Catherine (150)
+--      PUSNEL Ingrid (140, sortie 31/08) · LE GOFF Jean-Claude (400)
+--      LE ROUX Elodie (160) · MESDACH (90) · MORILLON Emma (50, 2 m²)
+--    « Mesdach » avait été saisi deux fois : le doublon vide a été supprimé.
+--
+-- 3. Absents de la liste, donc sortis avant août (date_fin au 31/07/2026) :
+--      CALVEZ Philippe · OLIVIER Nolwen · Locataire à identifier
+--
+-- 4. Le box 7 rendu à son occupant d'août. ELIAS y figurait depuis 2020 et
+--    portait le règlement d'août ; c'est CHEVALIER qui devait ce mois. ELIAS
+--    démarre donc au 01/09/2026, et son règlement d'août est passé au bon
+--    contrat.
+--
+-- 5. Règlements d'août : 66 contrats, tous « payé » sauf Cadres Conseil
+--    (PICOT Jean-Claude), laissé « attendu ».
+--
+-- Contrôles après opération :
+--      août       65 locataires · 66 contrats · 9 350 €
+--      septembre  65 contrats · 9 210 €  (= août − CHEVALIER − PUSNEL + ELIAS)
