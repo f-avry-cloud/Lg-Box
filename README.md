@@ -192,7 +192,22 @@ supabase/
   storage.sql     # Buckets + policies de stockage
   seed.sql        # Jeu de données de démonstration
 docs/legacy-mockup/  # Ancienne maquette HTML statique, conservée pour référence de style
+site/             # Site vitrine public statique (générateur Node sans dépendance)
+  src/            # Contenus éditoriaux et gabarits
+  static/         # style.css, app.js et photos du centre
+  dist/           # 11 pages HTML générées, prêtes à mettre en ligne
 ```
+
+## Site vitrine public (`site/`)
+
+Une version légère et autonome du site `lg-box.fr` : 11 pages HTML statiques
+aux **mêmes URLs** que le site actuel, sans framework ni cookie, générées par
+`node site/build.mjs`. Tous les textes, tarifs, avis et questions vivent dans
+`site/src/content.mjs`. Voir [`site/README.md`](site/README.md) pour la mise en
+ligne, les photos attendues et les choix de référencement.
+
+Ce site est indépendant de l'application Next.js : il ne partage ni base de
+données, ni build, et peut être hébergé ailleurs.
 
 ## RGPD — droit à l'effacement
 
