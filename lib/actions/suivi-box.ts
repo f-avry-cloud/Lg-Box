@@ -37,6 +37,9 @@ function rafraichit(): void {
   revalidatePath("/suivi/box");
   revalidatePath("/suivi");
   revalidatePath("/suivi/tableau-de-bord");
+  // L'annuaire affiche le loyer lui aussi : l'oublier y laisserait l'ancien
+  // montant après une révision faite depuis la fiche.
+  revalidatePath("/suivi/locataires");
 }
 
 export type SaisieBox = {

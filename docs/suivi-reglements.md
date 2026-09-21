@@ -339,6 +339,18 @@ disparaître au moment précis où il faut penser à lui. Un contrat en cours sa
 box affiche « Box à identifier » dans son sous-titre, mais **pas** de pastille
 d'alerte — une alerte qui touche un tiers de la liste n'alerte plus personne.
 
+### Réviser un loyer
+
+Le loyer ne se modifiait que depuis la **fiche d'un box** — donc jamais pour un
+contrat qui n'en a pas encore, et ils sont 27. Un lien « Modifier » s'ajoute
+donc à côté du montant dans la **fiche du locataire**, où tous ses contrats
+sont listés, box ou pas.
+
+La règle est la même qu'ailleurs, et l'écran la rappelle : **le nouveau loyer
+vaut pour les mois à venir**. Les mois déjà pointés gardent la somme encaissée,
+qui vit sur le règlement et non sur le contrat — réviser un loyer ne réécrit
+donc pas l'historique.
+
 ### Créer un contrat, avec ou sans box
 
 Le carnet savait créer un contrat depuis un **box libre**, jamais depuis le

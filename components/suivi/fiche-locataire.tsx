@@ -19,6 +19,7 @@ import {
   enregistreDetailReglement,
   sauvegardeObservations,
 } from "@/lib/actions/suivi";
+import { modifieLoyerContrat } from "@/lib/actions/suivi-box";
 import { libelleAnciennete } from "@/lib/suivi/anciennete";
 import { douzeDernieresPeriodes, labelMoisCourt, labelPeriode } from "@/lib/suivi/period";
 import { couleurPastille, initiales } from "@/lib/suivi/totals";
@@ -65,7 +66,14 @@ export function FicheLocataireVue({
   const [horodatage, setHorodatage] = useState(fiche.locataire.observations_updated_at);
   const [contratEnSaisie, setContratEnSaisie] = useState<string | null>(null);
   const [contratARattacher, setContratARattacher] = useState<string | null>(null);
-  const [, demarreTransition] = useTransition();
+
+  // Révision de loyer : le contrat en cours d'édition, et le montant tapé.
+  // Le loyer ne se modifiait que depuis la fiche d'un box — donc jamais pour
+  // les contrats qui n'en ont pas encore, et ils sont nombreux.
+  const [loyerEnEdition, setLoyerEnEdition] = useState<string | null>(null);
+  const [saisieLoyer, setSaisieLoyer] = useState("");
+
+  const [enCours, demarreTransition] = useTransition();
 
   const parContratEtPeriode = useMemo(() => {
     const index = new Map<string, Reglement>();
@@ -80,6 +88,24 @@ export function FicheLocataireVue({
     setReglements((actuels) => {
       const autres = actuels.filter((r) => !(r.contrat_id === contratId && r.periode === p));
       return suivant ? [...autres, suivant] : autres;
+    });
+  };
+
+  const changeLoyer = (contratId: string) => {
+    const montant = Number(saisieLoyer.replace(",", "."));
+    if (!(montant > 0)) return;
+
+    demarreTransition(async () => {
+      const resultat = await modifieLoyerContrat(contratId, montant);
+      if (!resultat.success) {
+        vibre(60);
+        toast.error(resultat.error ?? "Modification impossible.");
+        return;
+      }
+      vibre();
+      toast.success(`Loyer porté à ${Math.round(montant)} €.`);
+      setLoyerEnEdition(null);
+      router.refresh();
     });
   };
 
@@ -262,6 +288,16 @@ export function FicheLocataireVue({
                   <dt className="text-[var(--suivi-gris)]">Loyer mensuel</dt>
                   <dd className="text-right font-bold tabular-nums">
                     {contrat.loyer_mensuel_eur} €
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoyerEnEdition(contrat.id);
+                        setSaisieLoyer(String(contrat.loyer_mensuel_eur));
+                      }}
+                      className="suivi-tap ml-2 font-medium text-[var(--primary)] underline-offset-2 hover:underline"
+                    >
+                      Modifier
+                    </button>
                   </dd>
                   {contrat.date_debut && (
                     <>
@@ -270,6 +306,55 @@ export function FicheLocataireVue({
                     </>
                   )}
                 </dl>
+
+                {/* Une révision de loyer vaut pour les mois à venir : ce qui
+                    est déjà pointé garde le montant encaissé, qui vit sur le
+                    règlement et non sur le contrat. */}
+                {loyerEnEdition === contrat.id && (
+                  <div className="mt-3 rounded-xl border border-border bg-secondary/30 p-3">
+                    <label
+                      htmlFor={`loyer-${contrat.id}`}
+                      className="t-etiquette mb-1 block"
+                    >
+                      Nouveau loyer mensuel (€)
+                    </label>
+                    <input
+                      id={`loyer-${contrat.id}`}
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      step="1"
+                      autoFocus
+                      value={saisieLoyer}
+                      onChange={(e) => setSaisieLoyer(e.target.value)}
+                      className="mb-2 h-14 w-full rounded-xl border border-input bg-background px-4 text-lg tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                    <p className="t-meta mb-2">
+                      Vaut pour les mois à venir. Les règlements déjà pointés gardent le montant
+                      encaissé.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-12 flex-1"
+                        disabled={enCours}
+                        onClick={() => setLoyerEnEdition(null)}
+                      >
+                        Annuler
+                      </Button>
+                      <Button
+                        type="button"
+                        className="h-12 flex-1"
+                        disabled={enCours || !(Number(saisieLoyer.replace(",", ".")) > 0)}
+                        onClick={() => changeLoyer(contrat.id)}
+                      >
+                        Enregistrer
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {anciennete && (
                   <p className="mt-1 text-sm italic text-[var(--suivi-gris)]">{anciennete}</p>
                 )}
