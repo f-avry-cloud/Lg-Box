@@ -304,25 +304,21 @@ justification. Aucun tarif n'a été rempli d'office — 26 des 67 box n'ont pas
 même de surface connue, et un montant deviné qui s'installe dans les comptes
 est pire qu'une case vide.
 
-### Une ligne par box, pas par locataire
+### Une ligne par box, le locataire en tête
 
-Le carnet réclame **un loyer par box**, pas par personne : la ligne a toujours
-été un contrat, donc un box. Mais elle s'affichait avec le nom en gras et le
-box en petit dessous — tant que chacun ne louait qu'un box, cela revenait au
-même. Dès qu'un locataire en loue deux, deux lignes portaient le même nom, et
-plus rien ne disait laquelle on venait de pointer.
+Une ligne du carnet est un contrat, donc **un box** : un locataire qui en loue
+deux occupe deux lignes. Mais c'est le **nom qui mène la ligne**, en gras, avec
+le box en sous-titre — c'est le nom qu'on cherche en pointant, puisque c'est
+lui qui figure sur le chèque et sur la feuille de caisse.
 
-La hiérarchie est donc inversée : **le box en tête**, le locataire en dessous,
-et la pastille porte le numéro de box au lieu des initiales. Sa couleur reste
-tirée du nom (`couleurPastille`), si bien que les box d'un même locataire
-gardent la même teinte et se voient solidaires sans qu'on ait à lire.
+Une version antérieure avait inversé les deux, box en tête, pour lever
+l'ambiguïté des baux à plusieurs box. Essayée puis retirée : elle réglait un
+cas rare en compliquant le geste quotidien. Le box en sous-titre suffit à
+distinguer deux lignes d'un même locataire.
 
-Le **tri ne change pas** — non réglés d'abord, puis alphabétique par locataire,
-les box d'une même personne restant groupés. C'est l'ordre des feuilles de
-caisse, celui dans lequel on pointe.
-
-Le compte du bas dit désormais « X / Y **loyers** » et non « locataires » : il
-porte sur les contrats, et un locataire à deux box en pèse deux.
+Le compte du bas dit en revanche « X règlements / Y **box loués** » et non
+« locataires » : il porte sur les contrats, et un locataire à deux box en pèse
+deux. C'est un compte de box, le dire autrement était faux.
 
 ## L'annuaire des locataires
 

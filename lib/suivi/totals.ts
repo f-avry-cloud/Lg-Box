@@ -14,7 +14,11 @@ export type TotauxMois = {
   reste: number;
   /** Nombre de lignes soldées (statut « payé »). */
   regles: number;
-  /** Nombre total de lignes du mois. */
+  /**
+   * Nombre total de lignes du mois — une par contrat, donc une par box loué.
+   * Un locataire qui loue deux box en pèse deux : c'est bien un compte de box,
+   * pas de personnes.
+   */
   total: number;
 };
 
@@ -187,24 +191,4 @@ export function couleurPastille(nom: string): string {
     hash = (hash * 31 + nom.charCodeAt(i)) >>> 0;
   }
   return COULEURS_PASTILLE[hash % COULEURS_PASTILLE.length];
-}
-
-/**
- * Ce qu'on inscrit dans la pastille d'une ligne du carnet : le **numéro de
- * box**, et non les initiales du locataire.
- *
- * Le carnet réclame un loyer par box, pas par personne. Tant que chacun n'en
- * louait qu'un, nommer la ligne par le locataire revenait au même ; dès qu'il
- * en loue deux, deux lignes portent le même nom et plus rien ne dit laquelle
- * on vient de pointer. Le box, lui, est unique.
- *
- * La couleur reste tirée du nom (voir `couleurPastille`) : les box d'un même
- * locataire gardent ainsi la même teinte, et on voit d'un coup d'œil qu'ils
- * vont ensemble.
- */
-export function pastilleBox(numero: string | null): string {
-  if (!numero) return "?";
-  // Au-delà de quatre caractères la pastille devient illisible ; aucun numéro
-  // du site n'est si long, mais rien ne garantit la saisie future.
-  return numero.length > 4 ? numero.slice(0, 4) : numero;
 }

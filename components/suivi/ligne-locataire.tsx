@@ -3,18 +3,17 @@
 import Link from "next/link";
 
 import { BoutonEncaissement } from "@/components/suivi/bouton-encaissement";
-import { couleurPastille, encaisseLigne, pastilleBox, statutLigne } from "@/lib/suivi/totals";
+import { couleurPastille, encaisseLigne, initiales, statutLigne } from "@/lib/suivi/totals";
 import { BOX_A_IDENTIFIER, type LigneMois } from "@/lib/suivi/types";
 
 /**
- * Une ligne du carnet : pastille du **box**, box, locataire, loyer attendu, et
- * le bouton d'encaissement.
+ * Une ligne du carnet : pastille d'initiales, nom, box, loyer attendu, et le
+ * bouton d'encaissement.
  *
- * Le carnet réclame un loyer par box, pas par personne. La ligne est donc
- * nommée par le box et non par le locataire : quand quelqu'un en loue deux,
- * deux lignes portaient le même nom en gras et plus rien ne disait laquelle on
- * venait de pointer. La couleur de la pastille reste tirée du nom, si bien que
- * les box d'un même locataire restent visiblement solidaires.
+ * **Le locataire mène la ligne**, et le box la précise. C'est le nom qu'on
+ * cherche en pointant, puisque c'est lui qui figure sur le chèque et sur la
+ * feuille de caisse. Une ligne reste un contrat, donc un box : un locataire
+ * qui en loue deux occupe deux lignes, que le box en sous-titre distingue.
  *
  * Deux cibles tactiles distinctes se partagent la ligne — le lien vers la
  * fiche et le bouton. Le bouton est posé à côté du lien (et non dedans) : un
@@ -46,19 +45,17 @@ export function LigneLocataire({
       >
         <span
           aria-hidden
-          className="flex size-11 shrink-0 items-center justify-center rounded-full text-sm font-bold tabular-nums text-white"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
           style={{ backgroundColor: couleurPastille(ligne.nom) }}
         >
-          {pastilleBox(ligne.box_numero)}
+          {initiales(ligne.nom)}
         </span>
 
         <span className="min-w-0 flex-1">
-          <span className="block truncate t-corps font-bold text-foreground">
-            {libelleBoxCourt}
-          </span>
+          <span className="block truncate t-corps font-bold text-foreground">{ligne.nom}</span>
           <span className="block truncate t-meta">
-            {ligne.nom}
-            {ligne.societe ? ` · ${ligne.societe}` : ""}
+            {ligne.societe ? `${ligne.societe} · ` : ""}
+            {libelleBoxCourt}
           </span>
         </span>
 

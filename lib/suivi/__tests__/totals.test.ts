@@ -6,7 +6,6 @@ import {
   encaisseLigne,
   filtreLignes,
   initiales,
-  pastilleBox,
   resumeFacturation,
   statutLigne,
   trieLignes,
@@ -221,17 +220,5 @@ describe("encaisseLigne face au statut « facturé »", () => {
     const lignes = [ligne("A", 140, "facture")];
     expect(encaisseLigne(lignes[0])).toBe(0);
     expect(calculeTotaux(lignes)).toEqual({ encaisse: 0, reste: 140, regles: 0, total: 1 });
-  });
-});
-
-describe("pastilleBox", () => {
-  it("affiche le numéro du box", () => {
-    expect(pastilleBox("11")).toBe("11");
-    expect(pastilleBox("9A")).toBe("9A");
-    expect(pastilleBox("10bis")).toBe("10bi");
-  });
-
-  it("marque d'un point d'interrogation un contrat sans box", () => {
-    expect(pastilleBox(null)).toBe("?");
   });
 });
