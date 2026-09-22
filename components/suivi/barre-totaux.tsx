@@ -48,8 +48,10 @@ export function BarreTotaux({ totaux }: { totaux: TotauxMois }) {
           />
         </div>
 
+        {/* « loyers » et non « locataires » : le compte porte sur les contrats,
+            donc sur les box, et un locataire qui en loue deux en pèse deux. */}
         <p className="t-meta t-nombre mt-1 text-center">
-          {totaux.regles} / {totaux.total} locataires
+          {totaux.regles} / {totaux.total} loyers
         </p>
       </div>
     </div>

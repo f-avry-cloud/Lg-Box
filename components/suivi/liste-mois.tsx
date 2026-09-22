@@ -226,7 +226,7 @@ export function ListeMois({
         {affichees.length === 0 && (
           <li className="px-4 py-12 text-center t-corps text-[var(--suivi-gris)]">
             {recherche
-              ? `Aucun locataire ne correspond à « ${recherche} ».`
+              ? `Aucun loyer ne correspond à « ${recherche} ».`
               : filtre === "regles"
                 ? "Aucun règlement pointé sur ce mois."
                 : "Tout est réglé sur ce mois."}

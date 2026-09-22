@@ -188,3 +188,23 @@ export function couleurPastille(nom: string): string {
   }
   return COULEURS_PASTILLE[hash % COULEURS_PASTILLE.length];
 }
+
+/**
+ * Ce qu'on inscrit dans la pastille d'une ligne du carnet : le **numéro de
+ * box**, et non les initiales du locataire.
+ *
+ * Le carnet réclame un loyer par box, pas par personne. Tant que chacun n'en
+ * louait qu'un, nommer la ligne par le locataire revenait au même ; dès qu'il
+ * en loue deux, deux lignes portent le même nom et plus rien ne dit laquelle
+ * on vient de pointer. Le box, lui, est unique.
+ *
+ * La couleur reste tirée du nom (voir `couleurPastille`) : les box d'un même
+ * locataire gardent ainsi la même teinte, et on voit d'un coup d'œil qu'ils
+ * vont ensemble.
+ */
+export function pastilleBox(numero: string | null): string {
+  if (!numero) return "?";
+  // Au-delà de quatre caractères la pastille devient illisible ; aucun numéro
+  // du site n'est si long, mais rien ne garantit la saisie future.
+  return numero.length > 4 ? numero.slice(0, 4) : numero;
+}
