@@ -327,6 +327,8 @@ export type SrBox = {
   tarif_indicatif_eur: number | null;
   unit_id: string | null;
   created_at: string;
+  /** Confirmé disponible à la location (migration 021). */
+  libre: boolean;
 };
 
 export type SrContrat = {

@@ -113,6 +113,12 @@ export type BoxListe = {
   surface_m2: number | null;
   statut: "libre" | "loue" | "reserve" | "hors_service";
   /**
+   * Confirmé disponible à la location. Un box sans contrat **et** sans ce
+   * drapeau est présumé occupé par un locataire non encore rapproché :
+   * l'absence de contrat ne prouve rien (voir `lib/suivi/disponibilite.ts`).
+   */
+  libre: boolean;
+  /**
    * Tarif mensuel de référence du box, facultatif.
    *
    * Indicatif au sens strict : il pré-remplit un loyer à l'affectation et

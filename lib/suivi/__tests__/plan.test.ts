@@ -18,6 +18,7 @@ function boxPlan(numero: string, geo: Partial<BoxPlan> = {}): BoxPlan {
     numero,
     batiment: "Bât I",
     surface_m2: null,
+    libre: false,
     occupe: false,
     locataire: null,
     contrat_id: null,

@@ -268,7 +268,7 @@ export async function listeBox(): Promise<GroupeBatiment[]> {
   const periode = periodeCourante();
 
   const [boxRes, contratsRes, reglementsRes] = await Promise.all([
-    supabase.from("sr_box").select("id, numero, batiment, surface_m2, tarif_indicatif_eur, unit_id"),
+    supabase.from("sr_box").select("id, numero, batiment, surface_m2, tarif_indicatif_eur, unit_id, libre"),
     supabase
       .from("sr_contrats")
       .select(
@@ -333,8 +333,10 @@ export async function listeBox(): Promise<GroupeBatiment[]> {
       numero: b.numero,
       batiment: b.batiment,
       surface_m2: b.surface_m2,
-      // Le carnet ne connaît que deux états : occupé par un locataire, ou non.
+      // Trois états, pas deux : sans contrat, un box n'est pas pour autant
+      // vide — voir `lib/suivi/disponibilite.ts`.
       statut: occupant ? ("loue" as const) : ("libre" as const),
+      libre: b.libre,
       tarif_indicatif_eur: b.tarif_indicatif_eur,
       locataire: occupant?.detail.nom ?? null,
       contrat_id: occupant?.contratId ?? null,
@@ -415,6 +417,9 @@ function demoBoxListe(): BoxListe[] {
       batiment: b.batiment,
       surface_m2: b.surface_m2,
       statut: occupant ? ("loue" as const) : ("libre" as const),
+      // Sans base, rien n'a été confirmé libre : tout box sans contrat est
+      // « occupant à identifier », ce qui est justement l'état courant.
+      libre: false,
       tarif_indicatif_eur: null,
       locataire: occupant?.detail.nom ?? null,
       contrat_id: null,
@@ -508,13 +513,18 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
   // L'occupation se lit sur le référentiel de l'app (67 box réels), pas sur
   // `units` : celle-ci contient encore 70 lignes « À localiser » issues d'un
   // import, qui gonfleraient le total et écraseraient le taux.
-  const [total, loues, impayes, preavis, demandes, attente] = await Promise.all([
+  const [total, loues, aLouer, impayes, preavis, demandes, attente] = await Promise.all([
     supabase.from("sr_box").select("id", { count: "exact", head: true }),
     supabase
       .from("sr_contrats")
       .select("id", { count: "exact", head: true })
       .not("box_id", "is", null)
       .or(`date_fin.is.null,date_fin.gte.${premierJour(periode)}`),
+    // Les box réellement proposables : ceux que l'exploitant a déclarés libres.
+    // Compter tous les box sans contrat donnerait un centre à moitié vide
+    // alors qu'il est plein — 25 d'entre eux attendent seulement d'être
+    // rapprochés de leur locataire.
+    supabase.from("sr_box").select("id", { count: "exact", head: true }).eq("libre", true),
     supabase.from("invoices").select("montant_ttc, customer_id").in("statut", ["emise", "en_retard"]),
     supabase.from("contracts").select("id", { count: "exact", head: true }).eq("statut", "en_preavis"),
     supabase
@@ -529,14 +539,18 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
 
   const boxTotal = total.count ?? 0;
   const boxLoues = loues.count ?? 0;
+  const boxLibres = aLouer.count ?? 0;
   const factures = impayes.data ?? [];
 
   return {
     ...base,
     boxTotal,
     boxLoues,
-    boxLibres: Math.max(0, boxTotal - boxLoues),
-    tauxOccupation: boxTotal > 0 ? Math.round((boxLoues / boxTotal) * 100) : 0,
+    boxLibres,
+    // Occupé = tout ce qui n'est pas déclaré libre. Un box dont l'occupant
+    // reste à identifier compte comme occupé : c'est l'hypothèse prudente,
+    // et la seule qui décrive un centre plein.
+    tauxOccupation: boxTotal > 0 ? Math.round(((boxTotal - boxLibres) / boxTotal) * 100) : 0,
     impayesMontant: factures.reduce((somme, f) => somme + f.montant_ttc, 0),
     impayesClients: new Set(factures.map((f) => f.customer_id)).size,
     contratsEnPreavis: preavis.count ?? 0,
@@ -623,7 +637,7 @@ export async function planParBatiment(): Promise<GroupePlan[]> {
   const supabase = await createClient();
 
   const [boxRes, geoRes, contratsRes] = await Promise.all([
-    supabase.from("sr_box").select("id, numero, batiment, surface_m2, tarif_indicatif_eur, unit_id"),
+    supabase.from("sr_box").select("id, numero, batiment, surface_m2, tarif_indicatif_eur, unit_id, libre"),
     supabase
       .from("units")
       .select("id, floor, pos_x, pos_y, largeur_cm, profondeur_cm, rotation_deg"),
@@ -662,6 +676,7 @@ export async function planParBatiment(): Promise<GroupePlan[]> {
     const geo = b.unit_id ? geoParUnit.get(b.unit_id) ?? null : null;
     const occupant = occupantParBox.get(b.id) ?? null;
     return {
+      libre: b.libre,
       id: b.id,
       numero: b.numero,
       batiment: b.batiment,
@@ -716,6 +731,7 @@ function planDemo(): GroupePlan[] {
     const colonne = index % 5;
     const rangee = Math.floor(index / 5);
     return {
+      libre: b.libre,
       id: b.id,
       numero: b.numero,
       batiment: b.batiment ?? "Sans bâtiment",

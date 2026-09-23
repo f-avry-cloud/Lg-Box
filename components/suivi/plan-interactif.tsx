@@ -17,6 +17,13 @@ import {
   ZOOM_MIN,
   type BoxPlan,
 } from "@/lib/suivi/plan";
+import {
+  COULEUR_ETAT_BOX,
+  LIBELLE_ETAT_BOX,
+  compteDisponibilite,
+  etatBox,
+  type EtatBox,
+} from "@/lib/suivi/disponibilite";
 import { cn } from "@/lib/utils";
 
 export type GroupePlanVue = { batiment: string; boxes: BoxPlan[] };
@@ -66,6 +73,7 @@ export function PlanInteractif({
   // Les murs relevés du bâtiment, partagés avec le plan du back-office.
   const niveau = useMemo(() => niveauDominant(boxes), [boxes]);
   const stats = useMemo(() => statsBatiment(boxes), [boxes]);
+  const comptes = useMemo(() => compteDisponibilite(boxes), [boxes]);
 
   const reinitialise = () => {
     setZoom(ZOOM_MIN);
@@ -163,7 +171,11 @@ export function PlanInteractif({
       <div className="flex gap-2 overflow-x-auto px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {groupes.map((g) => {
           const actif = g.batiment === groupe.batiment;
-          const s = statsBatiment(g.boxes);
+          // Même définition que la légende : un box dont l'occupant reste à
+          // identifier compte comme occupé. Annoncer « 9/15 » quand six box
+          // sont pris mais pas encore rapprochés donnerait un bâtiment à
+          // moitié vide, ce qu'il n'est pas.
+          const s = compteDisponibilite(g.boxes);
           return (
             <button
               key={g.batiment}
@@ -184,7 +196,7 @@ export function PlanInteractif({
                   actif ? "text-primary-foreground/80" : "text-[var(--suivi-gris)]"
                 )}
               >
-                {s.occupes}/{s.total} occupés
+                {s.total - s.libres}/{s.total} occupés
               </span>
             </button>
           );
@@ -218,7 +230,7 @@ export function PlanInteractif({
               transition: enGeste ? "none" : "transform 180ms ease-out",
             }}
             role="img"
-            aria-label={`Plan de ${groupe.batiment} — ${stats.occupes} box occupés sur ${stats.total}`}
+            aria-label={`Plan de ${groupe.batiment} — ${comptes.total - comptes.libres} box occupés sur ${comptes.total}`}
           >
             {/*
               Fond de plan : murs, sols et portes relevés. Le même composant
@@ -232,6 +244,7 @@ export function PlanInteractif({
               const centreX = box.x + box.largeur / 2;
               const centreY = box.y + box.profondeur / 2;
               const actif = boxTouche === box.id;
+              const etat = etatBox(box);
 
               return (
                 <g
@@ -245,17 +258,21 @@ export function PlanInteractif({
                   onClick={() => ouvre(box)}
                   style={{ cursor: "pointer" }}
                 >
+                  {/* Trois états, trois couleurs. Seul « libre » reste en
+                      fond clair : c'est ce qu'on cherche des yeux quand on
+                      veut savoir ce qui reste à louer, et un fond vide se
+                      repère plus vite qu'une teinte de plus. */}
                   <rect
                     x={box.x}
                     y={box.y}
                     width={box.largeur}
                     height={box.profondeur}
                     rx={18}
-                    fill={box.occupe ? "var(--suivi-vert)" : "var(--card)"}
-                    fillOpacity={box.occupe ? (actif ? 1 : 0.9) : 1}
-                    stroke={box.occupe ? "var(--suivi-vert)" : "var(--suivi-gris)"}
+                    fill={etat === "libre" ? "var(--card)" : COULEUR_ETAT_BOX[etat]}
+                    fillOpacity={etat === "libre" ? 1 : actif ? 1 : 0.9}
+                    stroke={COULEUR_ETAT_BOX[etat]}
                     strokeWidth={actif ? 14 : 6}
-                    strokeOpacity={box.occupe ? 1 : 0.55}
+                    strokeOpacity={etat === "libre" ? 0.9 : 1}
                   />
                   <text
                     x={centreX}
@@ -264,7 +281,7 @@ export function PlanInteractif({
                     dominantBaseline="central"
                     fontSize={police}
                     fontWeight={700}
-                    fill={box.occupe ? "#ffffff" : "var(--foreground)"}
+                    fill={etat === "libre" ? "var(--foreground)" : "#ffffff"}
                     style={{ pointerEvents: "none", userSelect: "none" }}
                   >
                     {etiquette(box.numero, box.largeur)}
@@ -288,24 +305,31 @@ export function PlanInteractif({
         )}
       </div>
 
-      {/* Légende et chiffres du bâtiment affiché. */}
-      <div className="mx-3 mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 suivi-carte px-3 py-2 text-sm">
-        <span className="flex items-center gap-1.5">
-          <span
-            className="size-3 rounded"
-            style={{ backgroundColor: "var(--suivi-vert)" }}
-            aria-hidden
-          />
-          {stats.occupes} occupés
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span
-            className="size-3 rounded border-2"
-            style={{ borderColor: "var(--suivi-gris)" }}
-            aria-hidden
-          />
-          {stats.libres} libres
-        </span>
+      {/* Légende et chiffres du bâtiment affiché. Les états à zéro sont tus :
+          une légende qui annonce « 0 libres » occupe la place sans rien dire. */}
+      <div className="suivi-carte mx-3 mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2 text-sm">
+        {(
+          [
+            ["loue", comptes.loues],
+            ["occupant_inconnu", comptes.occupantInconnu],
+            ["libre", comptes.libres],
+          ] as const
+        )
+          .filter(([, n]) => n > 0)
+          .map(([etat, n]) => (
+            <span key={etat} className="flex items-center gap-1.5">
+              <span
+                className={cn("size-3 rounded", etat === "libre" && "border-2 bg-transparent")}
+                style={
+                  etat === "libre"
+                    ? { borderColor: COULEUR_ETAT_BOX[etat] }
+                    : { backgroundColor: COULEUR_ETAT_BOX[etat] }
+                }
+                aria-hidden
+              />
+              {n} {libelleAccorde(etat, n)}
+            </span>
+          ))}
         <span className="ml-auto font-semibold tabular-nums">
           {stats.surfaceConnue > 0 && `${Number(stats.surfaceConnue.toFixed(2))} m²`}
         </span>
@@ -331,15 +355,21 @@ export function PlanInteractif({
                 key={box.id}
                 type="button"
                 onClick={() => onOuvrirBox(box.id)}
-                className={cn(
-                  "suivi-tap flex min-h-12 min-w-16 flex-col items-center justify-center rounded-xl border px-2",
-                  box.occupe
-                    ? "border-[var(--suivi-vert)] bg-[var(--suivi-vert)] text-white"
-                    : "border-border bg-card"
-                )}
+                className="suivi-tap flex min-h-12 min-w-16 flex-col items-center justify-center rounded-xl border px-2"
+                style={
+                  etatBox(box) === "libre"
+                    ? { borderColor: COULEUR_ETAT_BOX.libre }
+                    : {
+                        borderColor: COULEUR_ETAT_BOX[etatBox(box)],
+                        backgroundColor: COULEUR_ETAT_BOX[etatBox(box)],
+                        color: "#ffffff",
+                      }
+                }
               >
                 <span className="text-sm font-bold">{box.numero}</span>
-                <span className="text-xs opacity-80">{box.occupe ? "occupé" : "libre"}</span>
+                <span className="text-xs opacity-80">
+                  {LIBELLE_ETAT_BOX[etatBox(box)].toLocaleLowerCase("fr")}
+                </span>
               </button>
             ))}
           </div>
@@ -347,4 +377,14 @@ export function PlanInteractif({
       )}
     </div>
   );
+}
+
+/**
+ * « 9 loués », « 6 locataires à identifier », « 1 libre ». Les libellés sont
+ * au singulier dans `LIBELLE_ETAT_BOX` ; c'est ici qu'ils s'accordent.
+ */
+function libelleAccorde(etat: EtatBox, nombre: number): string {
+  const libelle = LIBELLE_ETAT_BOX[etat].toLocaleLowerCase("fr");
+  if (nombre < 2) return libelle;
+  return etat === "occupant_inconnu" ? "locataires à identifier" : `${libelle}s`;
 }

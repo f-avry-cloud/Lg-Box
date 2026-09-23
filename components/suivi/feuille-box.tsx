@@ -8,7 +8,7 @@ import { BlocLocataireBox } from "@/components/suivi/bloc-locataire-box";
 import { FeuilleModale } from "@/components/suivi/feuille-modale";
 import { vibre } from "@/components/suivi/bouton-encaissement";
 import { Button } from "@/components/ui/button";
-import { creeBox, modifieBox, supprimeBox } from "@/lib/actions/suivi-box";
+import { creeBox, declareBoxLibre, modifieBox, supprimeBox } from "@/lib/actions/suivi-box";
 import { BlocAffectation } from "@/components/suivi/bloc-affectation";
 import { detacheBoxDuContrat } from "@/lib/actions/suivi";
 import type { BoxListe, CandidatAffectation } from "@/lib/suivi/types";
@@ -246,6 +246,67 @@ export function FeuilleBox({
       )}
 
       </div>
+
+      {/*
+        Disponibilité, pour les seuls box sans contrat. Un box loué n'a pas à
+        être déclaré libre — et l'absence de contrat ne prouve rien, puisque
+        25 box du site sont occupés par des locataires pas encore rapprochés.
+        C'est donc ici, et nulle part ailleurs, qu'un box devient louable.
+      */}
+      {!creation && box && !box.detail && !box.locataire && (
+        <div className="mb-4 rounded-xl border border-border bg-secondary/30 p-3">
+          <span className="t-etiquette mb-2 block">Disponibilité</span>
+          <div className="flex gap-2">
+            {(
+              [
+                [false, "Locataire à identifier"],
+                [true, "Libre — à louer"],
+              ] as const
+            ).map(([valeur, libelle]) => (
+              <button
+                key={String(valeur)}
+                type="button"
+                disabled={enCours}
+                aria-pressed={box.libre === valeur}
+                onClick={() => {
+                  demarreTransition(async () => {
+                    const resultat = await declareBoxLibre(box.id, valeur);
+                    if (!resultat.success) {
+                      vibre(60);
+                      toast.error(resultat.error ?? "Modification impossible.");
+                      return;
+                    }
+                    vibre();
+                    toast.success(valeur ? "Box déclaré libre." : "Box marqué occupé.");
+                    router.refresh();
+                  });
+                }}
+                className={cn(
+                  "suivi-tap min-h-12 flex-1 rounded-xl border text-xs font-semibold",
+                  box.libre === valeur
+                    ? "border-transparent text-white"
+                    : "border-border bg-background active:bg-secondary"
+                )}
+                style={
+                  box.libre === valeur
+                    ? {
+                        backgroundColor: valeur
+                          ? "var(--suivi-vert)"
+                          : "var(--suivi-orange)",
+                      }
+                    : undefined
+                }
+              >
+                {libelle}
+              </button>
+            ))}
+          </div>
+          <p className="t-meta mt-2">
+            Sans contrat rattaché, un box est présumé occupé : il n&apos;apparaît à louer que
+            si vous l&apos;affirmez ici.
+          </p>
+        </div>
+      )}
 
       {/*
         Affectation dans le sens box → locataire : c'est ainsi que l'exploitant

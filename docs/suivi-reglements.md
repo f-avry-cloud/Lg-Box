@@ -1008,3 +1008,35 @@ conservés :
 - une ligne **sans nom de locataire** (140 €, ligne 62), affichée
   « Locataire à identifier » — le loyer est bien encaissé, la ligne doit rester
   pointable.
+
+## Disponibilité des box : trois états, pas deux
+
+Le carnet n'en connaissait que deux — un box avait un contrat, ou n'en avait
+pas, et on appelait « libre » le second cas. C'est faux, et massivement :
+**25 box n'ont aucun contrat pendant que 25 contrats n'ont aucun box**. Ce sont
+les mêmes locataires, pas encore rapprochés. L'exploitant sait, lui, que deux
+box seulement sont réellement vides.
+
+L'absence de contrat ne prouve donc rien. D'où un drapeau `sr_box.libre`
+(migration 021), **faux par défaut** : un box qu'on ne sait pas attribuer est
+présumé occupé. C'est l'hypothèse prudente — proposer à la location un box déjà
+pris serait bien pire que l'inverse.
+
+| État | Ce que c'est | Sur le plan |
+|---|---|---|
+| `loue` | un contrat court | plein |
+| `occupant_inconnu` | pas de contrat, pas de confirmation | orange |
+| `libre` | confirmé disponible | fond clair, contour |
+
+**Le contrat l'emporte sur le drapeau** (`etatBox`, `lib/suivi/disponibilite.ts`) :
+un box marqué disponible dont le contrat court encore — une sortie programmée
+en fin de mois — reste loué jusqu'à l'échéance. Sans cette priorité, un préavis
+posé d'avance ferait disparaître le loyer du mois en cours.
+
+Le geste qui déclare un box libre vit dans sa fiche, et n'apparaît que sur les
+box sans contrat. Le taux d'occupation du tableau de bord compte désormais
+`occupant_inconnu` parmi les occupés : l'autre convention donnait un centre à
+37 % alors qu'il est plein.
+
+**La géométrie du plan n'est pas touchée** par ce travail — seules les couleurs
+de remplissage, la légende et les compteurs de bâtiment changent.

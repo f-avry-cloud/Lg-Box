@@ -12,6 +12,8 @@ export type BoxPlan = {
   batiment: string;
   surface_m2: number | null;
   occupe: boolean;
+  /** Confirmé disponible à la location — voir `lib/suivi/disponibilite.ts`. */
+  libre: boolean;
   locataire: string | null;
   contrat_id: string | null;
   /** Niveau du box, qui détermine le fond de plan (murs relevés). */

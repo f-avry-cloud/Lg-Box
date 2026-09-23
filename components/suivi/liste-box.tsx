@@ -12,20 +12,19 @@ import {
   type CandidatAffectation,
   type GroupeBatiment,
 } from "@/lib/suivi/types";
+import {
+  COULEUR_ETAT_BOX,
+  LIBELLE_ETAT_BOX,
+  etatBox,
+} from "@/lib/suivi/disponibilite";
 import { cn } from "@/lib/utils";
 
-const LIBELLE_STATUT: Record<BoxListe["statut"], string> = {
-  libre: "Libre",
-  loue: "Loué",
-  reserve: "Réservé",
-  hors_service: "Hors service",
-};
-
-function couleurStatut(statut: BoxListe["statut"]): string {
-  if (statut === "loue") return "var(--suivi-vert)";
-  if (statut === "reserve") return "var(--suivi-orange)";
-  if (statut === "hors_service") return "var(--destructive)";
-  return "var(--suivi-gris)";
+/**
+ * Trois états là où la liste n'en montrait que deux : sans contrat, un box
+ * n'est pas pour autant vide. Voir `lib/suivi/disponibilite.ts`.
+ */
+function etatDeLaLigne(box: BoxListe) {
+  return etatBox({ occupe: box.statut === "loue", libre: box.libre });
 }
 
 /**
@@ -215,7 +214,7 @@ export function ListeBox({
                         Box {box.numero}
                       </span>
                       <span className="block truncate t-meta">
-                        {box.locataire ?? LIBELLE_STATUT[box.statut]}
+                        {box.locataire ?? LIBELLE_ETAT_BOX[etatDeLaLigne(box)]}
                       </span>
                     </span>
 
@@ -234,9 +233,9 @@ export function ListeBox({
                       </span>
                       <span
                         className="block text-sm font-medium"
-                        style={{ color: couleurStatut(box.statut) }}
+                        style={{ color: COULEUR_ETAT_BOX[etatDeLaLigne(box)] }}
                       >
-                        {LIBELLE_STATUT[box.statut]}
+                        {LIBELLE_ETAT_BOX[etatDeLaLigne(box)]}
                       </span>
                     </span>
 

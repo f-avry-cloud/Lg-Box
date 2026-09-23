@@ -266,3 +266,24 @@ export async function modifieLoyerContrat(
   rafraichit();
   return ok;
 }
+
+/**
+ * Déclare un box disponible à la location, ou revient sur cette déclaration.
+ *
+ * Il fallait quelqu'un pour l'affirmer. L'absence de contrat ne suffit pas :
+ * 25 box du site n'en ont aucun alors qu'ils sont occupés par des locataires
+ * pas encore rapprochés, et les annoncer libres reviendrait à proposer des box
+ * déjà pris. Le défaut est donc « occupé », et ce geste est le seul moyen de
+ * faire passer un box du côté de ce qui se loue.
+ */
+export async function declareBoxLibre(boxId: string, libre: boolean): Promise<ActionResult> {
+  const refus = await autorise();
+  if (refus) return refus;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("sr_box").update({ libre }).eq("id", boxId);
+  if (error) return fail(error.message);
+
+  rafraichit();
+  return ok;
+}

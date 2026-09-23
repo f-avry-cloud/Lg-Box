@@ -131,7 +131,13 @@ export default async function TableauDeBordPage({
             icone={<Warehouse className="size-4" aria-hidden />}
             libelle="Occupation"
             valeur={`${stats.tauxOccupation} %`}
-            detail={`${stats.boxLoues} loués · ${stats.boxLibres} libres`}
+            // « À louer » et non « libres » : ce chiffre ne compte que les box
+            // déclarés disponibles, pas ceux dont l'occupant reste à identifier.
+            detail={
+              stats.boxLibres > 0
+                ? `${stats.boxLoues} loués · ${stats.boxLibres} à louer`
+                : `${stats.boxLoues} loués · complet`
+            }
           />
           <Tuile
             icone={<LogOut className="size-4" aria-hidden />}
