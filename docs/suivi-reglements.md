@@ -1024,9 +1024,15 @@ pris serait bien pire que l'inverse.
 
 | État | Ce que c'est | Sur le plan |
 |---|---|---|
-| `loue` | un contrat court | plein |
-| `occupant_inconnu` | pas de contrat, pas de confirmation | orange |
-| `libre` | confirmé disponible | fond clair, contour |
+| `loue` | un contrat court | **vert** |
+| `occupant_inconnu` | pas de contrat, pas de confirmation | **bleu** |
+| `libre` | confirmé disponible | **rouge clair** |
+
+Le vert reste au loué : c'est le repère du plan depuis le début, et le changer
+ferait relire un dessin qu'on connaît par cœur. Une version intermédiaire
+l'avait déplacé — essayée puis retirée. Le rouge du vide a deux valeurs : une
+claire pour remplir la case sans écraser son numéro, une foncée pour le texte
+et les contours, où la claire serait illisible sur le sable du fond.
 
 **Le contrat l'emporte sur le drapeau** (`etatBox`, `lib/suivi/disponibilite.ts`) :
 un box marqué disponible dont le contrat court encore — une sortie programmée

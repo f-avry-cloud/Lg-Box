@@ -19,6 +19,12 @@
   /* Bleu ardoise : l'attente, qui n'est ni une urgence (orange) ni un
      aboutissement (vert) et ne doit se confondre avec ni l'un ni l'autre. */
   --suivi-bleu: #3d5a80;
+  /* Rouge du box vide. Deux valeurs pour un seul sens : la claire remplit la
+     case sur le plan, où elle doit sauter aux yeux sans écraser son numéro ;
+     la foncée sert au texte et aux contours, où la claire serait illisible
+     sur le sable du fond. */
+  --suivi-rouge-clair: #f2b3a2;
+  --suivi-rouge: #a83a22;
   /* Gris plus clair, pour les mentions qui accompagnent sans réclamer. */
   --suivi-gris-clair: #938a7c;
   /* Filet plus discret que --border, pour séparer sans encadrer. */

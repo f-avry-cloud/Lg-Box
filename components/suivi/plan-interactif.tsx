@@ -19,6 +19,7 @@ import {
 } from "@/lib/suivi/plan";
 import {
   COULEUR_ETAT_BOX,
+  FOND_ETAT_BOX,
   LIBELLE_ETAT_BOX,
   compteDisponibilite,
   etatBox,
@@ -258,21 +259,20 @@ export function PlanInteractif({
                   onClick={() => ouvre(box)}
                   style={{ cursor: "pointer" }}
                 >
-                  {/* Trois états, trois couleurs. Seul « libre » reste en
-                      fond clair : c'est ce qu'on cherche des yeux quand on
-                      veut savoir ce qui reste à louer, et un fond vide se
-                      repère plus vite qu'une teinte de plus. */}
+                  {/* Trois états, trois couleurs : vert loué, bleu loué sans
+                      locataire identifié, rouge clair vide. Le vide se remplit
+                      d'une teinte claire pour que son numéro reste lisible —
+                      c'est justement celui qu'on veut lire. */}
                   <rect
                     x={box.x}
                     y={box.y}
                     width={box.largeur}
                     height={box.profondeur}
                     rx={18}
-                    fill={etat === "libre" ? "var(--card)" : COULEUR_ETAT_BOX[etat]}
-                    fillOpacity={etat === "libre" ? 1 : actif ? 1 : 0.9}
+                    fill={FOND_ETAT_BOX[etat]}
+                    fillOpacity={actif ? 1 : 0.9}
                     stroke={COULEUR_ETAT_BOX[etat]}
                     strokeWidth={actif ? 14 : 6}
-                    strokeOpacity={etat === "libre" ? 0.9 : 1}
                   />
                   <text
                     x={centreX}
@@ -281,7 +281,7 @@ export function PlanInteractif({
                     dominantBaseline="central"
                     fontSize={police}
                     fontWeight={700}
-                    fill={etat === "libre" ? "var(--foreground)" : "#ffffff"}
+                    fill={etat === "libre" ? "var(--suivi-rouge)" : "#ffffff"}
                     style={{ pointerEvents: "none", userSelect: "none" }}
                   >
                     {etiquette(box.numero, box.largeur)}
@@ -319,10 +319,13 @@ export function PlanInteractif({
           .map(([etat, n]) => (
             <span key={etat} className="flex items-center gap-1.5">
               <span
-                className={cn("size-3 rounded", etat === "libre" && "border-2 bg-transparent")}
+                className={cn("size-3 rounded", etat === "libre" && "border-2")}
                 style={
                   etat === "libre"
-                    ? { borderColor: COULEUR_ETAT_BOX[etat] }
+                    ? {
+                        backgroundColor: FOND_ETAT_BOX[etat],
+                        borderColor: COULEUR_ETAT_BOX[etat],
+                      }
                     : { backgroundColor: COULEUR_ETAT_BOX[etat] }
                 }
                 aria-hidden
@@ -358,7 +361,11 @@ export function PlanInteractif({
                 className="suivi-tap flex min-h-12 min-w-16 flex-col items-center justify-center rounded-xl border px-2"
                 style={
                   etatBox(box) === "libre"
-                    ? { borderColor: COULEUR_ETAT_BOX.libre }
+                    ? {
+                        borderColor: COULEUR_ETAT_BOX.libre,
+                        backgroundColor: FOND_ETAT_BOX.libre,
+                        color: "var(--suivi-rouge)",
+                      }
                     : {
                         borderColor: COULEUR_ETAT_BOX[etatBox(box)],
                         backgroundColor: COULEUR_ETAT_BOX[etatBox(box)],

@@ -24,14 +24,26 @@ export const LIBELLE_ETAT_BOX: Record<EtatBox, string> = {
 };
 
 /**
- * Le rouge et le vert servent déjà au règlement ; on prend donc un bleu pour
- * l'état courant, l'orange pour ce qui réclame un geste, et le vert franc
- * pour la seule bonne nouvelle commerciale — un box à louer.
+ * Le vert reste au loué : c'est le repère du plan depuis le début, et le
+ * changer ferait relire un dessin qu'on connaît par cœur. Le bleu marque ce
+ * qui est loué sans qu'on sache à qui, le rouge ce qui est vide — la seule
+ * chose qu'on cherche des yeux quand on veut savoir ce qui reste à louer.
  */
 export const COULEUR_ETAT_BOX: Record<EtatBox, string> = {
-  loue: "var(--suivi-bleu)",
-  occupant_inconnu: "var(--suivi-orange)",
-  libre: "var(--suivi-vert)",
+  loue: "var(--suivi-vert)",
+  occupant_inconnu: "var(--suivi-bleu)",
+  libre: "var(--suivi-rouge)",
+};
+
+/**
+ * Remplissage de la case sur le plan, qui n'est pas toujours la couleur
+ * d'identité : un box vide se remplit de rouge **clair**, pour se voir de loin
+ * sans que son numéro devienne illisible.
+ */
+export const FOND_ETAT_BOX: Record<EtatBox, string> = {
+  loue: "var(--suivi-vert)",
+  occupant_inconnu: "var(--suivi-bleu)",
+  libre: "var(--suivi-rouge-clair)",
 };
 
 /**
