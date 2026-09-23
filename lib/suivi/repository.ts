@@ -785,6 +785,43 @@ export async function demandesReservation(): Promise<DemandeReservation[]> {
 
 
 // ---------------------------------------------------------------------------
+// Parc de box
+// ---------------------------------------------------------------------------
+
+export type ParcBox = {
+  /** Toutes les unités louables du site. */
+  total: number;
+  /** Confirmées disponibles à la location. */
+  vides: number;
+  /** Tout le reste : loué, ou occupé par un locataire pas encore rapproché. */
+  loues: number;
+};
+
+/**
+ * Le parc, pour la barre de totaux du carnet.
+ *
+ * Deux comptes seulement, et c'est voulu : un box est loué ou il est vide.
+ * Le fait qu'on sache ou non qui l'occupe intéresse le plan, pas le pointage
+ * des loyers.
+ */
+export async function parcBox(): Promise<ParcBox> {
+  if (estModeDemo()) {
+    const total = demoBoxListe().length;
+    return { total, vides: 0, loues: total };
+  }
+
+  const supabase = await createClient();
+  const [total, vides] = await Promise.all([
+    supabase.from("sr_box").select("id", { count: "exact", head: true }),
+    supabase.from("sr_box").select("id", { count: "exact", head: true }).eq("libre", true),
+  ]);
+
+  const nb = total.count ?? 0;
+  const libres = vides.count ?? 0;
+  return { total: nb, vides: libres, loues: Math.max(0, nb - libres) };
+}
+
+// ---------------------------------------------------------------------------
 // Annuaire des locataires
 // ---------------------------------------------------------------------------
 

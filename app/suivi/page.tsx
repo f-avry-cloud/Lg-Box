@@ -1,6 +1,6 @@
 import { ListeMois } from "@/components/suivi/liste-mois";
 import { isPeriode, periodeCourante } from "@/lib/suivi/period";
-import { estModeDemo, lignesDuMois } from "@/lib/suivi/repository";
+import { estModeDemo, lignesDuMois, parcBox } from "@/lib/suivi/repository";
 
 // Le carnet reflète ce qui vient d'être pointé : aucun cache de page.
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export default async function SuiviPage({
   // faire tomber la page en erreur.
   const periode = mois && isPeriode(mois) ? mois : periodeCourante();
 
-  const lignes = await lignesDuMois(periode);
+  const [lignes, parc] = await Promise.all([lignesDuMois(periode), parcBox()]);
   const modeDemo = estModeDemo();
 
   return (
@@ -26,6 +26,7 @@ export default async function SuiviPage({
       key={periode}
       periode={periode}
       lignesInitiales={lignes}
+      parc={parc}
       modeDemo={modeDemo}
     />
   );

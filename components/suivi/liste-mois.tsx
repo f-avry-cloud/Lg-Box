@@ -6,6 +6,7 @@ import { Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { BarreTotaux } from "@/components/suivi/barre-totaux";
+import type { ParcBox } from "@/lib/suivi/repository";
 import { vibre } from "@/components/suivi/bouton-encaissement";
 import {
   FeuilleEncaissement,
@@ -31,10 +32,12 @@ const SEUIL_BALAYAGE = 70;
 export function ListeMois({
   periode,
   lignesInitiales,
+  parc,
   modeDemo,
 }: {
   periode: string;
   lignesInitiales: LigneMois[];
+  parc: ParcBox;
   modeDemo: boolean;
 }) {
   const router = useRouter();
@@ -234,7 +237,7 @@ export function ListeMois({
         )}
       </ul>
 
-      <BarreTotaux totaux={totaux} />
+      <BarreTotaux totaux={totaux} parc={parc} />
 
       <FeuilleEncaissement
         ligne={ligneEnSaisie}

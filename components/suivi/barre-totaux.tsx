@@ -1,5 +1,6 @@
 "use client";
 
+import type { ParcBox } from "@/lib/suivi/repository";
 import type { TotauxMois } from "@/lib/suivi/totals";
 
 /**
@@ -7,7 +8,7 @@ import type { TotauxMois } from "@/lib/suivi/totals";
  * l'exploitant garde sous les yeux pendant tout le pointage : elle est
  * recalculée côté client à chaque tap, sans attendre le serveur.
  */
-export function BarreTotaux({ totaux }: { totaux: TotauxMois }) {
+export function BarreTotaux({ totaux, parc }: { totaux: TotauxMois; parc: ParcBox }) {
   const attendu = totaux.encaisse + totaux.reste;
   const progression = attendu === 0 ? 0 : Math.round((totaux.encaisse / attendu) * 100);
 
@@ -48,12 +49,27 @@ export function BarreTotaux({ totaux }: { totaux: TotauxMois }) {
           />
         </div>
 
-        {/* Le compte porte sur les contrats, donc sur les box : un locataire
-            qui en loue deux en pèse deux. Dire « locataires », comme avant,
-            était faux dès qu'un bail portait sur plusieurs box. */}
+        {/* Trois comptes, et trois questions différentes : où en est
+            l'occupation du parc, ce qui reste à louer, et où en est le
+            pointage du mois. Le dénominateur du pointage est le nombre de
+            **contrats dus**, non celui des box : un bail peut porter sur deux
+            box, et un box peut se louer sans que son contrat soit saisi. */}
         <p className="t-meta t-nombre mt-1 text-center">
-          {totaux.regles} règlement{totaux.regles > 1 ? "s" : ""} / {totaux.total} box loué
-          {totaux.total > 1 ? "s" : ""}
+          <span>
+            {parc.loues} box loué{parc.loues > 1 ? "s" : ""} / {parc.total}
+          </span>
+          {parc.vides > 0 && (
+            <>
+              {" · "}
+              <span className="font-medium text-[var(--suivi-rouge)]">
+                {parc.vides} vide{parc.vides > 1 ? "s" : ""}
+              </span>
+            </>
+          )}
+          <span className="block">
+            {totaux.regles} payé{totaux.regles > 1 ? "s" : ""} / {totaux.total} loyer
+            {totaux.total > 1 ? "s" : ""} dus
+          </span>
         </p>
       </div>
     </div>
