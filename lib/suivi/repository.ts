@@ -36,7 +36,8 @@ import { contratDuPour } from "@/lib/suivi/contrat";
 import type { DestinataireFacture, ParametresMail } from "@/lib/suivi/mail";
 import type { EtatReprise, LocataireReprise } from "@/lib/suivi/reprise";
 import type { Charge } from "@/lib/suivi/charges";
-import { parsePeriode, periodeCourante, premierJour } from "@/lib/suivi/period";
+import { dateDuJour, parsePeriode, periodeCourante, premierJour } from "@/lib/suivi/period";
+import { occupantsParBox } from "@/lib/suivi/disponibilite";
 import {
   type Box,
   type BoxListe,
@@ -647,6 +648,10 @@ export async function planParBatiment(): Promise<GroupePlan[]> {
       .not("box_id", "is", null),
   ]);
 
+  // Le tri des contrats concurrents se fait en mémoire, pas dans la requête :
+  // les bornes nulles se comparent mal en SQL et la règle tient en trois
+  // lignes testables — voir `occupantsParBox`.
+
   if (boxRes.error) throw new Error(boxRes.error.message);
   if (geoRes.error) throw new Error(geoRes.error.message);
   if (contratsRes.error) throw new Error(contratsRes.error.message);
@@ -660,17 +665,28 @@ export async function planParBatiment(): Promise<GroupePlan[]> {
     profondeur_cm: number | null;
     rotation_deg: number;
   };
-  type ContratJointNom = { id: string; box_id: string | null; sr_locataires: { nom: string } | null };
+  type ContratJointNom = {
+    id: string;
+    box_id: string | null;
+    date_debut: string | null;
+    date_fin: string | null;
+    sr_locataires: { nom: string } | null;
+  };
 
   const geoParUnit = new Map<string, Geo>();
   for (const g of (geoRes.data ?? []) as Geo[]) geoParUnit.set(g.id, g);
 
-  const occupantParBox = new Map<string, { nom: string; contratId: string }>();
-  for (const c of (contratsRes.data ?? []) as unknown as ContratJointNom[]) {
-    if (c.box_id && c.sr_locataires?.nom) {
-      occupantParBox.set(c.box_id, { nom: c.sr_locataires.nom, contratId: c.id });
-    }
-  }
+  const occupantParBox = occupantsParBox(
+    ((contratsRes.data ?? []) as unknown as ContratJointNom[])
+      .filter((c) => c.sr_locataires?.nom)
+      .map((c) => ({
+        box_id: c.box_id,
+        date_debut: c.date_debut,
+        date_fin: c.date_fin,
+        valeur: { nom: c.sr_locataires!.nom, contratId: c.id },
+      })),
+    dateDuJour()
+  );
 
   const boxes: BoxPlan[] = (boxRes.data ?? []).map((b) => {
     const geo = b.unit_id ? geoParUnit.get(b.unit_id) ?? null : null;

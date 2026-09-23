@@ -100,3 +100,53 @@ export function compteDisponibilite(
     tauxOccupation: total === 0 ? 0 : Math.round(((total - libres) / total) * 100),
   };
 }
+
+/**
+ * Un contrat rattaché à un box, réduit à ce qui décide de l'occupation.
+ * `valeur` porte ce que l'appelant veut retrouver : un nom, un identifiant.
+ */
+export type ContratRattache<T> = {
+  box_id: string | null;
+  date_debut: string | null;
+  date_fin: string | null;
+  valeur: T;
+};
+
+/**
+ * Qui occupe chaque box **aujourd'hui**.
+ *
+ * Le plan retenait jusqu'ici le premier contrat venu, sans regarder ses dates.
+ * Un bail résilié gardait donc sa case en vert : le 6 RDJ, rendu fin août,
+ * s'affichait encore loué à son ancienne locataire pendant que la barre des
+ * totaux le comptait, elle, parmi les box vides. Deux écrans, deux réponses.
+ *
+ * Les dates sont des `AAAA-MM-JJ` de largeur fixe : la comparaison de chaînes
+ * suffit, et une borne absente n'exclut jamais — un contrat sans date de début
+ * court depuis toujours, sans date de fin il court encore.
+ *
+ * Quand plusieurs contrats se disputent un box — le partant et l'arrivant du
+ * même mois — c'est le plus récemment commencé qui l'emporte.
+ */
+export function occupantsParBox<T>(
+  contrats: ContratRattache<T>[],
+  aujourdHui: string
+): Map<string, T> {
+  const retenu = new Map<string, { debut: string; valeur: T }>();
+
+  for (const c of contrats) {
+    if (!c.box_id) continue;
+    if (c.date_debut && c.date_debut > aujourdHui) continue;
+    if (c.date_fin && c.date_fin < aujourdHui) continue;
+
+    // Une date de début absente se classe avant toutes les autres, sans jamais
+    // écarter le contrat : elle le rend seulement moins prioritaire qu'un bail
+    // dont on connaît le commencement.
+    const debut = c.date_debut ?? "";
+    const precedent = retenu.get(c.box_id);
+    if (!precedent || debut >= precedent.debut) {
+      retenu.set(c.box_id, { debut, valeur: c.valeur });
+    }
+  }
+
+  return new Map([...retenu].map(([boxId, { valeur }]) => [boxId, valeur]));
+}

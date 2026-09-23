@@ -92,6 +92,19 @@ export function periodeCourante(now: Date = new Date()): string {
 }
 
 /**
+ * La date du jour en `AAAA-MM-JJ`, dans le fuseau du serveur.
+ *
+ * `toISOString()` passerait par UTC et daterait d'hier toute la soirée d'été :
+ * un contrat prenant fin ce soir paraîtrait déjà clos. On lit donc les champs
+ * locaux, comme `periodeCourante`.
+ */
+export function dateDuJour(now: Date = new Date()): string {
+  const mois = String(now.getMonth() + 1).padStart(2, "0");
+  const jour = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${mois}-${jour}`;
+}
+
+/**
  * Les douze périodes se terminant par `periode`, de la plus ancienne à la
  * plus récente — l'historique de la fiche locataire.
  */

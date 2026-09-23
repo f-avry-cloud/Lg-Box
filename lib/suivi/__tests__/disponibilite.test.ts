@@ -4,6 +4,7 @@ import {
   compteDisponibilite,
   estALouer,
   etatBox,
+  occupantsParBox,
 } from "@/lib/suivi/disponibilite";
 
 describe("etatBox", () => {
@@ -57,5 +58,69 @@ describe("compteDisponibilite", () => {
 
   it("rend zéro sur un parc vide plutôt qu'une division par zéro", () => {
     expect(compteDisponibilite([]).tauxOccupation).toBe(0);
+  });
+});
+
+describe("occupantsParBox", () => {
+  const contrat = (
+    box_id: string | null,
+    date_debut: string | null,
+    date_fin: string | null,
+    valeur: string
+  ) => ({ box_id, date_debut, date_fin, valeur });
+
+  it("écarte un bail résilié — le cas du 6 RDJ", () => {
+    // Rendu le 31 août : la case ne doit plus porter le nom de la partante,
+    // sans quoi le plan la montre louée pendant que les totaux la comptent vide.
+    const occupants = occupantsParBox(
+      [contrat("rdj6", "2020-01-01", "2026-08-31", "PUSNEL")],
+      "2026-09-23"
+    );
+    expect(occupants.has("rdj6")).toBe(false);
+  });
+
+  it("garde un box dont la sortie est programmée jusqu'à l'échéance", () => {
+    const occupants = occupantsParBox(
+      [contrat("b4c", "2026-05-02", "2026-09-30", "PORÉE")],
+      "2026-09-23"
+    );
+    expect(occupants.get("b4c")).toBe("PORÉE");
+  });
+
+  it("ignore un bail qui n'a pas encore commencé", () => {
+    const occupants = occupantsParBox(
+      [contrat("b1", "2026-10-01", null, "ARRIVANT")],
+      "2026-09-23"
+    );
+    expect(occupants.has("b1")).toBe(false);
+  });
+
+  it("retient l'arrivant quand deux bails se succèdent sur le même box", () => {
+    const occupants = occupantsParBox(
+      [
+        contrat("b7", "2020-06-01", "2026-08-31", "CHEVALIER"),
+        contrat("b7", "2026-09-01", null, "ELIAS"),
+      ],
+      "2026-09-23"
+    );
+    expect(occupants.get("b7")).toBe("ELIAS");
+  });
+
+  it("préfère le bail daté à celui dont le début est inconnu", () => {
+    const occupants = occupantsParBox(
+      [contrat("b2", null, null, "ANCIEN"), contrat("b2", "2026-09-01", null, "RÉCENT")],
+      "2026-09-23"
+    );
+    expect(occupants.get("b2")).toBe("RÉCENT");
+  });
+
+  it("n'écarte jamais un contrat aux deux bornes absentes", () => {
+    const occupants = occupantsParBox([contrat("b3", null, null, "SANS DATES")], "2026-09-23");
+    expect(occupants.get("b3")).toBe("SANS DATES");
+  });
+
+  it("laisse de côté un contrat sans box", () => {
+    const occupants = occupantsParBox([contrat(null, null, null, "SANS BOX")], "2026-09-23");
+    expect(occupants.size).toBe(0);
   });
 });
