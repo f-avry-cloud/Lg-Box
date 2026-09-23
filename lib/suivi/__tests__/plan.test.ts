@@ -102,11 +102,27 @@ describe("etiquette", () => {
   });
 
   it("tronque un numéro trop long pour la largeur", () => {
-    expect(etiquette("10bis", 110)).toBe("1…");
+    expect(etiquette("10bis", 60, 60)).toBe("10…");
   });
 
   it("garde au moins deux caractères même dans un box étroit", () => {
     expect(etiquette("12", 10)).toBe("12");
+  });
+
+  it("abrège l'atelier au lieu de le couper", () => {
+    expect(etiquette("Atelier", 250, 470)).toBe("Ate.");
+  });
+
+  it("abrège le vestibule, étroit mais profond", () => {
+    expect(etiquette("Vestibule", 78, 385)).toBe("Ves.");
+  });
+
+  it("retombe sur la troncature quand l'abréviation ne tient pas non plus", () => {
+    expect(etiquette("Vestibule", 40, 40)).toBe("V…");
+  });
+
+  it("garde entier un numéro qui tient dans une case étroite mais profonde", () => {
+    expect(etiquette("10bis", 280, 710)).toBe("10bis");
   });
 });
 

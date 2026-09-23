@@ -84,11 +84,39 @@ export function taillePolice(largeur: number, profondeur: number): number {
   return Math.round(Math.max(28, Math.min(70, cote * 0.28)));
 }
 
-/** Étiquette affichée dans le box : le numéro, tronqué s'il est très long. */
-export function etiquette(numero: string, largeur: number): string {
-  // ~0,55 cm de large par caractère à la taille de police calculée.
-  const maxCaracteres = Math.max(2, Math.floor(largeur / 55));
-  return numero.length <= maxCaracteres ? numero : `${numero.slice(0, maxCaracteres - 1)}…`;
+/**
+ * Formes courtes des locaux dont le nom ne tient pas dans la case.
+ *
+ * La troncature générique donne « Ate… », qui n'apprend rien ; une abréviation
+ * choisie se lit du premier coup d'œil. Le nom entier reste celui de la base,
+ * et c'est lui qu'on voit partout ailleurs — listes, fiche, facture.
+ */
+const ABREGES: Record<string, string> = {
+  Atelier: "Ate.",
+  Vestibule: "Ves.",
+};
+
+/**
+ * Largeur d'un caractère, en part de la taille de police. Mesurée sur les
+ * chiffres gras de system-ui, qui sont les plus larges de l'étiquette.
+ */
+const LARGEUR_CARACTERE = 0.62;
+
+/** Étiquette affichée dans le box : le numéro, abrégé s'il est très long. */
+export function etiquette(numero: string, largeur: number, profondeur = largeur): string {
+  // Le budget de caractères se déduit de la police réellement employée, et non
+  // d'une largeur forfaitaire : une case étroite mais profonde garde une grosse
+  // police, et tronquer d'après ses seuls centimètres la couperait à tort.
+  const police = taillePolice(largeur, profondeur);
+  const maxCaracteres = Math.max(2, Math.floor(largeur / (police * LARGEUR_CARACTERE)));
+  if (numero.length <= maxCaracteres) return numero;
+
+  // L'abréviation ne sert que si elle tient : dans une case minuscule, la
+  // troncature reprend la main plutôt que de déborder.
+  const abrege = ABREGES[numero];
+  if (abrege && abrege.length <= maxCaracteres) return abrege;
+
+  return `${numero.slice(0, maxCaracteres - 1)}…`;
 }
 
 export type StatsBatiment = {

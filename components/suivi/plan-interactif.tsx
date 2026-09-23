@@ -284,7 +284,7 @@ export function PlanInteractif({
                     fill={etat === "libre" ? "var(--suivi-rouge)" : "#ffffff"}
                     style={{ pointerEvents: "none", userSelect: "none" }}
                   >
-                    {etiquette(box.numero, box.largeur)}
+                    {etiquette(box.numero, box.largeur, box.profondeur)}
                   </text>
                 </g>
               );
