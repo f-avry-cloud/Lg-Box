@@ -248,20 +248,29 @@ export function FeuilleBox({
       </div>
 
       {/*
-        Disponibilité, pour les seuls box sans contrat. Un box loué n'a pas à
-        être déclaré libre — et l'absence de contrat ne prouve rien, puisque
-        25 box du site sont occupés par des locataires pas encore rapprochés.
-        C'est donc ici, et nulle part ailleurs, qu'un box devient louable.
+        Disponibilité. C'est ici, et nulle part ailleurs, qu'un box devient
+        louable : l'absence de contrat ne prouve rien, puisque 24 box du site
+        sont occupés par des locataires pas encore rapprochés.
+
+        Le bloc s'affiche aussi sur un box loué, car un locataire peut rendre
+        les lieux avant l'échéance de son bail tout en ayant réglé le mois
+        entamé. Le box est alors à relouer le jour même, et personne d'autre
+        que l'exploitant ne peut le dire.
       */}
-      {!creation && box && !box.detail && !box.locataire && (
+      {!creation && box && (
         <div className="mb-4 rounded-xl border border-border bg-secondary/30 p-3">
           <span className="t-etiquette mb-2 block">Disponibilité</span>
           <div className="flex gap-2">
             {(
-              [
-                [false, "Locataire à identifier"],
-                [true, "Libre — à louer"],
-              ] as const
+              box.locataire
+                ? ([
+                    [false, "Occupé"],
+                    [true, "Vidé — à relouer"],
+                  ] as const)
+                : ([
+                    [false, "Locataire à identifier"],
+                    [true, "Libre — à louer"],
+                  ] as const)
             ).map(([valeur, libelle]) => (
               <button
                 key={String(valeur)}
@@ -277,7 +286,9 @@ export function FeuilleBox({
                       return;
                     }
                     vibre();
-                    toast.success(valeur ? "Box déclaré libre." : "Box marqué occupé.");
+                    toast.success(
+                      valeur ? "Box à relouer." : "Box marqué occupé."
+                    );
                     router.refresh();
                   });
                 }}
@@ -287,12 +298,18 @@ export function FeuilleBox({
                     ? "border-transparent text-white"
                     : "border-border bg-background active:bg-secondary"
                 )}
+                // Les mêmes couleurs que le plan : rouge ce qui est à louer,
+                // vert ce qui est loué à quelqu'un de connu, bleu ce qui reste
+                // à rapprocher. Un sélecteur qui contredirait le dessin
+                // obligerait à retenir deux codes au lieu d'un.
                 style={
                   box.libre === valeur
                     ? {
                         backgroundColor: valeur
-                          ? "var(--suivi-vert)"
-                          : "var(--suivi-orange)",
+                          ? "var(--suivi-rouge)"
+                          : box.locataire
+                            ? "var(--suivi-vert)"
+                            : "var(--suivi-bleu)",
                       }
                     : undefined
                 }

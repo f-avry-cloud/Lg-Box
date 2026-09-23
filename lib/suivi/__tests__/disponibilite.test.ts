@@ -22,9 +22,10 @@ describe("etatBox", () => {
     expect(etatBox({ occupe: false, libre: false })).toBe("occupant_inconnu");
   });
 
-  it("laisse le contrat l'emporter sur le drapeau", () => {
-    // Sortie programmée à la fin du mois : le box est promis, pas encore rendu.
-    expect(etatBox({ occupe: true, libre: true })).toBe("loue");
+  it("laisse le drapeau l'emporter sur le contrat", () => {
+    // Locataire parti en cours de mois, loyer réglé jusqu'à l'échéance : la
+    // case est à relouer aujourd'hui, même si le bail court encore.
+    expect(etatBox({ occupe: true, libre: true })).toBe("libre");
   });
 });
 
@@ -32,7 +33,8 @@ describe("estALouer", () => {
   it("ne propose que ce qui est confirmé vide", () => {
     expect(estALouer({ occupe: false, libre: true })).toBe(true);
     expect(estALouer({ occupe: false, libre: false })).toBe(false);
-    expect(estALouer({ occupe: true, libre: true })).toBe(false);
+    // Vidé avant l'échéance : proposable, quoi qu'en dise le bail.
+    expect(estALouer({ occupe: true, libre: true })).toBe(true);
   });
 });
 
@@ -40,20 +42,20 @@ describe("compteDisponibilite", () => {
   const parc = [
     { occupe: true, libre: false },
     { occupe: true, libre: false },
-    { occupe: true, libre: true },   // sortie programmée : encore loué
+    { occupe: true, libre: true },   // vidé avant l'échéance : à relouer
     { occupe: false, libre: false },
     { occupe: false, libre: true },
   ];
 
   it("répartit les trois états", () => {
     const c = compteDisponibilite(parc);
-    expect(c).toMatchObject({ loues: 3, occupantInconnu: 1, libres: 1, total: 5 });
+    expect(c).toMatchObject({ loues: 2, occupantInconnu: 1, libres: 2, total: 5 });
   });
 
   it("compte l'occupant inconnu comme occupé dans le taux", () => {
-    // 4 occupés sur 5 : annoncer 60 % parce qu'un box n'est pas rapproché
+    // 3 occupés sur 5 : annoncer 40 % parce qu'un box n'est pas rapproché
     // donnerait une image fausse d'un centre plein.
-    expect(compteDisponibilite(parc).tauxOccupation).toBe(80);
+    expect(compteDisponibilite(parc).tauxOccupation).toBe(60);
   });
 
   it("rend zéro sur un parc vide plutôt qu'une division par zéro", () => {

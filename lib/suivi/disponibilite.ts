@@ -47,16 +47,24 @@ export const FOND_ETAT_BOX: Record<EtatBox, string> = {
 };
 
 /**
- * L'ordre compte : **le contrat l'emporte sur le drapeau**.
+ * L'ordre compte : **le drapeau l'emporte sur le contrat**.
  *
- * Un box marqué disponible mais dont le contrat court encore — une sortie
- * programmée à la fin du mois, par exemple — reste loué jusqu'à l'échéance.
- * Sans cette priorité, un préavis posé d'avance ferait disparaître le loyer
- * du mois en cours.
+ * Le contraire a été essayé et il est faux. Un locataire peut avoir vidé les
+ * lieux tout en ayant réglé le mois entamé : le box est à relouer dès
+ * aujourd'hui, alors que son bail court encore jusqu'au 30. C'est le cas du
+ * 4C, rendu en septembre et payé jusqu'au bout.
+ *
+ * Le drapeau est une constatation — quelqu'un a ouvert la porte et vu la case
+ * vide. La date de fin n'est qu'une prévision. Entre les deux, on croit ce qui
+ * a été vu.
+ *
+ * Le loyer ne s'en trouve pas perdu : les règlements pendent au contrat, pas
+ * au box. Un box déclaré vide et payé jusqu'à l'échéance reste pointé, encaissé
+ * et compté dans les totaux du mois.
  */
 export function etatBox(box: { occupe: boolean; libre: boolean }): EtatBox {
-  if (box.occupe) return "loue";
-  return box.libre ? "libre" : "occupant_inconnu";
+  if (box.libre) return "libre";
+  return box.occupe ? "loue" : "occupant_inconnu";
 }
 
 /**
