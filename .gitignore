@@ -45,3 +45,8 @@ next-env.d.ts
 # ce fichier contient noms, téléphones et e-mails de locataires réels.
 # Placez-le en local pour l'import et le mode démo « vraies données ».
 /data/locataires_seed.csv
+
+# Extractions demandées depuis l'app (tableaux de parc, listes de règlements).
+# Même motif que ci-dessus : le dépôt est public, ces fichiers nomment des
+# locataires réels et leur loyer. Ils restent sur le poste, jamais dans git.
+/exports/
