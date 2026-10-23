@@ -74,6 +74,9 @@ export type ABrelouer = {
    * vide — le manque à gagner a commencé, il n'est pas à venir.
    */
   disponibleLe: string | null;
+  /** Identifiant du box. C'est lui qui identifie, jamais le numéro. */
+  boxId: string;
+  /** Numéro affiché, qui n'est unique qu'au sein d'un bâtiment. */
   box: string;
   batiment: string | null;
   /** Le partant. Null pour un box déjà vide, que personne n'occupe. */
@@ -98,6 +101,7 @@ export type EntreeDepart = {
   /** Dernier jour du bail. */
   dateFin: string;
   /** Un départ sans box ne dit rien d'une vacance : il sera écarté. */
+  boxId: string | null;
   box: string | null;
   batiment: string | null;
   locataire: string;
@@ -106,6 +110,7 @@ export type EntreeDepart = {
 };
 
 export type EntreeVide = {
+  boxId: string;
   box: string;
   batiment: string | null;
   tarifIndicatif: number | null;
@@ -115,17 +120,27 @@ export type EntreeVide = {
 
 /** Un bail quelconque, pour savoir si un box est repris après un départ. */
 export type Couverture = {
-  box: string;
+  boxId: string;
   /** Mois de début, « AAAA-MM ». Null = depuis toujours. */
   debut: string | null;
   /** Mois de fin, « AAAA-MM ». Null = sans échéance. */
   fin: string | null;
 };
 
-/** Ce box est-il couvert par un bail au mois donné ? */
-function couvert(couvertures: Couverture[], box: string, mois: string): boolean {
+/**
+ * Ce box est-il couvert par un bail au mois donné ?
+ *
+ * Le rapprochement se fait sur l'identifiant, **jamais sur le numéro** : cinq
+ * box du site portent le n° 7, un par bâtiment. Comparer les numéros faisait
+ * couvrir le 7 du Bâtiment IV par le bail du 7 du Bâtiment I, et disparaître
+ * un départ bien réel.
+ */
+function couvert(couvertures: Couverture[], boxId: string, mois: string): boolean {
   return couvertures.some(
-    (c) => c.box === box && (c.debut === null || c.debut <= mois) && (c.fin === null || c.fin >= mois)
+    (c) =>
+      c.boxId === boxId &&
+      (c.debut === null || c.debut <= mois) &&
+      (c.fin === null || c.fin >= mois)
   );
 }
 
@@ -162,15 +177,16 @@ export function aRelouer(
   const horizon = decale(periode, nbMois);
 
   const sorties: ABrelouer[] = departs
-    .filter((d): d is EntreeDepart & { box: string } => d.box !== null)
+    .filter((d): d is EntreeDepart & { boxId: string; box: string } => d.boxId !== null)
     .map((d) => ({ depart: d, disponibleLe: decale(d.dateFin.slice(0, 7), 1) }))
     // Le mois affiché compte : un bail clos le mois dernier laisse déjà le box
     // vide ce mois-ci, et c'est un manque à gagner en cours.
     .filter(({ disponibleLe }) => disponibleLe <= horizon)
-    .filter(({ depart, disponibleLe }) => !couvert(couvertures, depart.box, disponibleLe))
+    .filter(({ depart, disponibleLe }) => !couvert(couvertures, depart.boxId, disponibleLe))
     .map(({ depart, disponibleLe }) => ({
       disponibleLe,
-      box: depart.box,
+      boxId: depart.boxId,
+      box: depart.box ?? "",
       batiment: depart.batiment,
       locataire: depart.locataire,
       tarif: depart.tarifIndicatif ?? (depart.loyer > 0 ? depart.loyer : null),
@@ -180,6 +196,7 @@ export function aRelouer(
 
   const deja: ABrelouer[] = vides.map((v) => ({
     disponibleLe: null,
+    boxId: v.boxId,
     box: v.box,
     batiment: v.batiment,
     locataire: null,
@@ -192,9 +209,9 @@ export function aRelouer(
   // marqué libre, et son bail porte une date de fin. On ne le compte qu'une
   // fois, et c'est la ligne « déjà vide » qui l'emporte — elle dit le manque
   // à gagner en cours, pas un départ à anticiper.
-  const videsParBox = new Set(deja.map((v) => v.box));
+  const videsParBox = new Set(deja.map((v) => v.boxId));
 
-  return [...deja, ...sorties.filter((s) => !videsParBox.has(s.box))].sort(
+  return [...deja, ...sorties.filter((s) => !videsParBox.has(s.boxId))].sort(
     (a, b) =>
       (a.disponibleLe ?? "").localeCompare(b.disponibleLe ?? "") ||
       a.box.localeCompare(b.box, "fr", { numeric: true })

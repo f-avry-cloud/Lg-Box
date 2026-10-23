@@ -61,8 +61,9 @@ describe("aRelouer", () => {
     dateFin: string,
     box: string | null,
     loyer = 120,
-    tarifIndicatif: number | null = null
-  ) => ({ locataire, dateFin, box, batiment: "Étage", loyer, tarifIndicatif });
+    tarifIndicatif: number | null = null,
+    boxId = box === null ? null : `id-${box}`
+  ) => ({ locataire, dateFin, box, boxId, batiment: "Étage", loyer, tarifIndicatif });
 
   it("compte un bail clos le 31 octobre comme libérant novembre", () => {
     // Le cas qui manquait : MESDACH sort le 31/10. Le box ne rapporte plus
@@ -79,11 +80,25 @@ describe("aRelouer", () => {
     const l = aRelouer(
       [depart("CHEVALIER", "2026-08-31", "7", 170)],
       [],
-      [{ box: "7", debut: "2026-09", fin: null }],
+      [{ boxId: "id-7", debut: "2026-09", fin: null }],
       "2026-10",
       3
     );
     expect(l).toHaveLength(0);
+  });
+
+  it("ne confond pas deux box de même numéro dans des bâtiments différents", () => {
+    // Cinq box du site portent le n° 7. Le bail en cours sur le 7 du
+    // Bâtiment I ne doit pas faire disparaître le départ du 7 du Bâtiment IV.
+    const l = aRelouer(
+      [depart("BODIOU", "2026-10-31", "7", 170, null, "id-batIV-7")],
+      [],
+      [{ boxId: "id-batI-7", debut: "2026-09", fin: null }],
+      "2026-10",
+      3
+    );
+    expect(l).toHaveLength(1);
+    expect(l[0]).toMatchObject({ disponibleLe: "2026-11", box: "7", tarif: 170 });
   });
 
   it("écarte un départ sans box, qui ne dit rien d'une vacance", () => {
@@ -96,7 +111,7 @@ describe("aRelouer", () => {
   it("met les box déjà vides en tête, sans mois", () => {
     const l = aRelouer(
       [depart("MESDACH", "2026-10-31", "9D", 90)],
-      [{ box: "6", batiment: "RDJ", tarifIndicatif: 120 }],
+      [{ boxId: "id-6", box: "6", batiment: "RDJ", tarifIndicatif: 120 }],
       [],
       "2026-10",
       3
@@ -108,7 +123,7 @@ describe("aRelouer", () => {
   it("ne compte pas deux fois un box déjà rendu dont le bail porte une fin", () => {
     const l = aRelouer(
       [depart("PORÉE", "2026-09-30", "4C", 120)],
-      [{ box: "4C", batiment: "Bât IV", tarifIndicatif: null }],
+      [{ boxId: "id-4C", box: "4C", batiment: "Bât IV", tarifIndicatif: null }],
       [],
       "2026-10",
       3
@@ -123,8 +138,8 @@ describe("aRelouer", () => {
     const l = aRelouer(
       [],
       [
-        { box: "4C", batiment: "Bât IV", tarifIndicatif: 120, reserve: true },
-        { box: "6", batiment: "RDJ", tarifIndicatif: 120 },
+        { boxId: "id-4C", box: "4C", batiment: "Bât IV", tarifIndicatif: 120, reserve: true },
+        { boxId: "id-6", box: "6", batiment: "RDJ", tarifIndicatif: 120 },
       ],
       [],
       "2026-10",
@@ -164,8 +179,8 @@ describe("manqueAGagner", () => {
   it("somme les tarifs, en ignorant les inconnus", () => {
     const l = aRelouer(
       [
-        { locataire: "A", dateFin: "2026-10-31", box: "1", batiment: null, loyer: 90, tarifIndicatif: null },
-        { locataire: "B", dateFin: "2026-11-30", box: "2", batiment: null, loyer: 0, tarifIndicatif: null },
+        { locataire: "A", dateFin: "2026-10-31", box: "1", boxId: "id-1", batiment: null, loyer: 90, tarifIndicatif: null },
+        { locataire: "B", dateFin: "2026-11-30", box: "2", boxId: "id-2", batiment: null, loyer: 0, tarifIndicatif: null },
       ],
       [],
       [],

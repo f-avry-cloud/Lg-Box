@@ -164,9 +164,9 @@ export default async function TableauDeBordPage({
               </p>
 
               <ul className="mt-3 space-y-1.5">
-                {stats.aRelouer.map((l, i) => (
+                {stats.aRelouer.map((l) => (
                   <li
-                    key={`${l.disponibleLe ?? "vide"}-${l.box ?? i}`}
+                    key={l.boxId}
                     className="flex items-baseline gap-2 t-meta"
                   >
                     {/* « Vide » plutôt qu'un mois : le manque à gagner a déjà

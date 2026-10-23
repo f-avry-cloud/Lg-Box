@@ -557,14 +557,14 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
     // liste de ce qui est à relouer, avec leur tarif.
     supabase
       .from("sr_box")
-      .select("numero, batiment, tarif_indicatif_eur")
+      .select("id, numero, batiment, tarif_indicatif_eur")
       .eq("libre", true),
     // Les sorties programmées : ce qui va se libérer, et à quel tarif on
     // pourra le remettre sur le marché.
     supabase
       .from("sr_contrats")
       .select(
-        "date_debut, date_fin, loyer_mensuel_eur, sr_locataires (nom), sr_box (numero, batiment, tarif_indicatif_eur)"
+        "date_debut, date_fin, loyer_mensuel_eur, sr_locataires (nom), sr_box (id, numero, batiment, tarif_indicatif_eur)"
       )
       .not("box_id", "is", null),
     supabase.from("invoices").select("montant_ttc, customer_id").in("statut", ["emise", "en_retard"]),
@@ -589,10 +589,16 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
     date_fin: string | null;
     loyer_mensuel_eur: number;
     sr_locataires: { nom: string } | null;
-    sr_box: { numero: string; batiment: string | null; tarif_indicatif_eur: number | null } | null;
+    sr_box: {
+      id: string;
+      numero: string;
+      batiment: string | null;
+      tarif_indicatif_eur: number | null;
+    } | null;
   };
 
   type BoxVide = {
+    id: string;
     numero: string;
     batiment: string | null;
     tarif_indicatif_eur: number | null;
@@ -605,7 +611,7 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
   // Les mois couverts par un bail, box par box : c'est ce qui dit si une
   // sortie a laissé une vraie vacance ou si la case a déjà été reprise.
   const couvertures = baux.map((c) => ({
-    box: c.sr_box!.numero,
+    boxId: c.sr_box!.id,
     debut: c.date_debut?.slice(0, 7) ?? null,
     fin: c.date_fin?.slice(0, 7) ?? null,
   }));
@@ -613,9 +619,7 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
   // Un box marqué libre mais déjà promis : sa perte est comblée, la carte le
   // dira sans la compter.
   const boxReserves = new Set(
-    baux
-      .filter((c) => contratAVenir(periode, c.date_debut, c.date_fin))
-      .map((c) => c.sr_box!.numero)
+    baux.filter((c) => contratAVenir(periode, c.date_debut, c.date_fin)).map((c) => c.sr_box!.id)
   );
 
   const lignesARelouer = aRelouer(
@@ -623,6 +627,7 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
       .filter((c) => c.date_fin !== null)
       .map((c) => ({
         dateFin: c.date_fin!,
+        boxId: c.sr_box!.id,
         box: c.sr_box!.numero,
         batiment: c.sr_box!.batiment,
         locataire: c.sr_locataires!.nom,
@@ -630,10 +635,11 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
         tarifIndicatif: c.sr_box!.tarif_indicatif_eur,
       })),
     ((vides.data ?? []) as unknown as BoxVide[]).map((b) => ({
+      boxId: b.id,
       box: b.numero,
       batiment: b.batiment,
       tarifIndicatif: b.tarif_indicatif_eur,
-      reserve: boxReserves.has(b.numero),
+      reserve: boxReserves.has(b.id),
     })),
     couvertures,
     periode
