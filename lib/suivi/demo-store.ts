@@ -12,6 +12,7 @@ import { join } from "node:path";
 
 import type { Charge } from "@/lib/suivi/charges";
 import { DEMO_CSV } from "@/lib/suivi/demo-data";
+import { loyerDuPour } from "@/lib/suivi/prorata";
 import { parseSeedCsv, type SeedData } from "@/lib/suivi/seed-csv";
 import type {
   Box,
@@ -115,6 +116,7 @@ export function demoLignesMois(periode: string): LigneMois[] {
   return [...s.contrats.values()].map((contrat) => {
     const locataire = s.locataires.get(contrat.locataire_id)!;
     const box = contrat.box_id ? s.box.get(contrat.box_id) ?? null : null;
+    const du = loyerDuPour(periode, contrat.loyer_mensuel_eur, contrat.date_debut);
     return {
       contrat_id: contrat.id,
       locataire_id: locataire.id,
@@ -122,7 +124,8 @@ export function demoLignesMois(periode: string): LigneMois[] {
       societe: locataire.societe,
       box_numero: box?.numero ?? null,
       batiment: box?.batiment ?? null,
-      loyer_mensuel_eur: contrat.loyer_mensuel_eur,
+      loyer_mensuel_eur: du.montant,
+      prorata: du.prorata,
       reglement: s.reglements.get(cle(contrat.id, periode)) ?? null,
     };
   });

@@ -19,6 +19,9 @@
   /* Bleu ardoise : l'attente, qui n'est ni une urgence (orange) ni un
      aboutissement (vert) et ne doit se confondre avec ni l'un ni l'autre. */
   --suivi-bleu: #3d5a80;
+  /* Box vide mais déjà promis : ni à louer, ni occupé. Le violet se distingue
+     du bleu à la volée sur un plan tenu à bout de bras. */
+  --suivi-violet: #6b4e9e;
   /* Rouge du box vide. Deux valeurs pour un seul sens : la claire remplit la
      case sur le plan, où elle doit sauter aux yeux sans écraser son numéro ;
      la foncée sert au texte et aux contours, où la claire serait illisible

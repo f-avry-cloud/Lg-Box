@@ -3,6 +3,8 @@
 // d'encaissement manipule locataire / box / contrat / règlement, pas
 // customer / unit / contract / invoice.
 
+import type { Prorata } from "@/lib/suivi/prorata";
+
 export type ReglementStatut = "attendu" | "facture" | "paye" | "partiel" | "retard";
 export type MoyenPaiement = "virement" | "cheque" | "especes" | "CB" | "autre";
 
@@ -77,7 +79,15 @@ export type LigneMois = {
   societe: string | null;
   box_numero: string | null;
   batiment: string | null;
+  /**
+   * Loyer **dû pour ce mois**, et non le loyer du contrat : les deux ne
+   * coïncident pas le mois de l'emménagement, où seuls les jours restants
+   * sont comptés. Tout le reste du carnet — totaux, facturation, cash-flow —
+   * s'appuie sur ce champ, et hérite donc du prorata sans le connaître.
+   */
   loyer_mensuel_eur: number;
+  /** Renseigné le seul mois d'entrée, pour expliquer un montant inhabituel. */
+  prorata: Prorata | null;
   reglement: Reglement | null;
 };
 

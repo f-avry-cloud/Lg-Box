@@ -39,6 +39,7 @@ function ligne(
     locataire_id: `l-${nom}`,
     nom,
     societe: null,
+    prorata: null,
     box_numero: null,
     batiment: null,
     loyer_mensuel_eur: loyer,

@@ -12,6 +12,8 @@
 export type EtatBox =
   /** Un contrat court, et on sait qui l'occupe. */
   | "loue"
+  /** Vide aujourd'hui, mais déjà promis : un bail commence le mois prochain. */
+  | "reserve"
   /** Aucun contrat rattaché, mais rien ne dit que le box soit vide. */
   | "occupant_inconnu"
   /** Confirmé disponible à la location. */
@@ -19,6 +21,7 @@ export type EtatBox =
 
 export const LIBELLE_ETAT_BOX: Record<EtatBox, string> = {
   loue: "Loué",
+  reserve: "Réservé",
   occupant_inconnu: "Locataire à identifier",
   libre: "Libre",
 };
@@ -31,6 +34,7 @@ export const LIBELLE_ETAT_BOX: Record<EtatBox, string> = {
  */
 export const COULEUR_ETAT_BOX: Record<EtatBox, string> = {
   loue: "var(--suivi-vert)",
+  reserve: "var(--suivi-violet)",
   occupant_inconnu: "var(--suivi-bleu)",
   libre: "var(--suivi-rouge)",
 };
@@ -42,6 +46,7 @@ export const COULEUR_ETAT_BOX: Record<EtatBox, string> = {
  */
 export const FOND_ETAT_BOX: Record<EtatBox, string> = {
   loue: "var(--suivi-vert)",
+  reserve: "var(--suivi-violet)",
   occupant_inconnu: "var(--suivi-bleu)",
   libre: "var(--suivi-rouge-clair)",
 };
@@ -62,7 +67,11 @@ export const FOND_ETAT_BOX: Record<EtatBox, string> = {
  * au box. Un box déclaré vide et payé jusqu'à l'échéance reste pointé, encaissé
  * et compté dans les totaux du mois.
  */
-export function etatBox(box: { occupe: boolean; libre: boolean }): EtatBox {
+export function etatBox(box: { occupe: boolean; libre: boolean; reserve?: boolean }): EtatBox {
+  // La réservation passe avant tout le reste : une case vide ce mois-ci mais
+  // promise au 1er du mois prochain ne doit être proposée à personne. C'est
+  // la seule information que le rouge ferait perdre, et la plus coûteuse.
+  if (box.reserve && !box.occupe) return "reserve";
   if (box.libre) return "libre";
   return box.occupe ? "loue" : "occupant_inconnu";
 }
@@ -72,29 +81,32 @@ export function etatBox(box: { occupe: boolean; libre: boolean }): EtatBox {
  * compter les « occupant inconnu » parmi les disponibles donnerait un centre
  * à moitié vide alors qu'il est plein.
  */
-export function estALouer(box: { occupe: boolean; libre: boolean }): boolean {
+export function estALouer(box: { occupe: boolean; libre: boolean; reserve?: boolean }): boolean {
   return etatBox(box) === "libre";
 }
 
 export type ComptesDisponibilite = {
   loues: number;
+  reserves: number;
   occupantInconnu: number;
   libres: number;
   total: number;
-  /** Part réellement occupée, « occupant inconnu » compris. */
+  /** Part réellement occupée, « occupant inconnu » et réservés compris. */
   tauxOccupation: number;
 };
 
 export function compteDisponibilite(
-  boxes: Array<{ occupe: boolean; libre: boolean }>
+  boxes: Array<{ occupe: boolean; libre: boolean; reserve?: boolean }>
 ): ComptesDisponibilite {
   let loues = 0;
+  let reserves = 0;
   let occupantInconnu = 0;
   let libres = 0;
 
   for (const box of boxes) {
     const etat = etatBox(box);
     if (etat === "loue") loues += 1;
+    else if (etat === "reserve") reserves += 1;
     else if (etat === "libre") libres += 1;
     else occupantInconnu += 1;
   }
@@ -102,6 +114,7 @@ export function compteDisponibilite(
   const total = boxes.length;
   return {
     loues,
+    reserves,
     occupantInconnu,
     libres,
     total,

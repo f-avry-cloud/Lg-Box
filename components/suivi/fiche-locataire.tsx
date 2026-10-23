@@ -218,6 +218,9 @@ export function FicheLocataireVue({
     box_numero: null,
     batiment: null,
     loyer_mensuel_eur: loyer,
+    // La fiche montre le loyer du contrat, pas le dû d'un mois donné : il n'y
+    // a donc jamais de prorata à expliquer ici.
+    prorata: null,
     reglement: reglementDe(contratId),
   });
 

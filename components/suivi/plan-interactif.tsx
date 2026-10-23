@@ -312,6 +312,7 @@ export function PlanInteractif({
           [
             ["loue", comptes.loues],
             ["occupant_inconnu", comptes.occupantInconnu],
+            ["reserve", comptes.reserves],
             ["libre", comptes.libres],
           ] as const
         )

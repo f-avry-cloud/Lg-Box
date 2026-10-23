@@ -22,6 +22,19 @@ describe("etatBox", () => {
     expect(etatBox({ occupe: false, libre: false })).toBe("occupant_inconnu");
   });
 
+  it("annonce réservé un box vide mais déjà promis", () => {
+    // Le 4C : rendu fin septembre, repris au 1er novembre. Ni à louer, ni
+    // occupé — et le montrer libre le ferait proposer une seconde fois.
+    expect(etatBox({ occupe: false, libre: true, reserve: true })).toBe("reserve");
+    expect(estALouer({ occupe: false, libre: true, reserve: true })).toBe(false);
+  });
+
+  it("laisse le bail en cours primer sur la réservation", () => {
+    // Un box encore occupé dont le successeur est déjà connu reste loué :
+    // c'est le locataire d'aujourd'hui qui paie le mois.
+    expect(etatBox({ occupe: true, libre: false, reserve: true })).toBe("loue");
+  });
+
   it("laisse le drapeau l'emporter sur le contrat", () => {
     // Locataire parti en cours de mois, loyer réglé jusqu'à l'échéance : la
     // case est à relouer aujourd'hui, même si le bail court encore.
@@ -49,7 +62,7 @@ describe("compteDisponibilite", () => {
 
   it("répartit les trois états", () => {
     const c = compteDisponibilite(parc);
-    expect(c).toMatchObject({ loues: 2, occupantInconnu: 1, libres: 2, total: 5 });
+    expect(c).toMatchObject({ loues: 2, occupantInconnu: 1, libres: 2, reserves: 0, total: 5 });
   });
 
   it("compte l'occupant inconnu comme occupé dans le taux", () => {

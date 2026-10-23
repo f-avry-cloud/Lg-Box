@@ -33,7 +33,8 @@ import {
 import { groupeParBatiment, parseBoxReferenceCsv } from "@/lib/suivi/box";
 import { estPlace, type BoxPlan } from "@/lib/suivi/plan";
 import { BOX_REFERENCE_CSV } from "@/lib/suivi/box-reference";
-import { contratDuPour, contratOccupeOuReserve } from "@/lib/suivi/contrat";
+import { contratAVenir, contratDuPour, contratOccupeOuReserve } from "@/lib/suivi/contrat";
+import { loyerDuPour } from "@/lib/suivi/prorata";
 import type { DestinataireFacture, ParametresMail } from "@/lib/suivi/mail";
 import type { EtatReprise, LocataireReprise } from "@/lib/suivi/reprise";
 import type { Charge } from "@/lib/suivi/charges";
@@ -103,16 +104,24 @@ export async function lignesDuMois(periode: string): Promise<LigneMois[]> {
     // « date_fin is null » l'aurait fait disparaître dès la programmation
     // de la sortie, avec le loyer du mois en cours.
     .filter((c) => contratDuPour(periode, c.date_debut, c.date_fin))
-    .map((c) => ({
-      contrat_id: c.id,
-      locataire_id: c.sr_locataires!.id,
-      nom: c.sr_locataires!.nom,
-      societe: c.sr_locataires!.societe,
-      box_numero: c.sr_box?.numero ?? null,
-      batiment: c.sr_box?.batiment ?? null,
-      loyer_mensuel_eur: c.loyer_mensuel_eur,
-      reglement: parContrat.get(c.id) ?? null,
-    }));
+    .map((c) => {
+      // Le mois de l'emménagement ne se réclame qu'au prorata des jours
+      // restants. C'est le seul endroit qui le calcule : les totaux, la
+      // facturation et le cash-flow lisent tous `loyer_mensuel_eur`.
+      const du = loyerDuPour(periode, c.loyer_mensuel_eur, c.date_debut);
+
+      return {
+        contrat_id: c.id,
+        locataire_id: c.sr_locataires!.id,
+        nom: c.sr_locataires!.nom,
+        societe: c.sr_locataires!.societe,
+        box_numero: c.sr_box?.numero ?? null,
+        batiment: c.sr_box?.batiment ?? null,
+        loyer_mensuel_eur: du.montant,
+        prorata: du.prorata,
+        reglement: parContrat.get(c.id) ?? null,
+      };
+    });
 }
 
 export async function ficheLocataire(locataireId: string): Promise<FicheLocataire | null> {
@@ -681,23 +690,35 @@ export async function planParBatiment(): Promise<GroupePlan[]> {
   const geoParUnit = new Map<string, Geo>();
   for (const g of (geoRes.data ?? []) as Geo[]) geoParUnit.set(g.id, g);
 
+  const contratsAvecNom = ((contratsRes.data ?? []) as unknown as ContratJointNom[]).filter(
+    (c) => c.sr_locataires?.nom
+  );
+
   const occupantParBox = occupantsParBox(
-    ((contratsRes.data ?? []) as unknown as ContratJointNom[])
-      .filter((c) => c.sr_locataires?.nom)
-      .map((c) => ({
-        box_id: c.box_id,
-        date_debut: c.date_debut,
-        date_fin: c.date_fin,
-        valeur: { nom: c.sr_locataires!.nom, contratId: c.id },
-      })),
+    contratsAvecNom.map((c) => ({
+      box_id: c.box_id,
+      date_debut: c.date_debut,
+      date_fin: c.date_fin,
+      valeur: { nom: c.sr_locataires!.nom, contratId: c.id },
+    })),
     dateDuJour()
   );
+
+  // Les box promis : vides aujourd'hui, mais un bail y commence plus tard.
+  // Sans eux le plan les montrerait à louer, et on les proposerait deux fois.
+  const periodePlan = periodeCourante();
+  const reserves = new Set<string>();
+  for (const c of contratsAvecNom) {
+    if (!c.box_id) continue;
+    if (contratAVenir(periodePlan, c.date_debut, c.date_fin)) reserves.add(c.box_id);
+  }
 
   const boxes: BoxPlan[] = (boxRes.data ?? []).map((b) => {
     const geo = b.unit_id ? geoParUnit.get(b.unit_id) ?? null : null;
     const occupant = occupantParBox.get(b.id) ?? null;
     return {
       libre: b.libre,
+      reserve: reserves.has(b.id),
       id: b.id,
       numero: b.numero,
       batiment: b.batiment,
@@ -753,6 +774,8 @@ function planDemo(): GroupePlan[] {
     const rangee = Math.floor(index / 5);
     return {
       libre: b.libre,
+      // La démo n'a pas de bail futur : aucune case réservée à montrer.
+      reserve: false,
       id: b.id,
       numero: b.numero,
       batiment: b.batiment ?? "Sans bâtiment",
@@ -1047,7 +1070,10 @@ export async function destinatairesFactures(periode: string): Promise<Destinatai
       nom: c.sr_locataires!.nom,
       email: c.sr_locataires!.email,
       box: c.sr_box?.numero ?? null,
-      loyer: c.loyer_mensuel_eur,
+      // La facture annonce le montant réellement dû : au mois d'entrée, le
+      // prorata et non le loyer plein, sans quoi le message contredirait le
+      // carnet et la somme réclamée.
+      loyer: loyerDuPour(periode, c.loyer_mensuel_eur, c.date_debut).montant,
       dejaEnvoye: expedies.has(c.id),
     }))
     .sort((a, b) => a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }));

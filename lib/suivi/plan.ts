@@ -14,6 +14,8 @@ export type BoxPlan = {
   occupe: boolean;
   /** Confirmé disponible à la location — voir `lib/suivi/disponibilite.ts`. */
   libre: boolean;
+  /** Un bail commence après le mois affiché : la case est promise. */
+  reserve: boolean;
   locataire: string | null;
   contrat_id: string | null;
   /** Niveau du box, qui détermine le fond de plan (murs relevés). */

@@ -57,6 +57,13 @@ export function LigneLocataire({
             {ligne.societe ? `${ligne.societe} · ` : ""}
             {libelleBoxCourt}
           </span>
+          {/* Un montant inhabituel sans explication se lit comme une erreur de
+              saisie : le mois d'entrée dit donc pourquoi il est réduit. */}
+          {ligne.prorata && (
+            <span className="block truncate t-meta text-[var(--suivi-bleu)]">
+              {`Prorata — entrée le ${Number(ligne.prorata.dateDebut.slice(-2))}, ${ligne.prorata.jours} j sur ${ligne.prorata.joursDuMois}`}
+            </span>
+          )}
         </span>
 
         <span className="shrink-0 pr-1 text-right">
