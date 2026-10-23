@@ -38,10 +38,12 @@ export type ResultatFacturation = ActionResult & { factures?: number };
 export async function factureLeMois(periode: string): Promise<ResultatFacturation> {
   if (!isPeriode(periode)) return fail(`Période invalide : ${periode}`);
 
-  try {
-    const refus = await autorise();
-    if (refus) return refus;
+  // Hors du `try` : `requireStaff` redirige vers la connexion en levant, et
+  // le `catch` prendrait la redirection pour une panne.
+  const refus = await autorise();
+  if (refus) return refus;
 
+  try {
     const lignes = await lignesDuMois(periode);
     const aFacturer = lignes.filter((l) => statutLigne(l) === "attendu");
     if (aFacturer.length === 0) return { ...ok, factures: 0 };
@@ -80,10 +82,10 @@ export async function factureLeMois(periode: string): Promise<ResultatFacturatio
 export async function annuleFacturationDuMois(periode: string): Promise<ResultatFacturation> {
   if (!isPeriode(periode)) return fail(`Période invalide : ${periode}`);
 
-  try {
-    const refus = await autorise();
-    if (refus) return refus;
+  const refus = await autorise();
+  if (refus) return refus;
 
+  try {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("sr_reglements")

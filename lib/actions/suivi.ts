@@ -47,8 +47,12 @@ export async function basculeReglement(
   const erreurPeriode = verifiePeriode(periode);
   if (erreurPeriode) return fail(erreurPeriode);
 
+  // `autorise` redirige vers la connexion quand la session a expiré, et
+  // `redirect` lève : l'appeler dans le `try` ferait capturer la redirection
+  // par le `catch`, qui l'afficherait comme une erreur « NEXT_REDIRECT ».
+  await autorise();
+
   try {
-    await autorise();
     if (paye) {
       await enregistreReglement(contratId, periode, {
         statut: "paye",
@@ -100,9 +104,9 @@ export async function enregistreDetailReglement(
   // solde le mois, un encaissement moindre le laisse partiel.
   const statut = montant === 0 ? "attendu" : montant >= loyerMensuel ? "paye" : "partiel";
 
-  try {
-    await autorise();
+  await autorise();
 
+  try {
     if (statut === "attendu") {
       await annuleReglement(contratId, periode);
     } else {
@@ -132,8 +136,9 @@ export async function sauvegardeObservations(
     return fail("Les observations sont limitées à 5 000 caractères.");
   }
 
+  await autorise();
+
   try {
-    await autorise();
     await enregistreObservations(locataireId, observations);
     revalidatePath(`/suivi/locataire/${locataireId}`);
     return ok;
@@ -165,9 +170,10 @@ export async function rattacheBoxAuContrat(
   boxId: string,
   periodeEffet?: string | null
 ): Promise<ActionResult> {
+  await autorise();
+  if (estModeDemo()) return fail("Rattachement indisponible en mode démo.");
+
   try {
-    await autorise();
-    if (estModeDemo()) return fail("Rattachement indisponible en mode démo.");
 
     const supabase = await createClient();
 
@@ -214,9 +220,10 @@ export async function rattacheBoxAuContrat(
 
 /** Détache le box d'un contrat : la ligne repasse en « box à identifier ». */
 export async function detacheBoxDuContrat(contratId: string): Promise<ActionResult> {
+  await autorise();
+  if (estModeDemo()) return fail("Détachement indisponible en mode démo.");
+
   try {
-    await autorise();
-    if (estModeDemo()) return fail("Détachement indisponible en mode démo.");
 
     const supabase = await createClient();
     const { error } = await supabase
@@ -269,9 +276,10 @@ export async function ajouteBoxAuLocataire(saisie: {
     }
   }
 
+  await autorise();
+  if (estModeDemo()) return fail("Affectation indisponible en mode démo.");
+
   try {
-    await autorise();
-    if (estModeDemo()) return fail("Affectation indisponible en mode démo.");
 
     const supabase = await createClient();
 
@@ -358,9 +366,10 @@ export async function creeLocataireAvecContrat(saisie: {
     return fail("Le loyer doit être un nombre positif.");
   }
 
+  await autorise();
+  if (estModeDemo()) return fail("Création indisponible en mode démo.");
+
   try {
-    await autorise();
-    if (estModeDemo()) return fail("Création indisponible en mode démo.");
 
     const supabase = await createClient();
     const dateEffet = premierJour(saisie.periodeEffet);
@@ -415,6 +424,10 @@ export async function creeLocataireAvecContrat(saisie: {
     revalidatePath("/suivi");
     revalidatePath("/suivi/box");
     revalidatePath("/suivi/tableau-de-bord");
+    // L'annuaire aussi : c'est l'écran depuis lequel on crée un locataire,
+    // et l'oublier le laissait absent de la liste au moment même où on vient
+    // de l'ajouter — ce qui se lit comme un échec.
+    revalidatePath("/suivi/locataires");
     return ok;
   } catch (erreur) {
     return fail(erreur instanceof Error ? erreur.message : "Création impossible.");

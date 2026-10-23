@@ -10,6 +10,7 @@ import { BlocContact } from "@/components/suivi/bloc-contact";
 import { vibre } from "@/components/suivi/bouton-encaissement";
 import { FeuilleModale } from "@/components/suivi/feuille-modale";
 import { Button } from "@/components/ui/button";
+import type { ActionResult } from "@/lib/actions/result";
 import {
   creeContratSansBox,
   creeLocataire,
@@ -30,6 +31,20 @@ import { couleurPastille, initiales } from "@/lib/suivi/totals";
 import { cn } from "@/lib/utils";
 
 const SAISIE_VIDE: SaisieLocataire = { nom: "", societe: null, telephone: null, email: null };
+
+/**
+ * Ce qu'on montre quand l'action serveur n'a pas répondu du tout.
+ *
+ * Next renvoie un identifiant opaque en production plutôt que la pile : dire
+ * « réessayez, et reconnectez-vous si cela persiste » est plus utile que de
+ * l'afficher, car la cause de loin la plus fréquente est une session expirée.
+ */
+function messageErreur(erreur: unknown): string {
+  const detail = erreur instanceof Error ? erreur.message : "";
+  return detail && detail.length < 80
+    ? `Échec : ${detail}`
+    : "Échec de l'enregistrement. Réessayez ; si cela persiste, reconnectez-vous.";
+}
 
 function saisieDepuis(locataire: LocataireAnnuaire): SaisieLocataire {
   return {
@@ -100,16 +115,28 @@ export function ListeLocataires({
     demarreTransition(async () => {
       // Trois chemins, et c'est le loyer qui décide : corriger une fiche,
       // créer un locataire seul, ou le créer avec son contrat d'emblée.
-      const resultat = saisie.id
-        ? await modifieLocataire(saisie.id, saisie.valeurs)
-        : loyerValide
-          ? await creeLocataireAvecContrat({
-              ...saisie.valeurs,
-              loyer: montant,
-              periodeEffet,
-              boxId: null,
-            })
-          : await creeLocataire(saisie.valeurs);
+      //
+      // L'appel est enveloppé parce qu'une action serveur peut échouer sans
+      // renvoyer de résultat — session expirée, fonction tombée. Sans cela la
+      // promesse était rejetée dans le vide : ni message, ni fermeture, la
+      // feuille restait ouverte et le geste paraissait n'avoir rien déclenché.
+      let resultat: ActionResult;
+      try {
+        resultat = saisie.id
+          ? await modifieLocataire(saisie.id, saisie.valeurs)
+          : loyerValide
+            ? await creeLocataireAvecContrat({
+                ...saisie.valeurs,
+                loyer: montant,
+                periodeEffet,
+                boxId: null,
+              })
+            : await creeLocataire(saisie.valeurs);
+      } catch (erreur) {
+        vibre(60);
+        toast.error(messageErreur(erreur));
+        return;
+      }
 
       if (!resultat.success) {
         vibre(60);
@@ -140,11 +167,18 @@ export function ListeLocataires({
   const ajouteContrat = () => {
     if (!contratPour || !loyerValide) return;
     demarreTransition(async () => {
-      const resultat = await creeContratSansBox({
-        locataireId: contratPour.id,
-        loyer: montant,
-        periodeEffet,
-      });
+      let resultat: ActionResult;
+      try {
+        resultat = await creeContratSansBox({
+          locataireId: contratPour.id,
+          loyer: montant,
+          periodeEffet,
+        });
+      } catch (erreur) {
+        vibre(60);
+        toast.error(messageErreur(erreur));
+        return;
+      }
 
       if (!resultat.success) {
         vibre(60);
