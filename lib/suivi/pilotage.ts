@@ -67,67 +67,173 @@ export function margeMensuelle(
   };
 }
 
-/** Un box qui se libère à une échéance connue. */
-export type Liberation = {
-  /** Mois de la libération, « AAAA-MM » — le bail court jusqu'à sa fin. */
-  periode: string;
-  box: string | null;
+/** Un box qui ne rapporte pas, ou cessera de rapporter. */
+export type ABrelouer = {
+  /**
+   * Mois à partir duquel le box ne rapporte plus. `null` quand il est déjà
+   * vide — le manque à gagner a commencé, il n'est pas à venir.
+   */
+  disponibleLe: string | null;
+  box: string;
   batiment: string | null;
-  locataire: string;
+  /** Le partant. Null pour un box déjà vide, que personne n'occupe. */
+  locataire: string | null;
   /**
    * Ce qu'on peut en réclamer à la relocation : le tarif de référence du box
-   * s'il est renseigné, sinon le loyer que paie l'occupant actuel. Faute des
+   * s'il est renseigné, sinon le loyer que paie l'occupant sortant. Faute des
    * deux, `null` — et il faudra le fixer à la main.
    */
   tarif: number | null;
   /** Vrai quand le tarif vient du loyer en cours, faute de tarif de référence. */
   tarifHerite: boolean;
+  /**
+   * Un bail est déjà signé pour la suite. La ligne reste affichée — le box ne
+   * rapporte rien aujourd'hui — mais son tarif sort du manque à gagner : il
+   * est déjà regagné.
+   */
+  reserve: boolean;
 };
 
-/**
- * Les libérations des `nbMois` prochains mois, la plus proche d'abord.
- *
- * Le mois affiché est exclu : son loyer est déjà dû, le box n'est pas encore
- * à relouer. On regarde devant, pas sous ses pieds.
- */
-export function liberationsAVenir(
-  contrats: Array<{
-    dateFin: string | null;
-    box: string | null;
-    batiment: string | null;
-    locataire: string;
-    loyer: number;
-    tarifIndicatif: number | null;
-  }>,
-  periode: string,
-  nbMois = 3
-): Liberation[] {
-  const horizon = decale(periode, nbMois);
+export type EntreeDepart = {
+  /** Dernier jour du bail. */
+  dateFin: string;
+  /** Un départ sans box ne dit rien d'une vacance : il sera écarté. */
+  box: string | null;
+  batiment: string | null;
+  locataire: string;
+  loyer: number;
+  tarifIndicatif: number | null;
+};
 
-  return contrats
-    .filter((c) => c.dateFin !== null)
-    .map((c) => ({ ...c, periodeFin: c.dateFin!.slice(0, 7) }))
-    // Strictement après le mois affiché : une sortie ce mois-ci laisse le
-    // loyer dû, et le box ne se reloue qu'au mois suivant.
-    .filter((c) => c.periodeFin > periode && c.periodeFin <= horizon)
-    .map((c) => ({
-      periode: c.periodeFin,
-      box: c.box,
-      batiment: c.batiment,
-      locataire: c.locataire,
-      tarif: c.tarifIndicatif ?? (c.loyer > 0 ? c.loyer : null),
-      tarifHerite: c.tarifIndicatif === null && c.loyer > 0,
-    }))
-    .sort(
-      (a, b) =>
-        a.periode.localeCompare(b.periode) ||
-        (a.box ?? "").localeCompare(b.box ?? "", "fr", { numeric: true })
-    );
+export type EntreeVide = {
+  box: string;
+  batiment: string | null;
+  tarifIndicatif: number | null;
+  /** Un bail commence plus tard sur ce box. */
+  reserve?: boolean;
+};
+
+/** Un bail quelconque, pour savoir si un box est repris après un départ. */
+export type Couverture = {
+  box: string;
+  /** Mois de début, « AAAA-MM ». Null = depuis toujours. */
+  debut: string | null;
+  /** Mois de fin, « AAAA-MM ». Null = sans échéance. */
+  fin: string | null;
+};
+
+/** Ce box est-il couvert par un bail au mois donné ? */
+function couvert(couvertures: Couverture[], box: string, mois: string): boolean {
+  return couvertures.some(
+    (c) => c.box === box && (c.debut === null || c.debut <= mois) && (c.fin === null || c.fin >= mois)
+  );
 }
 
-/** Somme des tarifs d'une série de libérations — le manque à gagner mensuel. */
-export function manqueAGagner(liberations: Liberation[]): number {
-  return liberations.reduce((somme, l) => somme + (l.tarif ?? 0), 0);
+/**
+ * Tout ce qui ne rapporte pas, dans les `nbMois` mois qui viennent.
+ *
+ * Deux natures réunies dans une seule liste, parce qu'elles coûtent la même
+ * chose : un box déjà vide, et un box dont le locataire part. Les séparer
+ * obligeait à additionner de tête deux chiffres qui répondent à la même
+ * question — combien me manque-t-il par mois.
+ *
+ * **Un bail qui s'achève le 31 octobre libère le box en novembre.** La version
+ * précédente classait ce départ en octobre puis l'écartait comme « déjà dû »,
+ * si bien qu'une sortie de fin de mois n'apparaissait nulle part. C'est le
+ * mois *suivant* la fin qui compte : c'est à partir de lui que le loyer cesse
+ * de rentrer.
+ *
+ * Deux écueils que l'historique rend tout sauf théoriques :
+ *
+ * Un départ **sans box** ne dit rien d'une vacance — on ignore quelle case se
+ * libère, et trois contrats clos du carnet sont dans ce cas. Ils sont écartés.
+ *
+ * Un départ dont le box a été **repris** depuis n'en est plus un : le box 7 a
+ * changé de locataire au 1er septembre, et compter la sortie de l'ancienne
+ * reviendrait à annoncer vide une case occupée et payée.
+ */
+export function aRelouer(
+  departs: EntreeDepart[],
+  vides: EntreeVide[],
+  couvertures: Couverture[],
+  periode: string,
+  nbMois = 3
+): ABrelouer[] {
+  const horizon = decale(periode, nbMois);
+
+  const sorties: ABrelouer[] = departs
+    .filter((d): d is EntreeDepart & { box: string } => d.box !== null)
+    .map((d) => ({ depart: d, disponibleLe: decale(d.dateFin.slice(0, 7), 1) }))
+    // Le mois affiché compte : un bail clos le mois dernier laisse déjà le box
+    // vide ce mois-ci, et c'est un manque à gagner en cours.
+    .filter(({ disponibleLe }) => disponibleLe <= horizon)
+    .filter(({ depart, disponibleLe }) => !couvert(couvertures, depart.box, disponibleLe))
+    .map(({ depart, disponibleLe }) => ({
+      disponibleLe,
+      box: depart.box,
+      batiment: depart.batiment,
+      locataire: depart.locataire,
+      tarif: depart.tarifIndicatif ?? (depart.loyer > 0 ? depart.loyer : null),
+      tarifHerite: depart.tarifIndicatif === null && depart.loyer > 0,
+      reserve: false,
+    }));
+
+  const deja: ABrelouer[] = vides.map((v) => ({
+    disponibleLe: null,
+    box: v.box,
+    batiment: v.batiment,
+    locataire: null,
+    tarif: v.tarifIndicatif,
+    tarifHerite: false,
+    reserve: v.reserve ?? false,
+  }));
+
+  // Un box déjà rendu par son locataire figure dans les deux listes : il est
+  // marqué libre, et son bail porte une date de fin. On ne le compte qu'une
+  // fois, et c'est la ligne « déjà vide » qui l'emporte — elle dit le manque
+  // à gagner en cours, pas un départ à anticiper.
+  const videsParBox = new Set(deja.map((v) => v.box));
+
+  return [...deja, ...sorties.filter((s) => !videsParBox.has(s.box))].sort(
+    (a, b) =>
+      (a.disponibleLe ?? "").localeCompare(b.disponibleLe ?? "") ||
+      a.box.localeCompare(b.box, "fr", { numeric: true })
+  );
+}
+
+/**
+ * Le manque à gagner mensuel : la somme des tarifs, **réservations exclues**.
+ *
+ * Un box vide mais déjà reloué pour le mois prochain n'est pas une perte à
+ * combler : elle l'est déjà. Le compter gonflerait le chiffre au moment même
+ * où la relocation vient d'aboutir.
+ */
+export function manqueAGagner(lignes: ABrelouer[]): number {
+  return lignes.reduce((somme, l) => somme + (l.reserve ? 0 : l.tarif ?? 0), 0);
+}
+
+/**
+ * Couleur de la marge de manœuvre, du rouge au vert.
+ *
+ * Les bornes viennent de l'exploitation : en dessous de six box de marge on
+ * est en zone de vigilance, au-dessus de treize on respire. Entre les deux la
+ * teinte glisse continûment, pour qu'un box perdu se voie sans avoir à lire
+ * le chiffre.
+ */
+export const MARGE_ROUGE = 6;
+export const MARGE_VERTE = 13;
+
+export function couleurMarge(boxAvantDeficit: number): string {
+  if (boxAvantDeficit <= MARGE_ROUGE) return "hsl(2 72% 44%)";
+  if (boxAvantDeficit >= MARGE_VERTE) return "hsl(146 62% 32%)";
+
+  // Interpolation de la teinte seule : la saturation et la clarté restent
+  // tenues, sinon le milieu de l'échelle vire au jaune illisible.
+  const part = (boxAvantDeficit - MARGE_ROUGE) / (MARGE_VERTE - MARGE_ROUGE);
+  const teinte = Math.round(2 + part * 144);
+  const saturation = Math.round(72 - part * 10);
+  const clarte = Math.round(44 - part * 12);
+  return `hsl(${teinte} ${saturation}% ${clarte}%)`;
 }
 
 /**

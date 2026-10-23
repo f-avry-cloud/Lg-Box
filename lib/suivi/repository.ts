@@ -34,7 +34,7 @@ import { groupeParBatiment, parseBoxReferenceCsv } from "@/lib/suivi/box";
 import { estPlace, type BoxPlan } from "@/lib/suivi/plan";
 import { BOX_REFERENCE_CSV } from "@/lib/suivi/box-reference";
 import { contratAVenir, contratDuPour, contratOccupeOuReserve } from "@/lib/suivi/contrat";
-import { liberationsAVenir, manqueAGagner, margeMensuelle } from "@/lib/suivi/pilotage";
+import { aRelouer, manqueAGagner, margeMensuelle } from "@/lib/suivi/pilotage";
 import { loyerDuPour } from "@/lib/suivi/prorata";
 import type { DestinataireFacture, ParametresMail } from "@/lib/suivi/mail";
 import type { EtatReprise, LocataireReprise } from "@/lib/suivi/reprise";
@@ -507,8 +507,8 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
     loyerMoyen: marge.loyerMoyen,
     margeStructurelle: marge.marge,
     boxAvantDeficit: marge.boxAvantDeficit,
-    liberations: [],
-    liberationsManqueAGagner: 0,
+    aRelouer: [],
+    manqueAGagner: 0,
     periode,
     encaisse: totaux.encaisse,
     reste: totaux.reste,
@@ -540,7 +540,8 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
   // L'occupation se lit sur le référentiel de l'app (67 box réels), pas sur
   // `units` : celle-ci contient encore 70 lignes « À localiser » issues d'un
   // import, qui gonfleraient le total et écraseraient le taux.
-  const [total, loues, aLouer, sorties, impayes, preavis, demandes, attente] = await Promise.all([
+  const [total, loues, aLouer, vides, sorties, impayes, preavis, demandes, attente] =
+    await Promise.all([
     supabase.from("sr_box").select("id", { count: "exact", head: true }),
     supabase
       .from("sr_contrats")
@@ -552,14 +553,20 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
     // alors qu'il est plein — 25 d'entre eux attendent seulement d'être
     // rapprochés de leur locataire.
     supabase.from("sr_box").select("id", { count: "exact", head: true }).eq("libre", true),
+    // Les box vides eux-mêmes, et non leur seul compte : ils figurent dans la
+    // liste de ce qui est à relouer, avec leur tarif.
+    supabase
+      .from("sr_box")
+      .select("numero, batiment, tarif_indicatif_eur")
+      .eq("libre", true),
     // Les sorties programmées : ce qui va se libérer, et à quel tarif on
     // pourra le remettre sur le marché.
     supabase
       .from("sr_contrats")
       .select(
-        "date_fin, loyer_mensuel_eur, sr_locataires (nom), sr_box (numero, batiment, tarif_indicatif_eur)"
+        "date_debut, date_fin, loyer_mensuel_eur, sr_locataires (nom), sr_box (numero, batiment, tarif_indicatif_eur)"
       )
-      .not("date_fin", "is", null),
+      .not("box_id", "is", null),
     supabase.from("invoices").select("montant_ttc, customer_id").in("statut", ["emise", "en_retard"]),
     supabase.from("contracts").select("id", { count: "exact", head: true }).eq("statut", "en_preavis"),
     supabase
@@ -578,23 +585,57 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
   const factures = impayes.data ?? [];
 
   type ContratSortie = {
+    date_debut: string | null;
     date_fin: string | null;
     loyer_mensuel_eur: number;
     sr_locataires: { nom: string } | null;
     sr_box: { numero: string; batiment: string | null; tarif_indicatif_eur: number | null } | null;
   };
 
-  const liberations = liberationsAVenir(
-    ((sorties.data ?? []) as unknown as ContratSortie[])
-      .filter((c) => c.sr_locataires !== null)
+  type BoxVide = {
+    numero: string;
+    batiment: string | null;
+    tarif_indicatif_eur: number | null;
+  };
+
+  const baux = ((sorties.data ?? []) as unknown as ContratSortie[]).filter(
+    (c) => c.sr_locataires !== null && c.sr_box !== null
+  );
+
+  // Les mois couverts par un bail, box par box : c'est ce qui dit si une
+  // sortie a laissé une vraie vacance ou si la case a déjà été reprise.
+  const couvertures = baux.map((c) => ({
+    box: c.sr_box!.numero,
+    debut: c.date_debut?.slice(0, 7) ?? null,
+    fin: c.date_fin?.slice(0, 7) ?? null,
+  }));
+
+  // Un box marqué libre mais déjà promis : sa perte est comblée, la carte le
+  // dira sans la compter.
+  const boxReserves = new Set(
+    baux
+      .filter((c) => contratAVenir(periode, c.date_debut, c.date_fin))
+      .map((c) => c.sr_box!.numero)
+  );
+
+  const lignesARelouer = aRelouer(
+    baux
+      .filter((c) => c.date_fin !== null)
       .map((c) => ({
-        dateFin: c.date_fin,
-        box: c.sr_box?.numero ?? null,
-        batiment: c.sr_box?.batiment ?? null,
+        dateFin: c.date_fin!,
+        box: c.sr_box!.numero,
+        batiment: c.sr_box!.batiment,
         locataire: c.sr_locataires!.nom,
         loyer: c.loyer_mensuel_eur,
-        tarifIndicatif: c.sr_box?.tarif_indicatif_eur ?? null,
+        tarifIndicatif: c.sr_box!.tarif_indicatif_eur,
       })),
+    ((vides.data ?? []) as unknown as BoxVide[]).map((b) => ({
+      box: b.numero,
+      batiment: b.batiment,
+      tarifIndicatif: b.tarif_indicatif_eur,
+      reserve: boxReserves.has(b.numero),
+    })),
+    couvertures,
     periode
   );
 
@@ -603,8 +644,8 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
     boxTotal,
     boxLoues,
     boxLibres,
-    liberations,
-    liberationsManqueAGagner: manqueAGagner(liberations),
+    aRelouer: lignesARelouer,
+    manqueAGagner: manqueAGagner(lignesARelouer),
     // Occupé = tout ce qui n'est pas déclaré libre. Un box dont l'occupant
     // reste à identifier compte comme occupé : c'est l'hypothèse prudente,
     // et la seule qui décrive un centre plein.

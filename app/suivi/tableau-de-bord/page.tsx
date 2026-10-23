@@ -16,6 +16,8 @@ import { Logo } from "@/components/suivi/logo";
 import { BoutonFacturation } from "@/components/suivi/bouton-facturation";
 import { aEnvoyer, resumeEnvoi } from "@/lib/suivi/mail";
 import { labelMoisCourt, labelPeriode, isPeriode, periodeCourante } from "@/lib/suivi/period";
+import { MARGE_VERTE, couleurMarge } from "@/lib/suivi/pilotage";
+import { cn } from "@/lib/utils";
 import {
   destinatairesFactures,
   estModeDemo,
@@ -83,6 +85,136 @@ export default async function TableauDeBordPage({
       )}
 
       <div className="suivi-scroll-simple space-y-3 px-5 pb-5">
+        {/* Les deux chiffres qui servent à décider, en tête : de combien de
+            départs le centre a les moyens, et ce qui ne rapporte déjà plus.
+            Le reste du tableau dit où en est le mois — utile, mais on le
+            consulte, on n'en décide pas. */}
+        <div className="suivi-carte p-4">
+          <div className="flex items-center gap-1.5 text-[var(--suivi-gris)]">
+            <Gauge className="size-4" aria-hidden />
+            <span className="t-etiquette">Marge de manœuvre</span>
+          </div>
+
+          {stats.boxAvantDeficit === null ? (
+            <p className="t-meta mt-1.5">
+              {stats.chargesDuMois > 0
+                ? "Aucun contrat en cours : la marge ne se calcule pas."
+                : "Charges non saisies — le seuil ne peut pas se calculer."}
+            </p>
+          ) : (
+            <>
+              {/* La couleur glisse du rouge au vert entre six et treize box :
+                  un départ de plus se voit sans avoir à relire le chiffre. */}
+              <p className="t-hero mt-1.5" style={{ color: couleurMarge(stats.boxAvantDeficit) }}>
+                {stats.boxAvantDeficit} box
+              </p>
+
+              <div
+                className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--suivi-trait)]"
+                role="progressbar"
+                aria-valuenow={stats.boxAvantDeficit}
+                aria-valuemin={0}
+                aria-valuemax={MARGE_VERTE}
+                aria-label="Box pouvant se vider avant le cash-flow négatif"
+              >
+                <div
+                  className="h-full rounded-full transition-[width] duration-500"
+                  style={{
+                    width: `${Math.min(100, (stats.boxAvantDeficit / MARGE_VERTE) * 100)}%`,
+                    backgroundColor: couleurMarge(stats.boxAvantDeficit),
+                  }}
+                />
+              </div>
+
+              <p className="t-meta mt-2">
+                {stats.boxAvantDeficit === 0
+                  ? "le centre est déjà en cash-flow négatif"
+                  : `peuvent se vider avant le cash-flow négatif, à ${stats.loyerMoyen.toLocaleString("fr-FR")} € de loyer moyen`}
+              </p>
+              <p className="t-meta mt-1">
+                Base :{" "}
+                <span className="t-nombre">
+                  {(stats.margeStructurelle + stats.chargesDuMois).toLocaleString("fr-FR")} €
+                </span>{" "}
+                de loyers dus moins{" "}
+                <span className="t-nombre">{stats.chargesDuMois.toLocaleString("fr-FR")} €</span>{" "}
+                de charges
+              </p>
+            </>
+          )}
+        </div>
+
+        {/* Box vides et partants réunis : ils coûtent la même chose, et les
+            séparer obligeait à additionner de tête. */}
+        <div className="suivi-carte p-4">
+          <div className="flex items-center gap-1.5 text-[var(--suivi-gris)]">
+            <CalendarClock className="size-4" aria-hidden />
+            <span className="t-etiquette">À relouer — vides et départs d&apos;ici 3 mois</span>
+          </div>
+
+          {stats.aRelouer.length === 0 ? (
+            <p className="t-meta mt-1.5">Aucun box vide, aucun départ programmé.</p>
+          ) : (
+            <>
+              <p className="t-chiffre mt-1.5 text-[var(--suivi-orange)]">
+                −{stats.manqueAGagner.toLocaleString("fr-FR")} € / mois
+              </p>
+              <p className="t-meta mt-0.5">
+                {stats.aRelouer.length} box · manque à gagner si rien n&apos;est reloué
+              </p>
+
+              <ul className="mt-3 space-y-1.5">
+                {stats.aRelouer.map((l, i) => (
+                  <li
+                    key={`${l.disponibleLe ?? "vide"}-${l.box ?? i}`}
+                    className="flex items-baseline gap-2 t-meta"
+                  >
+                    {/* « Vide » plutôt qu'un mois : le manque à gagner a déjà
+                        commencé, il ne s'anticipe pas. */}
+                    <span
+                      className="t-nombre w-16 shrink-0 font-medium"
+                      style={{
+                        color: l.disponibleLe === null ? "var(--suivi-rouge)" : undefined,
+                      }}
+                    >
+                      {l.disponibleLe === null ? "Vide" : labelMoisCourt(l.disponibleLe)}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">
+                      <span className="font-medium text-foreground">
+                        {`${l.batiment ?? ""} ${l.box}`.trim()}
+                      </span>
+                      {l.locataire && ` · ${l.locataire}`}
+                      {/* Déjà reloué : la ligne reste, le tarif sort du total. */}
+                      {l.reserve && (
+                        <span className="text-[var(--suivi-violet)]"> · réservé</span>
+                      )}
+                    </span>
+                    <span
+                      className={cn("t-nombre shrink-0", l.reserve && "line-through opacity-50")}
+                    >
+                      {l.tarif === null ? "à fixer" : `${l.tarif.toLocaleString("fr-FR")} €`}
+                      {/* Un tarif hérité du loyer en cours n'est pas un barème :
+                          on le signale pour qu'il soit revu à la relocation. */}
+                      {l.tarifHerite && <span className="opacity-60"> *</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              {stats.aRelouer.some((l) => l.tarifHerite) && (
+                <p className="t-meta mt-2 opacity-70">
+                  * tarif repris du loyer actuel, faute de tarif de référence sur le box.
+                </p>
+              )}
+              {stats.aRelouer.some((l) => l.tarif === null) && (
+                <p className="t-meta mt-1 opacity-70">
+                  « à fixer » : ni tarif de référence, ni loyer connu sur ce box.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
         {/* Le chiffre que l'exploitant vient chercher. Seul en haut, seul de
             sa taille : c'est ce qui fait qu'on le voit sans le chercher. */}
         <Link
@@ -222,95 +354,6 @@ export default async function TableauDeBordPage({
             )}
           </p>
         </Link>
-
-        {/* Pilotage : non plus où en est le mois, mais de quelle marge on
-            dispose et ce qui vient. Placé après le cash-flow parce que c'est
-            la même question poussée plus loin — combien de départs ce
-            cash-flow supporte-t-il. */}
-        <div className="suivi-carte p-4">
-          <div className="flex items-center gap-1.5 text-[var(--suivi-gris)]">
-            <Gauge className="size-4" aria-hidden />
-            <span className="t-etiquette">Marge de manœuvre</span>
-          </div>
-
-          {stats.boxAvantDeficit === null ? (
-            <p className="t-meta mt-1.5">
-              {stats.chargesDuMois > 0
-                ? "Aucun contrat en cours : la marge ne se calcule pas."
-                : "Charges non saisies — le seuil ne peut pas se calculer."}
-            </p>
-          ) : (
-            <>
-              <p
-                className="t-chiffre mt-1.5"
-                style={{
-                  color:
-                    stats.boxAvantDeficit === 0
-                      ? "var(--destructive)"
-                      : stats.boxAvantDeficit <= 3
-                        ? "var(--suivi-orange)"
-                        : "var(--foreground)",
-                }}
-              >
-                {stats.boxAvantDeficit} box
-              </p>
-              <p className="t-meta mt-0.5">
-                {stats.boxAvantDeficit === 0
-                  ? "le centre est déjà en cash-flow négatif"
-                  : `peuvent se vider avant le cash-flow négatif, à ${stats.loyerMoyen.toLocaleString("fr-FR")} € de loyer moyen`}
-              </p>
-              <p className="t-meta mt-1">
-                Base : <span className="t-nombre">{(stats.margeStructurelle + stats.chargesDuMois).toLocaleString("fr-FR")} €</span>{" "}
-                de loyers dus moins{" "}
-                <span className="t-nombre">{stats.chargesDuMois.toLocaleString("fr-FR")} €</span>{" "}
-                de charges
-              </p>
-            </>
-          )}
-        </div>
-
-        {/* Ce qui se libère, et ce que ça coûte par mois. Un box qui se vide
-            dans huit semaines se reloue aujourd'hui, pas le jour du départ. */}
-        <div className="suivi-carte p-4">
-          <div className="flex items-center gap-1.5 text-[var(--suivi-gris)]">
-            <CalendarClock className="size-4" aria-hidden />
-            <span className="t-etiquette">Libérations — 3 prochains mois</span>
-          </div>
-
-          {stats.liberations.length === 0 ? (
-            <p className="t-meta mt-1.5">Aucun départ programmé.</p>
-          ) : (
-            <>
-              <p className="t-chiffre mt-1.5 text-[var(--suivi-orange)]">
-                −{stats.liberationsManqueAGagner.toLocaleString("fr-FR")} € / mois
-              </p>
-              <ul className="mt-2 space-y-1">
-                {stats.liberations.map((l, i) => (
-                  <li key={`${l.periode}-${l.box ?? i}`} className="flex items-baseline gap-2 t-meta">
-                    <span className="t-nombre shrink-0 font-medium">
-                      {labelMoisCourt(l.periode)}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate">
-                      {l.box ? `${l.batiment ?? ""} ${l.box}`.trim() : "Box à identifier"} ·{" "}
-                      {l.locataire}
-                    </span>
-                    <span className="t-nombre shrink-0">
-                      {l.tarif === null ? "tarif à fixer" : `${l.tarif.toLocaleString("fr-FR")} €`}
-                      {/* Un tarif hérité du loyer en cours n'est pas un barème :
-                          on le signale pour qu'il soit revu à la relocation. */}
-                      {l.tarifHerite && <span className="opacity-60"> *</span>}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              {stats.liberations.some((l) => l.tarifHerite) && (
-                <p className="t-meta mt-2 opacity-70">
-                  * tarif repris du loyer actuel, faute de tarif de référence sur le box.
-                </p>
-              )}
-            </>
-          )}
-        </div>
 
         {stats.impayesMontant > 0 && (
           <div className="suivi-carte flex items-baseline justify-between p-4">

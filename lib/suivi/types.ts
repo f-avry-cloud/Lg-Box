@@ -3,7 +3,7 @@
 // d'encaissement manipule locataire / box / contrat / règlement, pas
 // customer / unit / contract / invoice.
 
-import type { Liberation } from "@/lib/suivi/pilotage";
+import type { ABrelouer } from "@/lib/suivi/pilotage";
 import type { Prorata } from "@/lib/suivi/prorata";
 
 export type ReglementStatut = "attendu" | "facture" | "paye" | "partiel" | "retard";
@@ -237,10 +237,10 @@ export type StatsTableauDeBord = {
   margeStructurelle: number;
   /** Box qui peuvent se vider avant bascule en négatif. Null si indécidable. */
   boxAvantDeficit: number | null;
-  /** Ce qui se libère dans les trois mois qui viennent. */
-  liberations: Liberation[];
-  /** Somme des tarifs de ces libérations — le manque à gagner mensuel. */
-  liberationsManqueAGagner: number;
+  /** Box vides et partants des trois mois à venir, réunis. */
+  aRelouer: ABrelouer[];
+  /** Somme de leurs tarifs — le manque à gagner mensuel. */
+  manqueAGagner: number;
 };
 
 // ---------------------------------------------------------------------------
