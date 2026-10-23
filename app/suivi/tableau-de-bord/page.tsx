@@ -1,11 +1,21 @@
 import Link from "next/link";
-import { ChevronRight, Inbox, LogOut, TrendingUp, Wallet, Warehouse } from "lucide-react";
+import {
+  CalendarClock,
+  ChevronRight,
+  Gauge,
+  Inbox,
+  LogOut,
+  Receipt,
+  TrendingUp,
+  Wallet,
+  Warehouse,
+} from "lucide-react";
 
 import { BlocEnvoiFactures } from "@/components/suivi/bloc-envoi-factures";
 import { Logo } from "@/components/suivi/logo";
 import { BoutonFacturation } from "@/components/suivi/bouton-facturation";
 import { aEnvoyer, resumeEnvoi } from "@/lib/suivi/mail";
-import { labelPeriode, isPeriode, periodeCourante } from "@/lib/suivi/period";
+import { labelMoisCourt, labelPeriode, isPeriode, periodeCourante } from "@/lib/suivi/period";
 import {
   destinatairesFactures,
   estModeDemo,
@@ -133,11 +143,20 @@ export default async function TableauDeBordPage({
             valeur={`${stats.tauxOccupation} %`}
             // « À louer » et non « libres » : ce chiffre ne compte que les box
             // déclarés disponibles, pas ceux dont l'occupant reste à identifier.
+            // Trois nombres dans une tuile, mais trois réponses distinctes :
+            // combien de box portent un contrat, combien restent à louer, et
+            // sur quel total. Le parc entier est le dénominateur de tout.
             detail={
               stats.boxLibres > 0
-                ? `${stats.boxLoues} loués · ${stats.boxLibres} à louer`
-                : `${stats.boxLoues} loués · complet`
+                ? `${stats.boxAvecContrat}/${stats.boxTotal} sous contrat · ${stats.boxLibres} à louer`
+                : `${stats.boxAvecContrat}/${stats.boxTotal} sous contrat · complet`
             }
+          />
+          <Tuile
+            icone={<Receipt className="size-4" aria-hidden />}
+            libelle="Loyer moyen"
+            valeur={`${stats.loyerMoyen.toLocaleString("fr-FR")} €`}
+            detail={`sur ${stats.contratsTotal} contrat${stats.contratsTotal > 1 ? "s" : ""} en cours`}
           />
           <Tuile
             icone={<LogOut className="size-4" aria-hidden />}
@@ -203,6 +222,95 @@ export default async function TableauDeBordPage({
             )}
           </p>
         </Link>
+
+        {/* Pilotage : non plus où en est le mois, mais de quelle marge on
+            dispose et ce qui vient. Placé après le cash-flow parce que c'est
+            la même question poussée plus loin — combien de départs ce
+            cash-flow supporte-t-il. */}
+        <div className="suivi-carte p-4">
+          <div className="flex items-center gap-1.5 text-[var(--suivi-gris)]">
+            <Gauge className="size-4" aria-hidden />
+            <span className="t-etiquette">Marge de manœuvre</span>
+          </div>
+
+          {stats.boxAvantDeficit === null ? (
+            <p className="t-meta mt-1.5">
+              {stats.chargesDuMois > 0
+                ? "Aucun contrat en cours : la marge ne se calcule pas."
+                : "Charges non saisies — le seuil ne peut pas se calculer."}
+            </p>
+          ) : (
+            <>
+              <p
+                className="t-chiffre mt-1.5"
+                style={{
+                  color:
+                    stats.boxAvantDeficit === 0
+                      ? "var(--destructive)"
+                      : stats.boxAvantDeficit <= 3
+                        ? "var(--suivi-orange)"
+                        : "var(--foreground)",
+                }}
+              >
+                {stats.boxAvantDeficit} box
+              </p>
+              <p className="t-meta mt-0.5">
+                {stats.boxAvantDeficit === 0
+                  ? "le centre est déjà en cash-flow négatif"
+                  : `peuvent se vider avant le cash-flow négatif, à ${stats.loyerMoyen.toLocaleString("fr-FR")} € de loyer moyen`}
+              </p>
+              <p className="t-meta mt-1">
+                Base : <span className="t-nombre">{(stats.margeStructurelle + stats.chargesDuMois).toLocaleString("fr-FR")} €</span>{" "}
+                de loyers dus moins{" "}
+                <span className="t-nombre">{stats.chargesDuMois.toLocaleString("fr-FR")} €</span>{" "}
+                de charges
+              </p>
+            </>
+          )}
+        </div>
+
+        {/* Ce qui se libère, et ce que ça coûte par mois. Un box qui se vide
+            dans huit semaines se reloue aujourd'hui, pas le jour du départ. */}
+        <div className="suivi-carte p-4">
+          <div className="flex items-center gap-1.5 text-[var(--suivi-gris)]">
+            <CalendarClock className="size-4" aria-hidden />
+            <span className="t-etiquette">Libérations — 3 prochains mois</span>
+          </div>
+
+          {stats.liberations.length === 0 ? (
+            <p className="t-meta mt-1.5">Aucun départ programmé.</p>
+          ) : (
+            <>
+              <p className="t-chiffre mt-1.5 text-[var(--suivi-orange)]">
+                −{stats.liberationsManqueAGagner.toLocaleString("fr-FR")} € / mois
+              </p>
+              <ul className="mt-2 space-y-1">
+                {stats.liberations.map((l, i) => (
+                  <li key={`${l.periode}-${l.box ?? i}`} className="flex items-baseline gap-2 t-meta">
+                    <span className="t-nombre shrink-0 font-medium">
+                      {labelMoisCourt(l.periode)}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {l.box ? `${l.batiment ?? ""} ${l.box}`.trim() : "Box à identifier"} ·{" "}
+                      {l.locataire}
+                    </span>
+                    <span className="t-nombre shrink-0">
+                      {l.tarif === null ? "tarif à fixer" : `${l.tarif.toLocaleString("fr-FR")} €`}
+                      {/* Un tarif hérité du loyer en cours n'est pas un barème :
+                          on le signale pour qu'il soit revu à la relocation. */}
+                      {l.tarifHerite && <span className="opacity-60"> *</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {stats.liberations.some((l) => l.tarifHerite) && (
+                <p className="t-meta mt-2 opacity-70">
+                  * tarif repris du loyer actuel, faute de tarif de référence sur le box.
+                </p>
+              )}
+            </>
+          )}
+        </div>
 
         {stats.impayesMontant > 0 && (
           <div className="suivi-carte flex items-baseline justify-between p-4">

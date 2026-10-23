@@ -34,6 +34,7 @@ import { groupeParBatiment, parseBoxReferenceCsv } from "@/lib/suivi/box";
 import { estPlace, type BoxPlan } from "@/lib/suivi/plan";
 import { BOX_REFERENCE_CSV } from "@/lib/suivi/box-reference";
 import { contratAVenir, contratDuPour, contratOccupeOuReserve } from "@/lib/suivi/contrat";
+import { liberationsAVenir, manqueAGagner, margeMensuelle } from "@/lib/suivi/pilotage";
 import { loyerDuPour } from "@/lib/suivi/prorata";
 import type { DestinataireFacture, ParametresMail } from "@/lib/suivi/mail";
 import type { EtatReprise, LocataireReprise } from "@/lib/suivi/reprise";
@@ -488,11 +489,26 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
   const totaux = calculeTotaux(lignes);
   const facturation = resumeFacturation(lignes);
 
+  // La marge se mesure sur les loyers **dus**, non sur l'encaissé : un mois à
+  // moitié pointé donnerait un seuil alarmiste alors que rien n'a changé dans
+  // la structure du parc.
+  const charge = totalCharges(chargesDuMois(charges, periode));
+  const marge = margeMensuelle(
+    lignes.map((l) => l.loyer_mensuel_eur),
+    charge
+  );
+
   const base: StatsTableauDeBord = {
     boxTotal: 0,
     boxLoues: 0,
     boxLibres: 0,
     tauxOccupation: 0,
+    boxAvecContrat: lignes.filter((l) => l.box_numero !== null).length,
+    loyerMoyen: marge.loyerMoyen,
+    margeStructurelle: marge.marge,
+    boxAvantDeficit: marge.boxAvantDeficit,
+    liberations: [],
+    liberationsManqueAGagner: 0,
     periode,
     encaisse: totaux.encaisse,
     reste: totaux.reste,
@@ -503,7 +519,7 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
     aFacturer: facturation.aFacturer,
     dejaFacturees: facturation.dejaFacturees,
     montantAFacturer: facturation.montant,
-    chargesDuMois: totalCharges(chargesDuMois(charges, periode)),
+    chargesDuMois: charge,
     chargesCumulees: chargesCumulees(charges, periode),
     impayesMontant: 0,
     impayesClients: 0,
@@ -524,7 +540,7 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
   // L'occupation se lit sur le référentiel de l'app (67 box réels), pas sur
   // `units` : celle-ci contient encore 70 lignes « À localiser » issues d'un
   // import, qui gonfleraient le total et écraseraient le taux.
-  const [total, loues, aLouer, impayes, preavis, demandes, attente] = await Promise.all([
+  const [total, loues, aLouer, sorties, impayes, preavis, demandes, attente] = await Promise.all([
     supabase.from("sr_box").select("id", { count: "exact", head: true }),
     supabase
       .from("sr_contrats")
@@ -536,6 +552,14 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
     // alors qu'il est plein — 25 d'entre eux attendent seulement d'être
     // rapprochés de leur locataire.
     supabase.from("sr_box").select("id", { count: "exact", head: true }).eq("libre", true),
+    // Les sorties programmées : ce qui va se libérer, et à quel tarif on
+    // pourra le remettre sur le marché.
+    supabase
+      .from("sr_contrats")
+      .select(
+        "date_fin, loyer_mensuel_eur, sr_locataires (nom), sr_box (numero, batiment, tarif_indicatif_eur)"
+      )
+      .not("date_fin", "is", null),
     supabase.from("invoices").select("montant_ttc, customer_id").in("statut", ["emise", "en_retard"]),
     supabase.from("contracts").select("id", { count: "exact", head: true }).eq("statut", "en_preavis"),
     supabase
@@ -553,11 +577,34 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
   const boxLibres = aLouer.count ?? 0;
   const factures = impayes.data ?? [];
 
+  type ContratSortie = {
+    date_fin: string | null;
+    loyer_mensuel_eur: number;
+    sr_locataires: { nom: string } | null;
+    sr_box: { numero: string; batiment: string | null; tarif_indicatif_eur: number | null } | null;
+  };
+
+  const liberations = liberationsAVenir(
+    ((sorties.data ?? []) as unknown as ContratSortie[])
+      .filter((c) => c.sr_locataires !== null)
+      .map((c) => ({
+        dateFin: c.date_fin,
+        box: c.sr_box?.numero ?? null,
+        batiment: c.sr_box?.batiment ?? null,
+        locataire: c.sr_locataires!.nom,
+        loyer: c.loyer_mensuel_eur,
+        tarifIndicatif: c.sr_box?.tarif_indicatif_eur ?? null,
+      })),
+    periode
+  );
+
   return {
     ...base,
     boxTotal,
     boxLoues,
     boxLibres,
+    liberations,
+    liberationsManqueAGagner: manqueAGagner(liberations),
     // Occupé = tout ce qui n'est pas déclaré libre. Un box dont l'occupant
     // reste à identifier compte comme occupé : c'est l'hypothèse prudente,
     // et la seule qui décrive un centre plein.

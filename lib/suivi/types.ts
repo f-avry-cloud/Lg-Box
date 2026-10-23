@@ -3,6 +3,7 @@
 // d'encaissement manipule locataire / box / contrat / règlement, pas
 // customer / unit / contract / invoice.
 
+import type { Liberation } from "@/lib/suivi/pilotage";
 import type { Prorata } from "@/lib/suivi/prorata";
 
 export type ReglementStatut = "attendu" | "facture" | "paye" | "partiel" | "retard";
@@ -225,6 +226,21 @@ export type StatsTableauDeBord = {
   demandesNouvelles: number;
   /** Personnes en liste d'attente — celles qu'on rappelle quand un box se libère. */
   demandesEnAttente: number;
+
+  // --- Pilotage : non plus où en est le mois, mais de quelle marge on dispose.
+
+  /** Box portant un contrat qui court au mois affiché. */
+  boxAvecContrat: number;
+  /** Loyer mensuel moyen d'un contrat en cours. */
+  loyerMoyen: number;
+  /** Loyers dus du mois, charges déduites — structurel, non encaissé. */
+  margeStructurelle: number;
+  /** Box qui peuvent se vider avant bascule en négatif. Null si indécidable. */
+  boxAvantDeficit: number | null;
+  /** Ce qui se libère dans les trois mois qui viennent. */
+  liberations: Liberation[];
+  /** Somme des tarifs de ces libérations — le manque à gagner mensuel. */
+  liberationsManqueAGagner: number;
 };
 
 // ---------------------------------------------------------------------------
