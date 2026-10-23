@@ -12,7 +12,7 @@ import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { fail, ok, type ActionResult } from "@/lib/actions/result";
-import { contratDuPour } from "@/lib/suivi/contrat";
+import { contratOccupeOuReserve } from "@/lib/suivi/contrat";
 import { isPeriode, periodeCourante, premierJour } from "@/lib/suivi/period";
 import {
   annuleReglement,
@@ -189,7 +189,7 @@ export async function rattacheBoxAuContrat(
     if (erreurLecture) return fail(erreurLecture.message);
 
     const periode = periodeCourante();
-    const occupe = (autres ?? []).some((c) => contratDuPour(periode, c.date_debut, c.date_fin));
+    const occupe = (autres ?? []).some((c) => contratOccupeOuReserve(periode, c.date_debut, c.date_fin));
     if (occupe) return fail("Ce box est déjà rattaché à un autre locataire.");
 
     const modification: { box_id: string; updated_at: string; date_debut?: string } = {
@@ -293,7 +293,7 @@ export async function ajouteBoxAuLocataire(saisie: {
     if (erreurLecture) return fail(erreurLecture.message);
 
     const periode = periodeCourante();
-    if ((autres ?? []).some((c) => contratDuPour(periode, c.date_debut, c.date_fin))) {
+    if ((autres ?? []).some((c) => contratOccupeOuReserve(periode, c.date_debut, c.date_fin))) {
       return fail("Ce box est déjà rattaché à un autre locataire.");
     }
 
@@ -385,7 +385,7 @@ export async function creeLocataireAvecContrat(saisie: {
       if (erreurLecture) return fail(erreurLecture.message);
 
       const periode = periodeCourante();
-      if ((autres ?? []).some((c) => contratDuPour(periode, c.date_debut, c.date_fin))) {
+      if ((autres ?? []).some((c) => contratOccupeOuReserve(periode, c.date_debut, c.date_fin))) {
         return fail("Ce box est déjà rattaché à un autre locataire.");
       }
     }

@@ -25,6 +25,7 @@ import { calculeTotaux, cumuleEncaisse, resumeFacturation } from "@/lib/suivi/to
 import { chargesCumulees, chargesDuMois, totalCharges } from "@/lib/suivi/charges";
 import { trieDemandes } from "@/lib/suivi/demandes";
 import {
+  contratsAVenir,
   contratsEnCours,
   trieLocataires,
   type LocataireAnnuaire,
@@ -32,7 +33,7 @@ import {
 import { groupeParBatiment, parseBoxReferenceCsv } from "@/lib/suivi/box";
 import { estPlace, type BoxPlan } from "@/lib/suivi/plan";
 import { BOX_REFERENCE_CSV } from "@/lib/suivi/box-reference";
-import { contratDuPour } from "@/lib/suivi/contrat";
+import { contratDuPour, contratOccupeOuReserve } from "@/lib/suivi/contrat";
 import type { DestinataireFacture, ParametresMail } from "@/lib/suivi/mail";
 import type { EtatReprise, LocataireReprise } from "@/lib/suivi/reprise";
 import type { Charge } from "@/lib/suivi/charges";
@@ -598,11 +599,15 @@ export async function boxRattachables(): Promise<BoxRattachable[]> {
   // Un contrat dont la sortie a pris effet ne bloque plus le box : sans ce
   // filtre, un box libéré resterait marqué « pris » et impossible à
   // réattribuer, alors que son occupant est parti.
+  //
+  // Un bail qui commence le mois prochain le bloque en revanche dès
+  // aujourd'hui : le box est promis, et le proposer à quelqu'un d'autre
+  // reviendrait à le louer deux fois.
   const periodeCourse = periodeCourante();
   const occupantParBox = new Map<string, string>();
   for (const c of (contratsRes.data ?? []) as unknown as ContratJointNom[]) {
     if (!c.box_id || !c.sr_locataires?.nom) continue;
-    if (!contratDuPour(periodeCourse, c.date_debut, c.date_fin)) continue;
+    if (!contratOccupeOuReserve(periodeCourse, c.date_debut, c.date_fin)) continue;
     occupantParBox.set(c.box_id, c.sr_locataires.nom);
   }
 
@@ -872,6 +877,7 @@ export async function listeLocataires(): Promise<LocataireAnnuaire[]> {
         email: null,
         box: ligne.box_numero ? [ligne.box_numero] : [],
         enCours: 1,
+        aVenir: 0,
         loyer: ligne.loyer_mensuel_eur,
         depuis: null,
         partiLe: null,
@@ -889,6 +895,7 @@ export async function listeLocataires(): Promise<LocataireAnnuaire[]> {
       email: null,
       box: [],
       enCours: 0,
+      aVenir: 0,
       loyer: 0,
       depuis: null,
       partiLe: null,
@@ -931,6 +938,9 @@ export async function listeLocataires(): Promise<LocataireAnnuaire[]> {
   const annuaire = (locatairesRes.data ?? []).map((l) => {
     const contrats = contratsParLocataire.get(l.id) ?? [];
     const enCours = contratsEnCours(contrats, periode);
+    // Les baux signés pour plus tard : ils ne paient pas encore, mais leur
+    // locataire n'est pas un ancien — voir `etatLocataire`.
+    const aVenir = contratsAVenir(contrats, periode);
 
     // La date de départ n'a de sens qu'une fois tout terminé : tant qu'un
     // contrat court, afficher la fin du précédent laisserait croire à un
@@ -954,6 +964,7 @@ export async function listeLocataires(): Promise<LocataireAnnuaire[]> {
         .filter((n): n is string => Boolean(n))
         .sort((a, b) => a.localeCompare(b, "fr", { numeric: true })),
       enCours: enCours.length,
+      aVenir: aVenir.length,
       loyer: enCours.reduce((somme, c) => somme + c.loyer_mensuel_eur, 0),
       depuis: debuts.length > 0 ? debuts.sort()[0] : l.date_entree,
       partiLe,
@@ -1118,7 +1129,11 @@ export async function candidatsAffectation(): Promise<CandidatAffectation[]> {
     if (!l) continue;
     // Un contrat dont la sortie a pris effet ne compte plus : ni comme
     // logement en cours, ni comme contrat en attente de box.
-    if (!contratDuPour(periode, c.date_debut, c.date_fin)) continue;
+    //
+    // Celui qui commence le mois prochain compte, lui : c'est justement le
+    // moment où on lui cherche un box. Le filtrer sur le seul mois courant le
+    // rendait introuvable dans cette liste le jour de sa signature.
+    if (!contratOccupeOuReserve(periode, c.date_debut, c.date_fin)) continue;
 
     const candidat = parLocataire.get(l.id) ?? {
       locataire_id: l.id,

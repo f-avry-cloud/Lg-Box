@@ -286,11 +286,15 @@ export function ListeLocataires({
                           l.box.length > 0 ? `Box ${l.box.join(", ")}` : "Box à identifier",
                           `${l.loyer.toLocaleString("fr-FR")} €`,
                         ].join(" · ")
-                      : etat === "sans_contrat"
-                        ? "Aucun contrat"
-                        : l.partiLe
-                          ? `Parti le ${formatDate(l.partiLe)}`
-                          : "Plus de contrat en cours"}
+                      : etat === "a_venir"
+                        ? l.depuis
+                          ? `Arrive le ${formatDate(l.depuis)}`
+                          : "Bail à venir"
+                        : etat === "sans_contrat"
+                          ? "Aucun contrat"
+                          : l.partiLe
+                            ? `Parti le ${formatDate(l.partiLe)}`
+                            : "Plus de contrat en cours"}
                   </span>
                 </span>
 
@@ -305,6 +309,18 @@ export function ListeLocataires({
                     style={{ backgroundColor: "var(--suivi-orange)" }}
                   >
                     Sans contrat
+                  </span>
+                )}
+
+                {/* L'arrivant se signale lui aussi : son bail ne figure dans
+                    aucun mois tant qu'il n'a pas pris effet, et sans cette
+                    pastille rien ne dirait pourquoi la ligne reste muette. */}
+                {etat === "a_venir" && (
+                  <span
+                    className="t-etiquette shrink-0 rounded-full px-2 py-1 text-white"
+                    style={{ backgroundColor: "var(--suivi-bleu)" }}
+                  >
+                    À venir
                   </span>
                 )}
 

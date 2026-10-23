@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { contratDuPour, sortieAVenir } from "@/lib/suivi/contrat";
+import {
+  contratAVenir,
+  contratDuPour,
+  contratOccupeOuReserve,
+  sortieAVenir,
+} from "@/lib/suivi/contrat";
 import { bissextile, dernierJour, premierJour } from "@/lib/suivi/period";
 
 describe("premierJour / dernierJour", () => {
@@ -70,5 +75,45 @@ describe("sortieAVenir", () => {
 
   it("ne signale rien sans date de fin", () => {
     expect(sortieAVenir("2026-08", null)).toBe(false);
+  });
+});
+
+describe("contratAVenir", () => {
+  it("reconnaît le bail signé pour le mois prochain", () => {
+    // Le cas réel : signé le 23 octobre, effet au 1er novembre.
+    expect(contratAVenir("2026-10", "2026-11-01", null)).toBe(true);
+  });
+
+  it("ne dit pas à venir un bail qui court déjà", () => {
+    expect(contratAVenir("2026-10", "2020-01-01", null)).toBe(false);
+  });
+
+  it("ne dit pas à venir un bail commençant dans le mois affiché", () => {
+    expect(contratAVenir("2026-10", "2026-10-31", null)).toBe(false);
+  });
+
+  it("ne dit jamais à venir un contrat sans date de début", () => {
+    // Sept contrats repris n'en ont pas : ils courent depuis toujours.
+    expect(contratAVenir("2026-10", null, null)).toBe(false);
+  });
+
+  it("écarte un bail futur déjà clos", () => {
+    expect(contratAVenir("2026-10", "2026-12-01", "2026-11-30")).toBe(false);
+  });
+});
+
+describe("contratOccupeOuReserve", () => {
+  it("tient le box pris pour un bail en cours", () => {
+    expect(contratOccupeOuReserve("2026-10", "2020-01-01", null)).toBe(true);
+  });
+
+  it("tient le box pris pour un bail qui commence le mois prochain", () => {
+    // Le 4C : rendu par sa locataire fin septembre, repris au 1er novembre.
+    // Le proposer à quelqu'un d'autre en octobre le louerait deux fois.
+    expect(contratOccupeOuReserve("2026-10", "2026-11-01", null)).toBe(true);
+  });
+
+  it("rend le box à la location quand le bail est terminé", () => {
+    expect(contratOccupeOuReserve("2026-10", "2026-05-02", "2026-09-30")).toBe(false);
   });
 });

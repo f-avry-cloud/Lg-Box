@@ -4,7 +4,7 @@
 // liste du mois, la fiche d'un box ou le plan. Il apporte un chemin : partir
 // d'un nom plutôt que d'un box ou d'un mois.
 
-import { contratDuPour } from "@/lib/suivi/contrat";
+import { contratAVenir, contratDuPour } from "@/lib/suivi/contrat";
 
 /** Ce qu'on sait d'un locataire dans l'annuaire. */
 export type LocataireAnnuaire = {
@@ -26,6 +26,8 @@ export type LocataireAnnuaire = {
   partiLe: string | null;
   /** Nombre de contrats, terminés compris. Zéro = jamais rattaché à un box. */
   contrats: number;
+  /** Contrats signés qui ne commencent qu'après la période affichée. */
+  aVenir: number;
 };
 
 /**
@@ -42,10 +44,14 @@ export type LocataireAnnuaire = {
  * ranger dans les archives le ferait disparaître au moment précis où il faut
  * penser à lui. Il est donc compté avec les actifs, et l'écran le signale.
  */
-export type EtatLocataire = "actif" | "sans_contrat" | "archive";
+export type EtatLocataire = "actif" | "a_venir" | "sans_contrat" | "archive";
 
 export function etatLocataire(locataire: LocataireAnnuaire): EtatLocataire {
   if (locataire.enCours > 0) return "actif";
+  // Un bail qui commence le mois prochain n'a rien d'un bail terminé. Sans
+  // cette ligne, un arrivant saisi d'avance était rangé aux archives le jour
+  // même de sa signature — l'exact contraire de ce qu'il fallait voir.
+  if (locataire.aVenir > 0) return "a_venir";
   return locataire.contrats > 0 ? "archive" : "sans_contrat";
 }
 
@@ -115,4 +121,11 @@ export function contratsEnCours<
   T extends { box_id: string | null; date_debut: string | null; date_fin: string | null },
 >(contrats: T[], periode: string): T[] {
   return contrats.filter((c) => contratDuPour(periode, c.date_debut, c.date_fin));
+}
+
+/** Les contrats signés dont l'effet est encore devant nous. */
+export function contratsAVenir<
+  T extends { date_debut: string | null; date_fin: string | null },
+>(contrats: T[], periode: string): T[] {
+  return contrats.filter((c) => contratAVenir(periode, c.date_debut, c.date_fin));
 }

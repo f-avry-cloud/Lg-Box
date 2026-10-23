@@ -28,3 +28,41 @@ export function contratDuPour(
 export function sortieAVenir(periode: string, dateFin: string | null): boolean {
   return dateFin !== null && dateFin >= premierJour(periode);
 }
+
+/**
+ * Le contrat commence-t-il **après** la période affichée ?
+ *
+ * Un bail signé pour le mois prochain n'est pas encore dû — `contratDuPour` a
+ * raison de l'écarter du pointage. Mais il n'est pas pour autant terminé, et
+ * l'écarter partout l'a rendu invisible : son locataire passait aux archives,
+ * il ne figurait pas parmi les contrats à rattacher à un box, et son box
+ * paraissait libre à quiconque voulait le relouer.
+ *
+ * Une date de début absente n'est jamais « à venir » : le contrat court déjà.
+ */
+export function contratAVenir(
+  periode: string,
+  dateDebut: string | null,
+  dateFin: string | null
+): boolean {
+  if (dateDebut === null) return false;
+  if (dateDebut <= dernierJour(periode)) return false;
+  // Un bail déjà clos ne s'annonce pas, même si ses deux dates sont futures.
+  return dateFin === null || dateFin >= dateDebut;
+}
+
+/**
+ * Le contrat occupe-t-il le box à la période affichée **ou plus tard** ?
+ *
+ * C'est la question à poser avant de proposer un box à la location : un box
+ * promis à partir du 1er novembre n'est pas disponible, même en octobre.
+ */
+export function contratOccupeOuReserve(
+  periode: string,
+  dateDebut: string | null,
+  dateFin: string | null
+): boolean {
+  return (
+    contratDuPour(periode, dateDebut, dateFin) || contratAVenir(periode, dateDebut, dateFin)
+  );
+}

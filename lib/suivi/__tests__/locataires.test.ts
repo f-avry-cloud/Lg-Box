@@ -19,6 +19,7 @@ function locataire(nom: string, extra: Partial<LocataireAnnuaire> = {}): Locatai
     email: null,
     box: ["12"],
     enCours: 1,
+    aVenir: 0,
     loyer: 130,
     depuis: "2024-01-01",
     partiLe: null,
@@ -42,6 +43,33 @@ describe("etatLocataire", () => {
     });
     expect(etatLocataire(parti)).toBe("archive");
     expect(estArchive(parti)).toBe(true);
+  });
+
+  it("annonce comme à venir celui dont le bail commence le mois prochain", () => {
+    // Le cas qui a motivé l'état : un bail signé le 23 octobre pour le 1er
+    // novembre. Sans lui, l'arrivant était rangé aux archives le jour même
+    // de sa signature, et n'apparaissait nulle part où on le cherchait.
+    const arrivant = locataire("GUILLOU", {
+      box: [],
+      enCours: 0,
+      aVenir: 1,
+      loyer: 0,
+      contrats: 1,
+    });
+    expect(etatLocataire(arrivant)).toBe("a_venir");
+    expect(estArchive(arrivant)).toBe(false);
+  });
+
+  it("archive celui dont le seul bail futur est déjà clos", () => {
+    const parti = locataire("MARTIN", {
+      box: [],
+      enCours: 0,
+      aVenir: 0,
+      loyer: 0,
+      contrats: 1,
+      partiLe: "2026-03-31",
+    });
+    expect(etatLocataire(parti)).toBe("archive");
   });
 
   it("n'archive pas un locataire noté sans contrat", () => {
