@@ -17,6 +17,7 @@ function box(
     surface_m2: surface,
     statut: "libre",
     libre: false,
+    aVenir: null,
     tarif_indicatif_eur: null,
     locataire: null,
     contrat_id: null,

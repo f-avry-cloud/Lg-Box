@@ -139,6 +139,14 @@ export type BoxListe = {
   tarif_indicatif_eur: number | null;
   /** Locataire en place, quand le box est loué. */
   locataire: string | null;
+  /**
+   * Le locataire **à venir**, quand un bail commence après le mois affiché.
+   *
+   * Sans lui, les deux côtés du même fait se contredisaient : le contrat
+   * désignait son box, et le box n'affichait personne. On voyait le lien
+   * depuis le locataire, jamais depuis la case.
+   */
+  aVenir: OccupantAVenir | null;
   /** Contrat qui occupe ce box — nécessaire pour l'en détacher. */
   contrat_id: string | null;
   /**
@@ -157,6 +165,16 @@ export const PERIODICITE_LABELS: Record<Periodicite, string> = {
 };
 
 /** Ce qu'il faut savoir d'un occupant sans quitter la fiche du box. */
+/** Un bail signé qui n'a pas encore pris effet sur ce box. */
+export type OccupantAVenir = {
+  contrat_id: string;
+  locataire_id: string;
+  nom: string;
+  /** Premier jour du bail. */
+  date_debut: string;
+  loyer_mensuel_eur: number;
+};
+
 export type DetailOccupation = {
   locataire_id: string;
   nom: string;

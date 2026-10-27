@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -9,6 +10,7 @@ import { FeuilleModale } from "@/components/suivi/feuille-modale";
 import { vibre } from "@/components/suivi/bouton-encaissement";
 import { Button } from "@/components/ui/button";
 import { creeBox, declareBoxLibre, modifieBox, supprimeBox } from "@/lib/actions/suivi-box";
+import { formatDate } from "@/lib/format";
 import { BlocAffectation } from "@/components/suivi/bloc-affectation";
 import { detacheBoxDuContrat } from "@/lib/actions/suivi";
 import type { BoxListe, CandidatAffectation } from "@/lib/suivi/types";
@@ -333,7 +335,40 @@ export function FeuilleBox({
         Le bloc gère les deux cas — locataire en attente de box, ou déjà logé
         et qui en prend un second. Voir `bloc-affectation.tsx`.
       */}
-      {!creation && box && !box.detail && (
+      {/* L'arrivant, avant tout le reste. Son bail désigne déjà cette case :
+          ne rien afficher ici faisait dire à l'écran que le box est libre,
+          pendant que la fiche du locataire montrait le rattachement. Un même
+          fait, deux réponses contraires selon le côté d'où on le regardait. */}
+      {!creation && box?.aVenir && !box.detail && (
+        <div
+          className="mb-4 rounded-xl border p-3"
+          style={{
+            borderColor: "var(--suivi-violet)",
+            backgroundColor: "color-mix(in srgb, var(--suivi-violet) 8%, transparent)",
+          }}
+        >
+          <span className="t-etiquette block" style={{ color: "var(--suivi-violet)" }}>
+            Réservé
+          </span>
+          <p className="t-corps mt-1 font-bold">{box.aVenir.nom}</p>
+          <p className="t-meta mt-0.5">
+            Bail du {formatDate(box.aVenir.date_debut)} ·{" "}
+            <span className="t-nombre">
+              {box.aVenir.loyer_mensuel_eur.toLocaleString("fr-FR")} €
+            </span>
+          </p>
+          <Link
+            href={`/suivi/locataire/${encodeURIComponent(box.aVenir.locataire_id)}`}
+            className="suivi-tap mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-[var(--primary)]"
+          >
+            Ouvrir la fiche
+          </Link>
+        </div>
+      )}
+
+      {/* Un box promis n'est pas à attribuer : proposer le rattachement le
+          louerait une seconde fois. */}
+      {!creation && box && !box.detail && !box.aVenir && (
         <BlocAffectation box={box} candidats={candidats} onFermer={onFermer} />
       )}
 

@@ -21,7 +21,12 @@ import {
 } from "@/lib/actions/suivi";
 import { modifieLoyerContrat } from "@/lib/actions/suivi-box";
 import { libelleAnciennete } from "@/lib/suivi/anciennete";
-import { douzeDernieresPeriodes, labelMoisCourt, labelPeriode } from "@/lib/suivi/period";
+import {
+  dateDuJour,
+  douzeDernieresPeriodes,
+  labelMoisCourt,
+  labelPeriode,
+} from "@/lib/suivi/period";
 import { couleurPastille, initiales } from "@/lib/suivi/totals";
 import {
   BOX_A_IDENTIFIER,
@@ -275,6 +280,17 @@ export function FicheLocataireVue({
                     ? `Box ${contrat.box.numero}`
                     : BOX_A_IDENTIFIER.charAt(0).toUpperCase() + BOX_A_IDENTIFIER.slice(1)}
                 </p>
+                {/* Un bail qui n'a pas encore pris effet ne figure dans aucun
+                    mois : sans cette mention, la fiche montrait un contrat
+                    d'apparence ordinaire qu'on cherchait en vain ailleurs. */}
+                {contrat.date_debut && contrat.date_debut > dateDuJour() && (
+                  <p
+                    className="t-meta mt-0.5 font-medium"
+                    style={{ color: "var(--suivi-violet)" }}
+                  >
+                    Bail à venir — prend effet le {formatDate(contrat.date_debut)}
+                  </p>
+                )}
                 <dl className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
                   {contrat.box?.batiment && (
                     <>

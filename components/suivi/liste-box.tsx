@@ -5,6 +5,7 @@ import { LayoutGrid, Map, Pencil, Plus, Search } from "lucide-react";
 
 import { FeuilleBox } from "@/components/suivi/feuille-box";
 import { PlanInteractif, type GroupePlanVue } from "@/components/suivi/plan-interactif";
+import { formatDate } from "@/lib/format";
 import { couleurPastille } from "@/lib/suivi/totals";
 import {
   estBatimentATraiter,
@@ -20,11 +21,26 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
- * Trois états là où la liste n'en montrait que deux : sans contrat, un box
- * n'est pas pour autant vide. Voir `lib/suivi/disponibilite.ts`.
+ * Quatre états là où la liste n'en montrait que deux : sans contrat, un box
+ * n'est pas pour autant vide, et un box promis n'est pas à louer. Voir
+ * `lib/suivi/disponibilite.ts`.
  */
 function etatDeLaLigne(box: BoxListe) {
-  return etatBox({ occupe: box.statut === "loue", libre: box.libre });
+  return etatBox({
+    occupe: box.statut === "loue",
+    libre: box.libre,
+    reserve: box.aVenir !== null,
+  });
+}
+
+/** Le nom à montrer sous le numéro : l'occupant, ou celui qui arrive. */
+function sousTitre(box: BoxListe): string {
+  if (box.locataire) return box.locataire;
+  if (box.aVenir) {
+    const jour = formatDate(box.aVenir.date_debut);
+    return `${box.aVenir.nom} — au ${jour}`;
+  }
+  return LIBELLE_ETAT_BOX[etatDeLaLigne(box)];
 }
 
 /**
@@ -214,7 +230,7 @@ export function ListeBox({
                         Box {box.numero}
                       </span>
                       <span className="block truncate t-meta">
-                        {box.locataire ?? LIBELLE_ETAT_BOX[etatDeLaLigne(box)]}
+                        {sousTitre(box)}
                       </span>
                     </span>
 

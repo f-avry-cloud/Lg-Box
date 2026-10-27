@@ -51,6 +51,7 @@ import {
   type Locataire,
   type BoxRattachable,
   type DetailOccupation,
+  type OccupantAVenir,
   type Periodicite,
   type CandidatAffectation,
   type DemandeReservation,
@@ -316,9 +317,28 @@ export async function listeBox(): Promise<GroupeBatiment[]> {
   }
 
   const occupantParBox = new Map<string, { contratId: string; detail: DetailOccupation }>();
+  // Le locataire à venir : son bail désigne déjà ce box, le box doit le dire.
+  // Quand plusieurs se succèdent, le plus proche l'emporte.
+  const aVenirParBox = new Map<string, OccupantAVenir>();
+
   for (const c of (contratsRes.data ?? []) as unknown as ContratDetaille[]) {
     const l = c.sr_locataires;
     if (!c.box_id || !l) continue;
+
+    if (contratAVenir(periode, c.date_debut, c.date_fin) && c.date_debut) {
+      const deja = aVenirParBox.get(c.box_id);
+      if (!deja || c.date_debut < deja.date_debut) {
+        aVenirParBox.set(c.box_id, {
+          contrat_id: c.id,
+          locataire_id: l.id,
+          nom: l.nom,
+          date_debut: c.date_debut,
+          loyer_mensuel_eur: c.loyer_mensuel_eur,
+        });
+      }
+      continue;
+    }
+
     // Un box dont la sortie est programmée reste occupé jusqu'à l'échéance.
     if (!contratDuPour(periode, c.date_debut, c.date_fin)) continue;
     occupantParBox.set(c.box_id, {
@@ -340,14 +360,21 @@ export async function listeBox(): Promise<GroupeBatiment[]> {
 
   const box: BoxListe[] = (boxRes.data ?? []).map((b) => {
     const occupant = occupantParBox.get(b.id) ?? null;
+    const aVenir = aVenirParBox.get(b.id) ?? null;
     return {
       id: b.id,
       numero: b.numero,
       batiment: b.batiment,
       surface_m2: b.surface_m2,
-      // Trois états, pas deux : sans contrat, un box n'est pas pour autant
-      // vide — voir `lib/suivi/disponibilite.ts`.
-      statut: occupant ? ("loue" as const) : ("libre" as const),
+      // Quatre états, pas deux : sans contrat, un box n'est pas pour autant
+      // vide, et un box promis n'est pas à louer — voir
+      // `lib/suivi/disponibilite.ts`.
+      statut: occupant
+        ? ("loue" as const)
+        : aVenir
+          ? ("reserve" as const)
+          : ("libre" as const),
+      aVenir,
       libre: b.libre,
       tarif_indicatif_eur: b.tarif_indicatif_eur,
       locataire: occupant?.detail.nom ?? null,
@@ -425,6 +452,8 @@ function demoBoxListe(): BoxListe[] {
       occupants.get(`${normaliseBatiment(b.batiment)}|${b.numero.toLowerCase()}`) ?? null;
     return {
       id: `${b.batiment}|${b.numero}`,
+      // La démo n'a pas de bail futur : aucune réservation à montrer.
+      aVenir: null,
       numero: b.numero,
       batiment: b.batiment,
       surface_m2: b.surface_m2,
