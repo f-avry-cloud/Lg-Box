@@ -19,7 +19,7 @@ import {
   enregistreDetailReglement,
   sauvegardeObservations,
 } from "@/lib/actions/suivi";
-import { modifieLoyerContrat } from "@/lib/actions/suivi-box";
+import { modifieDatesContrat, modifieLoyerContrat } from "@/lib/actions/suivi-box";
 import { libelleAnciennete } from "@/lib/suivi/anciennete";
 import {
   dateDuJour,
@@ -38,6 +38,7 @@ import {
   type ReglementStatut,
 } from "@/lib/suivi/types";
 import { formatDate } from "@/lib/format";
+import { loyerDuPour } from "@/lib/suivi/prorata";
 import { cn } from "@/lib/utils";
 
 const LIBELLE_STATUT: Record<ReglementStatut, string> = {
@@ -54,6 +55,20 @@ function couleurStatut(statut: ReglementStatut): string {
   // Facturé : réclamé mais pas encore encaissé — ni vert, ni alarmant.
   if (statut === "facture") return "var(--primary)";
   return "var(--suivi-gris)";
+}
+
+/**
+ * Ce que la date saisie donnera comme premier loyer, en une phrase.
+ *
+ * Rien à afficher quand l'entrée tombe le 1er : le mois est plein, et
+ * l'annoncer n'apprendrait rien.
+ */
+function apercuProrata(dateDebut: string, loyerPlein: number): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateDebut)) return null;
+  const periode = dateDebut.slice(0, 7);
+  const { montant, prorata } = loyerDuPour(periode, loyerPlein, dateDebut);
+  if (!prorata) return null;
+  return `${labelPeriode(periode)} : ${montant.toLocaleString("fr-FR")} € — ${prorata.jours} jours sur ${prorata.joursDuMois}`;
 }
 
 export function FicheLocataireVue({
@@ -76,6 +91,11 @@ export function FicheLocataireVue({
   // Le loyer ne se modifiait que depuis la fiche d'un box — donc jamais pour
   // les contrats qui n'en ont pas encore, et ils sont nombreux.
   const [loyerEnEdition, setLoyerEnEdition] = useState<string | null>(null);
+  // Les dates du bail : jusqu'ici invisibles depuis le téléphone, alors que
+  // c'est sur place qu'on apprend une entrée au 13 ou un départ annoncé.
+  const [datesEnEdition, setDatesEnEdition] = useState<string | null>(null);
+  const [saisieDebut, setSaisieDebut] = useState("");
+  const [saisieFin, setSaisieFin] = useState("");
   const [saisieLoyer, setSaisieLoyer] = useState("");
 
   const [enCours, demarreTransition] = useTransition();
@@ -110,6 +130,24 @@ export function FicheLocataireVue({
       vibre();
       toast.success(`Loyer porté à ${Math.round(montant)} €.`);
       setLoyerEnEdition(null);
+      router.refresh();
+    });
+  };
+
+  const changeDates = (contratId: string) => {
+    demarreTransition(async () => {
+      const resultat = await modifieDatesContrat(contratId, {
+        dateDebut: saisieDebut || null,
+        dateFin: saisieFin || null,
+      });
+      if (!resultat.success) {
+        vibre(60);
+        toast.error(resultat.error ?? "Modification impossible.");
+        return;
+      }
+      vibre();
+      toast.success("Dates du bail mises à jour.");
+      setDatesEnEdition(null);
       router.refresh();
     });
   };
@@ -318,10 +356,27 @@ export function FicheLocataireVue({
                       Modifier
                     </button>
                   </dd>
-                  {contrat.date_debut && (
+                  <dt className="text-[var(--suivi-gris)]">Entrée</dt>
+                  <dd className="text-right font-medium">
+                    {contrat.date_debut ? formatDate(contrat.date_debut) : "inconnue"}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDatesEnEdition(contrat.id);
+                        setSaisieDebut(contrat.date_debut ?? "");
+                        setSaisieFin(contrat.date_fin ?? "");
+                      }}
+                      className="suivi-tap ml-2 font-medium text-[var(--primary)] underline-offset-2 hover:underline"
+                    >
+                      Modifier
+                    </button>
+                  </dd>
+                  {contrat.date_fin && (
                     <>
-                      <dt className="text-[var(--suivi-gris)]">Entrée</dt>
-                      <dd className="text-right font-medium">{formatDate(contrat.date_debut)}</dd>
+                      <dt className="text-[var(--suivi-gris)]">Sortie</dt>
+                      <dd className="text-right font-medium text-[var(--suivi-orange)]">
+                        {formatDate(contrat.date_fin)}
+                      </dd>
                     </>
                   )}
                 </dl>
@@ -367,6 +422,71 @@ export function FicheLocataireVue({
                         className="h-12 flex-1"
                         disabled={enCours || !(Number(saisieLoyer.replace(",", ".")) > 0)}
                         onClick={() => changeLoyer(contrat.id)}
+                      >
+                        Enregistrer
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {datesEnEdition === contrat.id && (
+                  <div className="mt-3 rounded-xl border border-border bg-secondary/30 p-3">
+                    <label htmlFor={`debut-${contrat.id}`} className="t-etiquette mb-1 block">
+                      Date d&apos;entrée
+                    </label>
+                    <input
+                      id={`debut-${contrat.id}`}
+                      type="date"
+                      value={saisieDebut}
+                      onChange={(e) => setSaisieDebut(e.target.value)}
+                      className="mb-3 h-14 w-full rounded-xl border border-input bg-background px-4 text-lg tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+
+                    <label htmlFor={`fin-${contrat.id}`} className="t-etiquette mb-1 block">
+                      Date de sortie (vide si le bail court)
+                    </label>
+                    <input
+                      id={`fin-${contrat.id}`}
+                      type="date"
+                      value={saisieFin}
+                      onChange={(e) => setSaisieFin(e.target.value)}
+                      className="mb-2 h-14 w-full rounded-xl border border-input bg-background px-4 text-lg tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+
+                    {/* Le calcul se montre avant d'enregistrer : c'est le seul
+                        moyen de vérifier qu'une entrée en cours de mois donne
+                        bien le montant attendu. */}
+                    {apercuProrata(saisieDebut, contrat.loyer_mensuel_eur) && (
+                      <p
+                        className="t-meta mb-2 font-medium"
+                        style={{ color: "var(--suivi-bleu)" }}
+                      >
+                        {apercuProrata(saisieDebut, contrat.loyer_mensuel_eur)}
+                      </p>
+                    )}
+
+                    <p className="t-meta mb-2">
+                      L&apos;entrée en cours de mois ne se facture qu&apos;au prorata des jours
+                      restants. La sortie, elle, laisse le mois entier dû.
+                    </p>
+
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-12 flex-1"
+                        disabled={enCours}
+                        onClick={() => setDatesEnEdition(null)}
+                      >
+                        Annuler
+                      </Button>
+                      <Button
+                        type="button"
+                        className="h-12 flex-1"
+                        disabled={
+                          enCours || (saisieFin !== "" && saisieDebut !== "" && saisieFin < saisieDebut)
+                        }
+                        onClick={() => changeDates(contrat.id)}
                       >
                         Enregistrer
                       </Button>

@@ -16,7 +16,8 @@ import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth";
 import { fail, ok, type ActionResult } from "@/lib/actions/result";
 import { createClient } from "@/lib/supabase/server";
-import { dernierJour, isPeriode } from "@/lib/suivi/period";
+import { contratOccupeOuReserve } from "@/lib/suivi/contrat";
+import { dernierJour, isPeriode, periodeCourante, premierJour } from "@/lib/suivi/period";
 import { estModeDemo } from "@/lib/suivi/repository";
 
 async function autorise(): Promise<ActionResult | null> {
@@ -282,6 +283,90 @@ export async function declareBoxLibre(boxId: string, libre: boolean): Promise<Ac
 
   const supabase = await createClient();
   const { error } = await supabase.from("sr_box").update({ libre }).eq("id", boxId);
+  if (error) return fail(error.message);
+
+  rafraichit();
+  return ok;
+}
+
+/**
+ * Change les dates d'un contrat : entrée, et sortie éventuelle.
+ *
+ * C'était le dernier geste qui obligeait à ouvrir le back-office, et le
+ * manque s'est fait sentir dès que le prorata est arrivé : la création fixe
+ * toujours le 1er du mois, si bien qu'une entrée le 13 restait inexprimable
+ * depuis le téléphone — c'est pourtant là qu'on la constate.
+ *
+ * La date de sortie suit le même chemin, pour la même raison : une
+ * résiliation s'annonce au comptoir, pas au bureau.
+ *
+ * Le jour compte ici, et pas seulement le mois : c'est lui qui détermine le
+ * prorata du premier mois (voir `lib/suivi/prorata.ts`). Pour la sortie en
+ * revanche, tout mois commencé reste dû — le jour exact n'y change rien, mais
+ * on l'enregistre tel qu'il a été annoncé.
+ */
+export async function modifieDatesContrat(
+  contratId: string,
+  dates: { dateDebut: string | null; dateFin: string | null }
+): Promise<ActionResult> {
+  const refus = await autorise();
+  if (refus) return refus;
+
+  const estUneDate = (valeur: string) => /^\d{4}-\d{2}-\d{2}$/.test(valeur);
+
+  if (dates.dateDebut !== null && !estUneDate(dates.dateDebut)) {
+    return fail("La date d'entrée est invalide.");
+  }
+  if (dates.dateFin !== null && !estUneDate(dates.dateFin)) {
+    return fail("La date de sortie est invalide.");
+  }
+  if (dates.dateDebut !== null && dates.dateFin !== null && dates.dateFin < dates.dateDebut) {
+    return fail("La sortie ne peut pas précéder l'entrée.");
+  }
+
+  const supabase = await createClient();
+
+  // Déplacer une entrée peut faire chevaucher deux baux sur le même box. La
+  // garde est la même qu'au rattachement : un box ne porte qu'un locataire à
+  // la fois, réservations comprises.
+  const { data: contrat, error: erreurLecture } = await supabase
+    .from("sr_contrats")
+    .select("box_id")
+    .eq("id", contratId)
+    .maybeSingle();
+
+  if (erreurLecture) return fail(erreurLecture.message);
+  if (!contrat) return fail("Contrat introuvable.");
+
+  if (contrat.box_id) {
+    const { data: autres, error: erreurAutres } = await supabase
+      .from("sr_contrats")
+      .select("id, date_debut, date_fin")
+      .eq("box_id", contrat.box_id)
+      .neq("id", contratId);
+
+    if (erreurAutres) return fail(erreurAutres.message);
+
+    // On éprouve le mois d'entrée demandé : c'est à partir de lui que le
+    // nouveau bail revendique le box.
+    const moisEntree = (dates.dateDebut ?? premierJour(periodeCourante())).slice(0, 7);
+    const conflit = (autres ?? []).some((c) =>
+      contratOccupeOuReserve(moisEntree, c.date_debut, c.date_fin)
+    );
+    if (conflit) {
+      return fail("Un autre locataire occupe déjà ce box à cette date.");
+    }
+  }
+
+  const { error } = await supabase
+    .from("sr_contrats")
+    .update({
+      date_debut: dates.dateDebut,
+      date_fin: dates.dateFin,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", contratId);
+
   if (error) return fail(error.message);
 
   rafraichit();
