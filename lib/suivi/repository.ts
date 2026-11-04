@@ -35,6 +35,7 @@ import { estPlace, type BoxPlan } from "@/lib/suivi/plan";
 import { BOX_REFERENCE_CSV } from "@/lib/suivi/box-reference";
 import { contratAVenir, contratDuPour, contratOccupeOuReserve } from "@/lib/suivi/contrat";
 import {
+  PRUDENCE_EXPLOITATION,
   aRelouer,
   manqueAGagner,
   margeMensuelle,
@@ -535,7 +536,8 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
   const charge = totalCharges(chargesDuMois(charges, periode));
   const marge = margeMensuelle(
     lignes.map((l) => l.loyer_mensuel_eur),
-    charge
+    charge,
+    PRUDENCE_EXPLOITATION
   );
 
   const base: StatsTableauDeBord = {
@@ -546,6 +548,8 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
     boxAvecContrat: lignes.filter((l) => l.box_numero !== null).length,
     loyerMoyen: marge.loyerMoyen,
     margeStructurelle: marge.marge,
+    caEncaissable: marge.caEncaissable,
+    chargesRetenues: marge.chargesRetenues,
     boxAvantDeficit: marge.boxAvantDeficit,
     trajectoire: { points: [], margeInitiale: null, margeFinale: null, departsConnus: 0, seuilAtteintLe: null, basculeLe: null },
     aRelouer: [],
@@ -647,7 +651,8 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
           .map((c) => loyerDuPour(mois, c.loyer_mensuel_eur, c.date_debut).montant),
         charges: totalCharges(chargesDuMois(charges, mois)),
       };
-    })
+    }),
+    PRUDENCE_EXPLOITATION
   );
 
   const boxTotal = total.count ?? 0;

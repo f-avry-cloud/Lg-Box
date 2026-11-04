@@ -16,7 +16,7 @@ import { Logo } from "@/components/suivi/logo";
 import { BoutonFacturation } from "@/components/suivi/bouton-facturation";
 import { aEnvoyer, resumeEnvoi } from "@/lib/suivi/mail";
 import { labelMoisCourt, labelPeriode, isPeriode, periodeCourante } from "@/lib/suivi/period";
-import { MARGE_VERTE, couleurMarge } from "@/lib/suivi/pilotage";
+import { MARGE_VERTE, PRUDENCE_EXPLOITATION, couleurMarge } from "@/lib/suivi/pilotage";
 import { cn } from "@/lib/utils";
 import {
   destinatairesFactures,
@@ -93,7 +93,7 @@ export default async function TableauDeBordPage({
         <div className="suivi-carte p-4">
           <div className="flex items-center gap-1.5 text-[var(--suivi-gris)]">
             <Gauge className="size-4" aria-hidden />
-            <span className="t-etiquette">Marge de manœuvre</span>
+            <span className="t-etiquette">Marge de sécurité</span>
           </div>
 
           {stats.boxAvantDeficit === null ? (
@@ -129,8 +129,8 @@ export default async function TableauDeBordPage({
 
               <p className="t-meta mt-2">
                 {stats.boxAvantDeficit === 0
-                  ? "le centre est déjà en cash-flow négatif"
-                  : `peuvent se vider avant le cash-flow négatif, à ${stats.loyerMoyen.toLocaleString("fr-FR")} € de loyer moyen`}
+                  ? "le centre est déjà sous son seuil de sécurité"
+                  : `peuvent se vider avant de passer sous le seuil, à ${stats.loyerMoyen.toLocaleString("fr-FR")} € de loyer moyen`}
               </p>
 
               {/* Ce que les départs déjà signés font au seuil. Le chiffre du
@@ -163,7 +163,7 @@ export default async function TableauDeBordPage({
                   className="t-meta mt-1 font-medium"
                   style={{ color: "var(--destructive)" }}
                 >
-                  Cash-flow négatif dès {labelMoisCourt(stats.trajectoire.basculeLe)} sans
+                  Sous le seuil dès {labelMoisCourt(stats.trajectoire.basculeLe)} sans
                   relocation.
                 </p>
               )}
@@ -205,14 +205,33 @@ export default async function TableauDeBordPage({
                   })}
                 </div>
               )}
-              <p className="t-meta mt-1">
+              {/* L'hypothèse se montre, elle ne se devine pas : une marge de
+                  sécurité dont on ignore les prudences n'en est pas une. */}
+              <p className="t-meta mt-2">
                 Base :{" "}
                 <span className="t-nombre">
-                  {(stats.margeStructurelle + stats.chargesDuMois).toLocaleString("fr-FR")} €
+                  {stats.caEncaissable.toLocaleString("fr-FR")} €
                 </span>{" "}
-                de loyers dus moins{" "}
-                <span className="t-nombre">{stats.chargesDuMois.toLocaleString("fr-FR")} €</span>{" "}
+                encaissables moins{" "}
+                <span className="t-nombre">
+                  {stats.chargesRetenues.toLocaleString("fr-FR")} €
+                </span>{" "}
                 de charges
+              </p>
+              <p className="t-meta opacity-70">
+                Hypothèses : {Math.round(PRUDENCE_EXPLOITATION.abattement * 100)} %
+                d&apos;abattement sur{" "}
+                <span className="t-nombre">
+                  {(stats.margeStructurelle + stats.chargesRetenues === 0
+                    ? 0
+                    : Math.round(stats.caEncaissable / (1 - PRUDENCE_EXPLOITATION.abattement))
+                  ).toLocaleString("fr-FR")}{" "}
+                  €
+                </span>{" "}
+                de loyers dus — retards, impayés, départs non annoncés.
+                {stats.chargesRetenues > stats.chargesDuMois
+                  ? ` Charges portées au plancher de ${PRUDENCE_EXPLOITATION.chargesPlancher.toLocaleString("fr-FR")} € (${stats.chargesDuMois.toLocaleString("fr-FR")} € saisis).`
+                  : ` Charges réelles, au-dessus du plancher de ${PRUDENCE_EXPLOITATION.chargesPlancher.toLocaleString("fr-FR")} €.`}
               </p>
             </>
           )}

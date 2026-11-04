@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  PRUDENCE_EXPLOITATION,
   aRelouer,
   couleurMarge,
   loyerMoyen,
@@ -277,5 +278,61 @@ describe("trajectoireMarge", () => {
   it("rend une trajectoire vide sans mois à parcourir", () => {
     const t = trajectoireMarge([]);
     expect(t).toMatchObject({ points: [], margeInitiale: null, departsConnus: 0 });
+  });
+});
+
+describe("margeMensuelle, avec la prudence d'exploitation", () => {
+  // Le parc de novembre : 69 contrats, 9 305 € dus, 6 850 € de charges saisies.
+  const loyers = Array.from({ length: 69 }, (_, i) => (i === 0 ? 9305 - 68 * 135 : 135));
+
+  it("retire l'abattement avant de compter la marge", () => {
+    const m = margeMensuelle(loyers, 6850, PRUDENCE_EXPLOITATION);
+    // 9 305 × 0,9 = 8 374,5 → 8 375 ; charges au plancher 7 000.
+    expect(m.caEncaissable).toBe(8375);
+    expect(m.chargesRetenues).toBe(7000);
+    expect(m.marge).toBe(1375);
+  });
+
+  it("donne une marge bien plus serrée que le calcul brut", () => {
+    const prudent = margeMensuelle(loyers, 6850, PRUDENCE_EXPLOITATION);
+    const brut = margeMensuelle(loyers, 6850);
+    expect(brut.boxAvantDeficit).toBe(18);
+    expect(prudent.boxAvantDeficit).toBe(10);
+  });
+
+  it("retient les charges réelles quand elles dépassent le plancher", () => {
+    // La prudence ne joue que dans un sens : elle ne doit jamais minorer une
+    // charge réellement constatée.
+    const m = margeMensuelle(loyers, 8200, PRUDENCE_EXPLOITATION);
+    expect(m.chargesRetenues).toBe(8200);
+  });
+
+  it("applique le plancher même sans aucune charge saisie", () => {
+    // Sans plancher, un onglet Charges vide annonçait une marge infinie.
+    const m = margeMensuelle(loyers, 0, PRUDENCE_EXPLOITATION);
+    expect(m.chargesRetenues).toBe(7000);
+    expect(m.boxAvantDeficit).not.toBeNull();
+  });
+
+  it("laisse le calcul brut intact quand aucune prudence n'est demandée", () => {
+    const m = margeMensuelle([120, 140, 100], 200);
+    expect(m).toMatchObject({ caEncaissable: 360, chargesRetenues: 200, marge: 160 });
+  });
+});
+
+describe("trajectoireMarge, avec prudence", () => {
+  it("applique la même règle à tous les mois de l'horizon", () => {
+    const mois = (periode: string, nbBox: number) => ({
+      periode,
+      loyersDus: Array.from({ length: nbBox }, () => 135),
+      charges: 6850,
+    });
+    const t = trajectoireMarge(
+      [mois("2026-11", 69), mois("2026-12", 66)],
+      PRUDENCE_EXPLOITATION
+    );
+    expect(t.points[0]?.caEncaissable).toBe(Math.round(69 * 135 * 0.9));
+    expect(t.points[0]?.charges).toBe(7000);
+    expect(t.margeInitiale).toBeGreaterThan(t.margeFinale!);
   });
 });

@@ -17,14 +17,43 @@ export function loyerMoyen(loyers: number[]): number {
   return Math.round(loyers.reduce((somme, l) => somme + l, 0) / loyers.length);
 }
 
+/**
+ * Les deux prudences du calcul de marge, explicites plutôt qu'enfouies.
+ *
+ * `abattement` : tout ce qui est dû ne rentre pas. Retards, impayés, départs
+ * non annoncés — en retirer une part d'avance évite de bâtir une marge de
+ * sécurité sur un encaissement parfait, qui n'arrive jamais.
+ *
+ * `chargesPlancher` : les charges saisies sont une photographie, pas un
+ * engagement. Retenir un plancher met à l'abri de ce qui n'est pas encore
+ * dans l'onglet Charges. Quand les charges réelles le dépassent, ce sont
+ * elles qui comptent : la prudence ne joue que dans un sens.
+ */
+export type Prudence = {
+  /** Part des loyers retirée d'avance, entre 0 et 1. */
+  abattement: number;
+  /** Charges mensuelles retenues au minimum, en euros. */
+  chargesPlancher: number;
+};
+
+/** Sans prudence : la marge brute, telle que les contrats la donnent. */
+export const PRUDENCE_NULLE: Prudence = { abattement: 0, chargesPlancher: 0 };
+
+/** La règle d'exploitation : 10 % d'abattement, 7 000 € de charges au moins. */
+export const PRUDENCE_EXPLOITATION: Prudence = { abattement: 0.1, chargesPlancher: 7000 };
+
 export type MargeMensuelle = {
-  /** Loyers dus au mois, charges déduites. Peut être négatif. */
+  /** Loyers dus au mois, abattement déduit — ce qu'on s'attend à encaisser. */
+  caEncaissable: number;
+  /** Charges effectivement retenues : les saisies, ou le plancher. */
+  chargesRetenues: number;
+  /** CA encaissable moins charges retenues. Peut être négatif. */
   marge: number;
   /** Loyer moyen d'un box occupé, l'unité de la bascule. */
   loyerMoyen: number;
   /**
    * Nombre de box qui peuvent se vider avant que la marge passe sous zéro.
-   * `null` quand la question n'a pas de sens : aucune charge saisie, ou
+   * `null` quand la question n'a pas de sens : aucune charge retenue, ou
    * aucun contrat pour calculer une moyenne.
    */
   boxAvantDeficit: number | null;
@@ -35,36 +64,41 @@ export type MargeMensuelle = {
 /**
  * De combien de box peut-on se passer avant de perdre de l'argent ?
  *
- * La base est le **loyer dû**, non l'encaissé : un mois à moitié pointé
- * donnerait une marge famélique et un seuil alarmiste, alors que rien n'a
- * changé dans la structure. C'est un indicateur de structure, pas de
+ * La base est le **loyer dû**, non l'encaissé du mois : un mois à moitié
+ * pointé donnerait une marge famélique et un seuil alarmiste, alors que rien
+ * n'a changé dans la structure. C'est un indicateur de structure, pas de
  * trésorerie — le cash-flow du mois, lui, répond à l'autre question.
  *
+ * Mais le loyer dû brut est lui-même optimiste : il suppose que tout rentre,
+ * et que personne ne part sans prévenir. D'où l'abattement, et le plancher de
+ * charges. Une marge de sécurité calculée sans eux n'est pas une marge de
+ * sécurité : c'est le meilleur des cas.
+ *
  * Le compte est celui des box qu'on peut perdre **en restant à l'équilibre** :
- * à 2 439 € de marge et 136 € de loyer moyen, dix-sept départs laissent
- * encore 127 €, le dix-huitième fait basculer.
+ * à 1 374 € de marge et 135 € de loyer moyen, dix départs laissent encore
+ * 24 €, le onzième fait basculer.
  */
 export function margeMensuelle(
   loyersDus: number[],
-  chargesDuMois: number
+  chargesDuMois: number,
+  prudence: Prudence = PRUDENCE_NULLE
 ): MargeMensuelle {
   const moyen = loyerMoyen(loyersDus);
-  const marge = loyersDus.reduce((somme, l) => somme + l, 0) - chargesDuMois;
+  const brut = loyersDus.reduce((somme, l) => somme + l, 0);
 
-  if (chargesDuMois <= 0 || moyen <= 0) {
-    return { marge, loyerMoyen: moyen, boxAvantDeficit: null, deficitaire: marge < 0 };
+  const caEncaissable = Math.round(brut * (1 - prudence.abattement));
+  const chargesRetenues = Math.max(chargesDuMois, prudence.chargesPlancher);
+  const marge = caEncaissable - chargesRetenues;
+
+  const base = { caEncaissable, chargesRetenues, marge, loyerMoyen: moyen };
+
+  if (chargesRetenues <= 0 || moyen <= 0) {
+    return { ...base, boxAvantDeficit: null, deficitaire: marge < 0 };
   }
 
-  if (marge < 0) {
-    return { marge, loyerMoyen: moyen, boxAvantDeficit: 0, deficitaire: true };
-  }
+  if (marge < 0) return { ...base, boxAvantDeficit: 0, deficitaire: true };
 
-  return {
-    marge,
-    loyerMoyen: moyen,
-    boxAvantDeficit: Math.floor(marge / moyen),
-    deficitaire: false,
-  };
+  return { ...base, boxAvantDeficit: Math.floor(marge / moyen), deficitaire: false };
 }
 
 /** Un box qui ne rapporte pas, ou cessera de rapporter. */
@@ -273,8 +307,11 @@ function decale(periode: string, n: number): string {
 /** L'état de la marge à un mois donné. */
 export type PointMarge = {
   periode: string;
-  /** Loyers dus ce mois-là, départs connus déduits. */
+  /** Loyers dus ce mois-là, départs connus déduits — avant abattement. */
   loyersDus: number;
+  /** Ce qu'on s'attend à encaisser : les loyers dus, abattement déduit. */
+  caEncaissable: number;
+  /** Charges retenues : les saisies, ou le plancher de prudence. */
   charges: number;
   marge: number;
   /** Box qui peuvent encore se vider ce mois-là. Null si indécidable. */
@@ -321,14 +358,16 @@ export type Trajectoire = {
  * relocation espérée. C'est un plancher, pas une prévision.
  */
 export function trajectoireMarge(
-  mois: Array<{ periode: string; loyersDus: number[]; charges: number }>
+  mois: Array<{ periode: string; loyersDus: number[]; charges: number }>,
+  prudence: Prudence = PRUDENCE_NULLE
 ): Trajectoire {
   const points: PointMarge[] = mois.map(({ periode, loyersDus, charges }) => {
-    const m = margeMensuelle(loyersDus, charges);
+    const m = margeMensuelle(loyersDus, charges, prudence);
     return {
       periode,
       loyersDus: loyersDus.reduce((somme, l) => somme + l, 0),
-      charges,
+      caEncaissable: m.caEncaissable,
+      charges: m.chargesRetenues,
       marge: m.marge,
       boxAvantDeficit: m.boxAvantDeficit,
       boxLoues: loyersDus.length,

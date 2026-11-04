@@ -251,8 +251,12 @@ export type StatsTableauDeBord = {
   boxAvecContrat: number;
   /** Loyer mensuel moyen d'un contrat en cours. */
   loyerMoyen: number;
-  /** Loyers dus du mois, charges déduites — structurel, non encaissé. */
+  /** CA encaissable du mois, charges retenues déduites — la marge de sécurité. */
   margeStructurelle: number;
+  /** Loyers dus, abattement de prudence déduit. */
+  caEncaissable: number;
+  /** Charges retenues pour le calcul : les saisies, ou le plancher prudentiel. */
+  chargesRetenues: number;
   /** Box qui peuvent se vider avant bascule en négatif. Null si indécidable. */
   boxAvantDeficit: number | null;
   /**
