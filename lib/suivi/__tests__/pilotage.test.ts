@@ -6,6 +6,7 @@ import {
   loyerMoyen,
   manqueAGagner,
   margeMensuelle,
+  trajectoireMarge,
 } from "@/lib/suivi/pilotage";
 
 describe("loyerMoyen", () => {
@@ -207,5 +208,74 @@ describe("couleurMarge", () => {
     expect(teinte(7)).toBeGreaterThan(teinte(6));
     expect(teinte(12)).toBeLessThan(teinte(13));
     expect(teinte(9)).toBeGreaterThan(teinte(8));
+  });
+});
+
+describe("trajectoireMarge", () => {
+  const mois = (periode: string, nbBox: number, loyer = 136, charges = 6696) => ({
+    periode,
+    loyersDus: Array.from({ length: nbBox }, () => loyer),
+    charges,
+  });
+
+  it("montre le seuil reculer sous l'effet des départs connus", () => {
+    // 67 box à 136 € = 9 112 €, moins 6 696 € : 2 416 € de marge, soit 17 box.
+    // Trois sorties signées font tomber la marge à 14 box en janvier.
+    const t = trajectoireMarge([
+      mois("2026-11", 67),
+      mois("2026-12", 66),
+      mois("2027-01", 64),
+    ]);
+
+    expect(t.margeInitiale).toBe(17);
+    expect(t.margeFinale).toBe(14);
+    expect(t.departsConnus).toBe(3);
+    expect(t.seuilAtteintLe).toBeNull();
+    expect(t.basculeLe).toBeNull();
+  });
+
+  it("distingue le seuil atteint de la bascule réelle", () => {
+    const t = trajectoireMarge([
+      mois("2026-11", 52),
+      mois("2026-12", 50),
+      mois("2027-01", 48),
+    ]);
+    // Décembre : 50 × 136 = 6 800 €, soit 104 € de marge — positive, mais
+    // plus de quoi absorber un départ de plus. C'est l'alerte avancée.
+    expect(t.seuilAtteintLe).toBe("2026-12");
+    // Janvier : 48 × 136 = 6 528 €, sous les 6 696 € de charges.
+    expect(t.basculeLe).toBe("2027-01");
+    expect(t.points.at(-1)?.marge).toBeLessThan(0);
+  });
+
+  it("ne confond pas les deux quand la marge reste large", () => {
+    const t = trajectoireMarge([mois("2026-11", 67), mois("2026-12", 66)]);
+    expect(t.seuilAtteintLe).toBeNull();
+    expect(t.basculeLe).toBeNull();
+  });
+
+  it("compte le cumul depuis le premier mois, pas d'un mois à l'autre", () => {
+    const t = trajectoireMarge([mois("2026-11", 67), mois("2026-12", 66), mois("2027-01", 66)]);
+    expect(t.points.map((p) => p.departsCumules)).toEqual([0, 1, 1]);
+  });
+
+  it("ne descend pas sous zéro quand un mois gagne des box", () => {
+    // Un bail qui commence en décembre : le parc remonte, et « −1 départ »
+    // ne voudrait rien dire.
+    const t = trajectoireMarge([mois("2026-11", 66), mois("2026-12", 68)]);
+    expect(t.points.map((p) => p.departsCumules)).toEqual([0, 0]);
+    expect(t.departsConnus).toBe(0);
+  });
+
+  it("se tait plutôt que de mentir quand aucune charge n'est saisie", () => {
+    const t = trajectoireMarge([mois("2026-11", 67, 136, 0)]);
+    expect(t.margeInitiale).toBeNull();
+    expect(t.seuilAtteintLe).toBeNull();
+    expect(t.basculeLe).toBeNull();
+  });
+
+  it("rend une trajectoire vide sans mois à parcourir", () => {
+    const t = trajectoireMarge([]);
+    expect(t).toMatchObject({ points: [], margeInitiale: null, departsConnus: 0 });
   });
 });

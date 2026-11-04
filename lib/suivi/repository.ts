@@ -34,12 +34,23 @@ import { groupeParBatiment, parseBoxReferenceCsv } from "@/lib/suivi/box";
 import { estPlace, type BoxPlan } from "@/lib/suivi/plan";
 import { BOX_REFERENCE_CSV } from "@/lib/suivi/box-reference";
 import { contratAVenir, contratDuPour, contratOccupeOuReserve } from "@/lib/suivi/contrat";
-import { aRelouer, manqueAGagner, margeMensuelle } from "@/lib/suivi/pilotage";
+import {
+  aRelouer,
+  manqueAGagner,
+  margeMensuelle,
+  trajectoireMarge,
+} from "@/lib/suivi/pilotage";
 import { loyerDuPour } from "@/lib/suivi/prorata";
 import type { DestinataireFacture, ParametresMail } from "@/lib/suivi/mail";
 import type { EtatReprise, LocataireReprise } from "@/lib/suivi/reprise";
 import type { Charge } from "@/lib/suivi/charges";
-import { dateDuJour, parsePeriode, periodeCourante, premierJour } from "@/lib/suivi/period";
+import {
+  dateDuJour,
+  parsePeriode,
+  periodeCourante,
+  premierJour,
+  shiftPeriode,
+} from "@/lib/suivi/period";
 import { occupantsParBox } from "@/lib/suivi/disponibilite";
 import {
   type Box,
@@ -536,6 +547,7 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
     loyerMoyen: marge.loyerMoyen,
     margeStructurelle: marge.marge,
     boxAvantDeficit: marge.boxAvantDeficit,
+    trajectoire: { points: [], margeInitiale: null, margeFinale: null, departsConnus: 0, seuilAtteintLe: null, basculeLe: null },
     aRelouer: [],
     manqueAGagner: 0,
     periode,
@@ -608,6 +620,36 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
       .eq("statut", "liste_attente"),
   ]);
 
+  // La trajectoire du seuil se calcule sur **tous** les contrats, rattachés
+  // ou non : un locataire sans box payé n'en paie pas moins son loyer.
+  const { data: tousContrats, error: erreurTous } = await supabase
+    .from("sr_contrats")
+    .select("loyer_mensuel_eur, date_debut, date_fin");
+
+  if (erreurTous) throw new Error(erreurTous.message);
+
+  type ContratSeul = {
+    loyer_mensuel_eur: number;
+    date_debut: string | null;
+    date_fin: string | null;
+  };
+
+  const HORIZON_MOIS = 6;
+  const trajectoire = trajectoireMarge(
+    Array.from({ length: HORIZON_MOIS }, (_, i) => {
+      const mois = shiftPeriode(periode, i);
+      return {
+        periode: mois,
+        // Le prorata s'applique aussi en projection : un bail qui commence
+        // le 13 ne rapporte pas le mois plein cette fois-là.
+        loyersDus: ((tousContrats ?? []) as ContratSeul[])
+          .filter((c) => contratDuPour(mois, c.date_debut, c.date_fin))
+          .map((c) => loyerDuPour(mois, c.loyer_mensuel_eur, c.date_debut).montant),
+        charges: totalCharges(chargesDuMois(charges, mois)),
+      };
+    })
+  );
+
   const boxTotal = total.count ?? 0;
   const boxLoues = loues.count ?? 0;
   const boxLibres = aLouer.count ?? 0;
@@ -679,6 +721,7 @@ export async function statsTableauDeBord(periode: string): Promise<StatsTableauD
     boxTotal,
     boxLoues,
     boxLibres,
+    trajectoire,
     aRelouer: lignesARelouer,
     manqueAGagner: manqueAGagner(lignesARelouer),
     // Occupé = tout ce qui n'est pas déclaré libre. Un box dont l'occupant

@@ -52,6 +52,7 @@ export default async function TableauDeBordPage({
   ]);
 
   const modeDemo = estModeDemo();
+  const derniereTrajectoire = stats.trajectoire.points.at(-1)?.periode ?? periode;
   const attendu = stats.encaisse + stats.reste;
   const progression = attendu === 0 ? 0 : Math.round((stats.encaisse / attendu) * 100);
 
@@ -131,6 +132,79 @@ export default async function TableauDeBordPage({
                   ? "le centre est déjà en cash-flow négatif"
                   : `peuvent se vider avant le cash-flow négatif, à ${stats.loyerMoyen.toLocaleString("fr-FR")} € de loyer moyen`}
               </p>
+
+              {/* Ce que les départs déjà signés font au seuil. Le chiffre du
+                  jour ne suffit pas à décider : c'est au moment de relouer
+                  qu'on veut savoir ce qu'il restera dans six mois. */}
+              {stats.trajectoire.departsConnus > 0 &&
+                stats.trajectoire.margeFinale !== null && (
+                  <p className="t-meta mt-2 font-medium">
+                    {stats.trajectoire.departsConnus} départ
+                    {stats.trajectoire.departsConnus > 1 ? "s" : ""} déjà signé
+                    {stats.trajectoire.departsConnus > 1 ? "s" : ""} —{" "}
+                    <span style={{ color: couleurMarge(stats.trajectoire.margeFinale) }}>
+                      {stats.trajectoire.margeFinale} box
+                    </span>{" "}
+                    de marge en {labelMoisCourt(derniereTrajectoire)}
+                  </p>
+                )}
+
+              {stats.trajectoire.seuilAtteintLe && (
+                <p
+                  className="t-meta mt-1 font-medium"
+                  style={{ color: "var(--suivi-orange)" }}
+                >
+                  Dès {labelMoisCourt(stats.trajectoire.seuilAtteintLe)}, un départ de plus
+                  suffit à faire basculer.
+                </p>
+              )}
+              {stats.trajectoire.basculeLe && (
+                <p
+                  className="t-meta mt-1 font-medium"
+                  style={{ color: "var(--destructive)" }}
+                >
+                  Cash-flow négatif dès {labelMoisCourt(stats.trajectoire.basculeLe)} sans
+                  relocation.
+                </p>
+              )}
+
+              {/* Une barre par mois : la hauteur dit la marge, la couleur son
+                  niveau. On lit la pente avant de lire les nombres. */}
+              {stats.trajectoire.points.length > 1 && (
+                <div className="mt-3 flex items-end justify-between gap-1">
+                  {stats.trajectoire.points.map((point) => {
+                    const hauteur =
+                      point.boxAvantDeficit === null
+                        ? 0
+                        : Math.max(
+                            4,
+                            Math.min(100, (point.boxAvantDeficit / MARGE_VERTE) * 100)
+                          );
+                    return (
+                      <div key={point.periode} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+                        <span className="t-meta t-nombre font-medium">
+                          {point.boxAvantDeficit ?? "—"}
+                        </span>
+                        <div className="flex h-12 w-full items-end rounded bg-[var(--suivi-trait)]">
+                          <div
+                            className="w-full rounded"
+                            style={{
+                              height: `${hauteur}%`,
+                              backgroundColor:
+                                point.boxAvantDeficit === null
+                                  ? "var(--suivi-gris-clair)"
+                                  : couleurMarge(point.boxAvantDeficit),
+                            }}
+                          />
+                        </div>
+                        <span className="t-meta truncate text-[0.7rem]">
+                          {labelMoisCourt(point.periode)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
               <p className="t-meta mt-1">
                 Base :{" "}
                 <span className="t-nombre">

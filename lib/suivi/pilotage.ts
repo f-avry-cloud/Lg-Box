@@ -265,3 +265,93 @@ function decale(periode: string, n: number): string {
   const total = annee * 12 + (mois - 1) + n;
   return `${String(Math.floor(total / 12)).padStart(4, "0")}-${String((total % 12) + 1).padStart(2, "0")}`;
 }
+
+// ---------------------------------------------------------------------------
+// Trajectoire du seuil
+// ---------------------------------------------------------------------------
+
+/** L'état de la marge à un mois donné. */
+export type PointMarge = {
+  periode: string;
+  /** Loyers dus ce mois-là, départs connus déduits. */
+  loyersDus: number;
+  charges: number;
+  marge: number;
+  /** Box qui peuvent encore se vider ce mois-là. Null si indécidable. */
+  boxAvantDeficit: number | null;
+  /** Box loués ce mois-là. */
+  boxLoues: number;
+  /** Box perdus depuis le premier mois de la trajectoire. */
+  departsCumules: number;
+};
+
+export type Trajectoire = {
+  points: PointMarge[];
+  /** Marge au premier mois — le chiffre d'aujourd'hui. */
+  margeInitiale: number | null;
+  /** Marge au dernier mois, une fois les départs connus encaissés. */
+  margeFinale: number | null;
+  /** Box dont on sait déjà qu'ils se libèrent sur l'horizon. */
+  departsConnus: number;
+  /**
+   * Premier mois où la marge ne supporte plus un départ de plus, sans être
+   * encore négative. C'est l'alerte avancée : on gagne encore de l'argent,
+   * mais le prochain box vide fait basculer.
+   */
+  seuilAtteintLe: string | null;
+  /**
+   * Premier mois réellement déficitaire : les charges passent devant les
+   * loyers. Null tant que l'horizon ne le montre pas — ce qui ne veut pas
+   * dire que cela n'arrivera jamais, seulement pas dans ces mois-là.
+   */
+  basculeLe: string | null;
+};
+
+/**
+ * Comment le seuil se déplace, mois après mois, sous l'effet des seuls
+ * départs déjà connus.
+ *
+ * Le chiffre du jour ne suffit pas à décider : dix-sept box de marge est
+ * rassurant, mais si trois sorties sont déjà signées pour janvier, c'est
+ * quatorze qu'il faut lire — et c'est au moment de relouer qu'on veut le
+ * savoir, pas en janvier.
+ *
+ * La trajectoire ne prévoit rien : elle ne fait que porter en avant ce qui
+ * est **déjà écrit** dans les contrats. Aucun départ supposé, aucune
+ * relocation espérée. C'est un plancher, pas une prévision.
+ */
+export function trajectoireMarge(
+  mois: Array<{ periode: string; loyersDus: number[]; charges: number }>
+): Trajectoire {
+  const points: PointMarge[] = mois.map(({ periode, loyersDus, charges }) => {
+    const m = margeMensuelle(loyersDus, charges);
+    return {
+      periode,
+      loyersDus: loyersDus.reduce((somme, l) => somme + l, 0),
+      charges,
+      marge: m.marge,
+      boxAvantDeficit: m.boxAvantDeficit,
+      boxLoues: loyersDus.length,
+      departsCumules: 0,
+    };
+  });
+
+  const premier = points[0];
+  for (const p of points) {
+    // Un mois peut gagner des box autant qu'en perdre : le cumul se lit comme
+    // un solde, et reste à zéro plutôt que de devenir négatif — « −2 départs »
+    // ne voudrait rien dire.
+    p.departsCumules = Math.max(0, (premier?.boxLoues ?? 0) - p.boxLoues);
+  }
+
+  const dernier = points.at(-1);
+
+  return {
+    points,
+    margeInitiale: premier?.boxAvantDeficit ?? null,
+    margeFinale: dernier?.boxAvantDeficit ?? null,
+    departsConnus: dernier?.departsCumules ?? 0,
+    seuilAtteintLe: points.find((p) => p.boxAvantDeficit === 0)?.periode ?? null,
+    basculeLe: points.find((p) => p.marge < 0)?.periode ?? null,
+  };
+}
