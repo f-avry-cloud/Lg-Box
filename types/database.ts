@@ -252,6 +252,9 @@ export type PricingGridRow = {
   id: string;
   taille_libelle: string;
   prix_mensuel: number;
+  /** Migration 022 — absents tant qu'elle n'est pas appliquée. */
+  niveau?: "rdc" | "etage";
+  surface_m2?: number | null;
 };
 
 export type Expense = {

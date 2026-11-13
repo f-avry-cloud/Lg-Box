@@ -1,0 +1,1307 @@
+/* ==========================================================================
+   Site public LG BOX.
+
+   Tout est rangé sous `.site` : le back-office et l'app /suivi partagent la
+   même feuille Tailwind et ne doivent rien recevoir d'ici.
+
+   Parti pris : la signalétique d'un centre de stockage. Bleu marine (le site
+   est une ancienne base de la Marine nationale), jaune de plaque de porte,
+   gris aluminium des volets roulants. Une seule famille, Archivo, dont la
+   largeur variable donne les titres étroits des numéros peints sur les portes.
+   ========================================================================== */
+
+.site {
+  --marine: #10243a;
+  --marine-2: #1b3a5b;
+  --jaune: #ffc61a;
+  --alu: #d5dbdf;
+  --alu-2: #b9c2c8;
+  --fond: #f1f3f2;
+  --blanc: #ffffff;
+  --gris: #52606d;
+  --trait: #cfd6da;
+  --libre: #15703f;
+  --libre-fond: #dff3e6;
+  --complet: #a5352b;
+
+  --large: 73.75rem;
+  --marge: clamp(1.125rem, 4vw, 2.5rem);
+
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  background: var(--fond);
+  color: var(--marine);
+  font-family: "Archivo Variable", "Archivo", system-ui, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  font-variant-numeric: lining-nums;
+}
+
+.site *,
+.site *::before,
+.site *::after {
+  border-color: var(--trait);
+}
+
+.site :focus-visible {
+  outline: 3px solid var(--jaune);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--marine);
+}
+
+.site a {
+  color: inherit;
+}
+
+.site :is(p, li, dd) a:not(.s-bouton, .s-canal) {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--jaune);
+}
+
+.site :is(p, li, dd) a:not(.s-bouton, .s-canal):hover {
+  background: var(--jaune);
+}
+
+.s-pied :is(p, li, dd) a:not(.s-bouton):hover,
+.s-fil a:hover {
+  background: none;
+}
+
+.s-cadre {
+  width: 100%;
+  max-width: calc(var(--large) + 2 * var(--marge));
+  margin-inline: auto;
+  padding-inline: var(--marge);
+}
+
+.s-evitement {
+  position: absolute;
+  left: -999rem;
+}
+
+.s-evitement:focus {
+  left: 1rem;
+  top: 1rem;
+  z-index: 50;
+  background: var(--jaune);
+  padding: 0.6rem 1rem;
+  font-weight: 700;
+}
+
+/* ---- Titres ------------------------------------------------------------- */
+
+.site h1,
+.site h2,
+.site h3 {
+  font-stretch: 78%;
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.012em;
+  text-wrap: balance;
+}
+
+.site h1 {
+  font-size: clamp(2.5rem, 6.4vw, 4.75rem);
+}
+
+.site h2 {
+  font-size: clamp(1.9rem, 3.8vw, 3rem);
+}
+
+.site h3 {
+  font-size: 1.4rem;
+  line-height: 1.15;
+}
+
+.s-chapo {
+  max-width: 38rem;
+  font-size: clamp(1.1rem, 1.6vw, 1.3rem);
+  line-height: 1.45;
+  color: var(--marine-2);
+}
+
+.s-texte {
+  max-width: 41rem;
+}
+
+.s-texte > * + * {
+  margin-top: 1rem;
+}
+
+.s-texte h2 {
+  margin-top: 3rem;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+}
+
+.s-texte h3 {
+  margin-top: 2rem;
+}
+
+.s-texte ul {
+  padding-left: 1.2rem;
+  list-style: square;
+}
+
+.s-texte li + li {
+  margin-top: 0.35rem;
+}
+
+.s-texte li::marker {
+  color: var(--alu-2);
+}
+
+.s-discret {
+  color: var(--gris);
+  font-size: 0.95rem;
+}
+
+/* ---- Boutons ------------------------------------------------------------ */
+
+.s-bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 3.1rem;
+  padding: 0.7rem 1.4rem;
+  border: 2px solid var(--marine);
+  border-radius: 4px;
+  background: var(--jaune);
+  color: var(--marine);
+  font: inherit;
+  font-stretch: 88%;
+  font-weight: 750;
+  font-size: 1.05rem;
+  line-height: 1.1;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--marine);
+  transition: transform 80ms ease, box-shadow 80ms ease;
+}
+
+.s-bouton:hover {
+  transform: translateY(1px);
+  box-shadow: 0 2px 0 var(--marine);
+}
+
+.s-bouton:active {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 var(--marine);
+}
+
+.s-bouton--calme {
+  background: var(--blanc);
+}
+
+.s-bouton--marine {
+  background: var(--marine);
+  color: var(--blanc);
+  box-shadow: 0 3px 0 var(--alu-2);
+}
+
+.s-bouton--marine:hover {
+  box-shadow: 0 2px 0 var(--alu-2);
+}
+
+.s-bouton--petit {
+  min-height: 2.5rem;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.95rem;
+  width: 100%;
+}
+
+.s-bouton svg {
+  width: 1.15em;
+  height: 1.15em;
+  flex: none;
+}
+
+/* ---- En-tête ------------------------------------------------------------ */
+
+.s-entete {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--marine);
+  color: var(--blanc);
+}
+
+.s-entete__barre {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  min-height: 4rem;
+}
+
+.s-marque {
+  display: inline-flex;
+  align-items: baseline;
+  font-stretch: 70%;
+  font-weight: 900;
+  font-size: 1.7rem;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+}
+
+.s-marque b {
+  margin-right: 0.3rem;
+  padding: 0.18rem 0.4rem 0.14rem;
+  border-radius: 3px;
+  background: var(--jaune);
+  color: var(--marine);
+  font-weight: 900;
+}
+
+.s-nav {
+  display: flex;
+  gap: 0.2rem;
+  margin-left: auto;
+}
+
+.s-nav a {
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-stretch: 90%;
+  font-weight: 600;
+  font-size: 0.98rem;
+  text-decoration: none;
+}
+
+.s-nav a:hover {
+  background: var(--marine-2);
+}
+
+.s-nav a[aria-current="page"] {
+  box-shadow: inset 0 -3px 0 var(--jaune);
+  border-radius: 0;
+}
+
+.s-entete__tel {
+  font-stretch: 85%;
+  font-weight: 700;
+  font-size: 1.05rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.s-entete__tel:hover {
+  color: var(--jaune);
+}
+
+.s-entete .s-bouton {
+  min-height: 2.6rem;
+  padding: 0.4rem 1rem;
+  box-shadow: none;
+  border-color: var(--jaune);
+}
+
+.s-menu {
+  display: none;
+}
+
+@media (max-width: 62rem) {
+  .s-nav {
+    display: none;
+  }
+
+  .s-entete__tel {
+    margin-left: auto;
+  }
+
+  .s-menu {
+    display: block;
+    position: relative;
+  }
+
+  .s-menu summary {
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 2px solid var(--marine-2);
+    border-radius: 4px;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .s-menu summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .s-menu[open] summary {
+    background: var(--marine-2);
+  }
+
+  .s-menu nav {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.65rem);
+    display: flex;
+    flex-direction: column;
+    min-width: 15rem;
+    padding: 0.5rem;
+    border: 2px solid var(--marine);
+    border-radius: 4px;
+    background: var(--blanc);
+    color: var(--marine);
+    box-shadow: 0 6px 0 rgb(16 36 58 / 0.25);
+  }
+
+  .s-menu nav a {
+    padding: 0.8rem 0.9rem;
+    font-weight: 650;
+    text-decoration: none;
+    border-radius: 3px;
+  }
+
+  .s-menu nav a:hover,
+  .s-menu nav a[aria-current="page"] {
+    background: var(--fond);
+  }
+}
+
+@media (max-width: 34rem) {
+  .s-entete .s-bouton {
+    display: none;
+  }
+}
+
+/* ---- Accueil : ouverture ------------------------------------------------- */
+
+.s-ouverture {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+  align-items: center;
+  padding-block: clamp(2rem, 5vw, 4.25rem) clamp(2rem, 4vw, 3.25rem);
+}
+
+.s-ouverture h1 + .s-chapo {
+  margin-top: 1.25rem;
+}
+
+.s-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin-top: 1.75rem;
+}
+
+.s-garanties {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-top: 1.75rem;
+  padding: 0;
+  list-style: none;
+  font-stretch: 90%;
+  font-weight: 600;
+}
+
+.s-garanties li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.s-garanties li::before {
+  content: "";
+  width: 0.7rem;
+  height: 0.7rem;
+  background: var(--jaune);
+  border: 2px solid var(--marine);
+}
+
+.s-photo {
+  position: relative;
+  overflow: hidden;
+  border: 2px solid var(--marine);
+  border-radius: 4px;
+  background: var(--alu);
+}
+
+.s-photo img {
+  object-fit: cover;
+}
+
+.s-photo--ouverture {
+  aspect-ratio: 5 / 4;
+  box-shadow: 10px 10px 0 var(--jaune);
+  margin: 0 10px 10px 0;
+}
+
+.s-photo--large {
+  aspect-ratio: 16 / 10;
+}
+
+.s-photo--carre {
+  aspect-ratio: 4 / 3;
+}
+
+@media (max-width: 54rem) {
+  .s-ouverture {
+    grid-template-columns: 1fr;
+  }
+
+  .s-photo--ouverture {
+    aspect-ratio: 16 / 10;
+  }
+}
+
+/* ---- Sections ------------------------------------------------------------ */
+
+.s-section {
+  padding-block: clamp(2.75rem, 6vw, 5rem);
+}
+
+.s-section--blanche {
+  background: var(--blanc);
+  border-block: 2px solid var(--marine);
+}
+
+.s-section--marine {
+  background: var(--marine);
+  color: var(--blanc);
+}
+
+.s-section--marine .s-chapo {
+  color: var(--alu);
+}
+
+.s-section__tete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.s-section__tete p {
+  max-width: 34rem;
+  margin-top: 0.6rem;
+  color: var(--gris);
+}
+
+.s-section--marine .s-section__tete p {
+  color: var(--alu);
+}
+
+.s-page-tete {
+  padding-block: clamp(2rem, 5vw, 3.75rem) clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.s-page-tete h1 {
+  font-size: clamp(2.2rem, 5.2vw, 3.75rem);
+  max-width: 20ch;
+}
+
+.s-page-tete .s-chapo {
+  margin-top: 1.1rem;
+}
+
+.s-fil {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1.1rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.92rem;
+  color: var(--gris);
+}
+
+.s-fil li + li::before {
+  content: "/";
+  margin-right: 0.4rem;
+  color: var(--alu-2);
+}
+
+.s-deux {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(1.75rem, 5vw, 4rem);
+  align-items: start;
+}
+
+@media (max-width: 54rem) {
+  .s-deux {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Le tableau des portes ------------------------------------------------
+   La pièce maîtresse : une rangée de volets roulants, un par surface. Volet
+   levé, le box est à louer ; volet baissé, il est pris. */
+
+.s-etat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.9rem 0.45rem 0.7rem;
+  border: 2px solid var(--marine);
+  border-radius: 999px;
+  background: var(--blanc);
+  font-stretch: 90%;
+  font-weight: 700;
+}
+
+.s-voyant {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: var(--alu-2);
+  flex: none;
+}
+
+.s-voyant--libre {
+  background: #1faa5c;
+  box-shadow: 0 0 0 4px var(--libre-fond);
+}
+
+.s-voyant--complet {
+  background: var(--complet);
+}
+
+.s-rangee + .s-rangee {
+  margin-top: 2.25rem;
+}
+
+.s-rangee__titre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.8rem;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--marine);
+}
+
+.s-rangee__titre h3 {
+  font-size: 1.3rem;
+}
+
+.s-rangee__titre span {
+  color: var(--gris);
+  font-size: 0.98rem;
+}
+
+.s-portes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.4rem, 1fr));
+  gap: 0.85rem;
+  padding: 0;
+  list-style: none;
+}
+
+.s-porte {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 2px solid var(--marine);
+  border-radius: 4px 4px 0 0;
+  border-bottom-width: 6px;
+  background: var(--blanc);
+  overflow: hidden;
+}
+
+.s-porte__linteau {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  background: var(--marine);
+  color: var(--blanc);
+}
+
+.s-porte__plaque {
+  padding: 0.08rem 0.5rem 0.02rem;
+  border-radius: 3px;
+  background: var(--jaune);
+  color: var(--marine);
+  font-stretch: 66%;
+  font-weight: 900;
+  font-size: 1.85rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.s-porte__plaque small {
+  font-size: 0.55em;
+  font-weight: 800;
+  margin-left: 0.12em;
+}
+
+.s-porte__volume {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--alu);
+  white-space: nowrap;
+}
+
+.s-porte__rideau {
+  position: relative;
+  height: 4.6rem;
+  background: var(--fond);
+}
+
+.s-porte__rideau::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 100%;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--alu) 0 0.5rem,
+    var(--alu-2) 0.5rem calc(0.5rem + 2px)
+  );
+  border-bottom: 5px solid var(--marine-2);
+}
+
+/* Volet levé : il ne reste que le haut du tablier, on voit dans le box. */
+.s-porte--libre .s-porte__rideau::before {
+  height: 1.1rem;
+}
+
+.s-porte--libre .s-porte__rideau {
+  background: linear-gradient(to bottom, #e3e7e6, var(--blanc));
+}
+
+.s-porte--inconnu .s-porte__rideau::before {
+  height: 55%;
+}
+
+.s-porte__corps {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.7rem 0.6rem 0.65rem;
+}
+
+.s-porte__statut {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-stretch: 88%;
+  font-weight: 750;
+  font-size: 0.95rem;
+}
+
+.s-porte--libre .s-porte__statut {
+  color: var(--libre);
+}
+
+.s-porte--complet .s-porte__statut {
+  color: var(--complet);
+}
+
+.s-porte__prix {
+  font-stretch: 72%;
+  font-weight: 850;
+  font-size: 1.9rem;
+  line-height: 1.1;
+}
+
+.s-porte__prix small {
+  font-stretch: 95%;
+  font-weight: 500;
+  font-size: 0.82rem;
+  color: var(--gris);
+}
+
+.s-porte__pour {
+  margin-bottom: 0.7rem;
+  font-size: 0.86rem;
+  line-height: 1.3;
+  color: var(--gris);
+}
+
+.s-porte .s-bouton {
+  margin-top: auto;
+}
+
+.s-porte--complet .s-bouton,
+.s-porte--inconnu .s-bouton {
+  background: var(--blanc);
+  box-shadow: none;
+  border-width: 2px;
+}
+
+.s-maj {
+  margin-top: 1.25rem;
+  color: var(--gris);
+  font-size: 0.9rem;
+}
+
+/* ---- Grille tarifaire (tableau) ------------------------------------------ */
+
+.s-tableau {
+  width: 100%;
+  border-collapse: collapse;
+  border: 2px solid var(--marine);
+  background: var(--blanc);
+}
+
+.s-tableau caption {
+  padding-bottom: 0.7rem;
+  text-align: left;
+  font-stretch: 78%;
+  font-weight: 800;
+  font-size: 1.4rem;
+}
+
+.s-tableau th,
+.s-tableau td {
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--trait);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.s-tableau thead th {
+  background: var(--marine);
+  color: var(--blanc);
+  font-stretch: 88%;
+  font-weight: 650;
+  font-size: 0.92rem;
+}
+
+.s-tableau tbody th {
+  font-stretch: 75%;
+  font-weight: 850;
+  font-size: 1.35rem;
+  white-space: nowrap;
+}
+
+.s-tableau .s-num {
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.s-tableau-defile {
+  overflow-x: auto;
+}
+
+@media (max-width: 40rem) {
+  .s-tableau .s-facultatif {
+    display: none;
+  }
+}
+
+/* ---- Atouts, étapes, avis ------------------------------------------------- */
+
+.s-faits {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.6rem 2rem;
+}
+
+.s-faits dt {
+  font-stretch: 80%;
+  font-weight: 800;
+  font-size: 1.25rem;
+  line-height: 1.15;
+}
+
+.s-faits dd {
+  margin-top: 0.3rem;
+  color: var(--gris);
+}
+
+@media (max-width: 34rem) {
+  .s-faits {
+    grid-template-columns: 1fr;
+  }
+}
+
+.s-etapes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.5rem;
+  padding: 0;
+  list-style: none;
+  counter-reset: etape;
+}
+
+.s-etapes li {
+  counter-increment: etape;
+  padding-top: 1rem;
+  border-top: 4px solid var(--jaune);
+}
+
+.s-etapes li::before {
+  content: counter(etape);
+  display: block;
+  font-stretch: 66%;
+  font-weight: 900;
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--jaune);
+}
+
+.s-etapes h3 {
+  margin-top: 0.5rem;
+}
+
+.s-etapes p {
+  margin-top: 0.4rem;
+  color: var(--alu);
+}
+
+@media (max-width: 54rem) {
+  .s-etapes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 30rem) {
+  .s-etapes {
+    grid-template-columns: 1fr;
+  }
+}
+
+.s-avis {
+  columns: 2 22rem;
+  column-gap: 2rem;
+}
+
+.s-avis figure {
+  break-inside: avoid;
+  margin: 0 0 1.5rem;
+  padding: 0.25rem 0 0.25rem 1.25rem;
+  border-left: 4px solid var(--jaune);
+}
+
+.s-avis blockquote {
+  font-size: 1.12rem;
+  line-height: 1.45;
+}
+
+.s-avis figcaption {
+  margin-top: 0.5rem;
+  color: var(--gris);
+  font-size: 0.92rem;
+}
+
+.s-galerie {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.85rem;
+}
+
+.s-galerie--bande {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 54rem) {
+  .s-galerie--bande {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.s-villes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0;
+  list-style: none;
+}
+
+.s-villes li {
+  padding: 0.45rem 0.85rem;
+  border: 2px solid var(--marine);
+  border-radius: 4px;
+  background: var(--blanc);
+  font-weight: 650;
+}
+
+.s-villes span {
+  margin-left: 0.4rem;
+  font-weight: 450;
+  color: var(--gris);
+}
+
+/* ---- FAQ ------------------------------------------------------------------ */
+
+.s-faq {
+  border-top: 2px solid var(--marine);
+}
+
+.s-faq details {
+  border-bottom: 2px solid var(--marine);
+}
+
+.s-faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.05rem 0;
+  font-stretch: 85%;
+  font-weight: 750;
+  font-size: 1.2rem;
+  line-height: 1.25;
+  cursor: pointer;
+  list-style: none;
+}
+
+.s-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.s-faq summary::after {
+  content: "+";
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 2px solid var(--marine);
+  border-radius: 3px;
+  background: var(--jaune);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.s-faq details[open] summary::after {
+  content: "−";
+  background: var(--blanc);
+}
+
+.s-faq details > div {
+  max-width: 44rem;
+  padding: 0 0 1.25rem;
+  color: var(--marine-2);
+}
+
+.s-faq details > div > * + * {
+  margin-top: 0.7rem;
+}
+
+/* ---- Contact --------------------------------------------------------------- */
+
+.s-canaux {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.s-canal {
+  display: grid;
+  grid-template-columns: 3rem 1fr;
+  align-items: center;
+  gap: 0.15rem 1rem;
+  padding: 0.95rem 1.1rem;
+  border: 2px solid var(--marine);
+  border-radius: 4px;
+  background: var(--blanc);
+  color: var(--marine);
+  text-decoration: none;
+  box-shadow: 0 3px 0 var(--marine);
+  transition: transform 80ms ease, box-shadow 80ms ease;
+}
+
+.s-canal:hover {
+  transform: translateY(1px);
+  box-shadow: 0 2px 0 var(--marine);
+  background: #fff8dc;
+}
+
+.s-canal--premier {
+  background: var(--jaune);
+}
+
+.s-canal--premier:hover {
+  background: var(--jaune);
+}
+
+.s-canal svg {
+  grid-row: span 2;
+  width: 2rem;
+  height: 2rem;
+  justify-self: center;
+}
+
+.s-canal strong {
+  font-stretch: 82%;
+  font-weight: 800;
+  font-size: 1.25rem;
+  line-height: 1.15;
+}
+
+.s-canal span {
+  font-size: 0.95rem;
+  color: var(--marine-2);
+}
+
+.s-carte-adresse {
+  padding: 1.4rem 1.5rem;
+  border: 2px solid var(--marine);
+  border-radius: 4px;
+  background: var(--blanc);
+}
+
+.s-carte-adresse address {
+  font-style: normal;
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.s-formulaire {
+  padding: clamp(1.1rem, 3vw, 1.75rem);
+  border: 2px solid var(--marine);
+  border-radius: 4px;
+  background: var(--blanc);
+}
+
+.s-formulaire label {
+  font-weight: 650;
+  font-size: 0.95rem;
+}
+
+.s-formulaire input,
+.s-formulaire select,
+.s-formulaire textarea {
+  border: 2px solid var(--alu-2);
+  border-radius: 4px;
+  background: var(--blanc);
+  min-height: 2.75rem;
+  font-size: 1rem;
+}
+
+.s-formulaire input:focus-visible,
+.s-formulaire select:focus-visible,
+.s-formulaire textarea:focus-visible {
+  border-color: var(--marine);
+}
+
+/* ---- Fenêtre « Réserver » --------------------------------------------------- */
+
+.s-fenetre {
+  width: min(30rem, calc(100vw - 1.5rem));
+  margin: auto;
+  padding: 0;
+  border: 2px solid var(--marine);
+  border-radius: 6px;
+  background: var(--fond);
+  color: var(--marine);
+  font-family: "Archivo Variable", "Archivo", system-ui, sans-serif;
+  box-shadow: 0 10px 0 rgb(16 36 58 / 0.35);
+}
+
+.s-fenetre::backdrop {
+  background: rgb(16 36 58 / 0.6);
+}
+
+.s-fenetre[open] {
+  animation: s-monte 160ms ease-out;
+}
+
+@keyframes s-monte {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+}
+
+.s-fenetre__tete {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+  background: var(--marine);
+  color: var(--blanc);
+}
+
+.s-fenetre__tete h2 {
+  font-stretch: 78%;
+  font-weight: 800;
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+
+.s-fenetre__tete p {
+  margin-top: 0.3rem;
+  color: var(--alu);
+  font-size: 0.95rem;
+}
+
+.s-fenetre__fermer {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 2px solid var(--marine-2);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--blanc);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.s-fenetre__fermer:hover {
+  background: var(--marine-2);
+}
+
+.s-fenetre__corps {
+  padding: 1.25rem;
+}
+
+.s-fenetre__corps > p {
+  margin-top: 1rem;
+  font-size: 0.95rem;
+  color: var(--gris);
+}
+
+/* ---- Appel final, pied de page, barre mobile -------------------------------- */
+
+.s-appel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem 3rem;
+}
+
+.s-appel h2 {
+  max-width: 18ch;
+}
+
+.s-pied {
+  margin-top: auto;
+  padding-block: 2.75rem 2rem;
+  background: var(--marine);
+  color: var(--alu);
+  font-size: 0.97rem;
+}
+
+.s-pied__grille {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 2rem;
+}
+
+.s-pied h2 {
+  margin-bottom: 0.7rem;
+  color: var(--blanc);
+  font-size: 1.1rem;
+  font-stretch: 88%;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.s-pied ul {
+  padding: 0;
+  list-style: none;
+}
+
+.s-pied li + li {
+  margin-top: 0.35rem;
+}
+
+.site .s-pied a {
+  text-decoration: none;
+}
+
+.s-pied a:hover {
+  color: var(--jaune);
+  text-decoration: underline;
+}
+
+.s-pied address {
+  font-style: normal;
+  line-height: 1.6;
+}
+
+.s-pied__bas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 2rem;
+  margin-top: 2.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--marine-2);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 46rem) {
+  .s-pied__grille {
+    grid-template-columns: 1fr;
+  }
+}
+
+.s-barre {
+  display: none;
+}
+
+@media (max-width: 46rem) {
+  .s-barre {
+    position: sticky;
+    bottom: 0;
+    z-index: 25;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 2px solid var(--marine);
+    background: var(--jaune);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .s-barre a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+    padding: 0.5rem 0.25rem 0.45rem;
+    font-stretch: 88%;
+    font-weight: 750;
+    font-size: 0.88rem;
+    text-decoration: none;
+    color: var(--marine);
+  }
+
+  .s-barre a + a {
+    border-left: 2px solid var(--marine);
+  }
+
+  .s-barre svg {
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site *,
+  .s-fenetre[open] {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Le formulaire de demande est celui de l'application : on lui donne les
+   couleurs du site sans toucher au composant partagé. */
+.s-formulaire label {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--marine);
+}
+
+.s-formulaire button[type="submit"] {
+  min-height: 3rem;
+  border: 2px solid var(--marine);
+  border-radius: 4px;
+  background: var(--jaune);
+  color: var(--marine);
+  font-weight: 750;
+  font-size: 1.02rem;
+  box-shadow: 0 3px 0 var(--marine);
+}

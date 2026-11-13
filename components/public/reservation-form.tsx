@@ -12,7 +12,14 @@ import {
   type ReservationRequestState,
 } from "@/lib/actions/reservation-request";
 
-export function ReservationForm({ sizes }: { sizes: string[] }) {
+export function ReservationForm({
+  sizes,
+  tailleParDefaut,
+}: {
+  sizes: string[];
+  /** Taille présélectionnée, quand on arrive depuis un bouton « Réserver ». */
+  tailleParDefaut?: string;
+}) {
   const [state, formAction, pending] = useActionState<ReservationRequestState, FormData>(
     createReservationRequest,
     { error: null }
@@ -49,6 +56,7 @@ export function ReservationForm({ sizes }: { sizes: string[] }) {
         <select
           id="taille_souhaitee"
           name="taille_souhaitee"
+          defaultValue={tailleParDefaut ?? ""}
           className="h-9 rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <option value="">Sans préférence</option>

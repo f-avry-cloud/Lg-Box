@@ -1,0 +1,90 @@
+{
+  "logo": {
+    "fichier": "logo-lg-box.png",
+    "origine": "wa_images/logo-lg-box_(2).png"
+  },
+  "accueil": {
+    "fichier": "location-garde-meuble-quimper.jpg",
+    "origine": "wa_images/location-garde-meuble-quimper.jpg"
+  },
+  "centre": {
+    "fichier": "garde-meuble-quimper.jpg",
+    "origine": "wa_images/garde-meuble-quimper.jpg"
+  },
+  "tarifs": {
+    "fichier": "tarifs-box-quimper.jpg",
+    "origine": "wa_images/tarifs-box-quimper.jpg"
+  },
+  "faq1": {
+    "fichier": "garde-meubles-a-quimper.jpg",
+    "origine": "wa_images/lg-box-garde-meubles-a-quimper.jpg"
+  },
+  "faq2": {
+    "fichier": "garde-meubles-finistere-sud.jpg",
+    "origine": "wa_images/lg-box-garde-meubles-dans-le-finistere-sud.jpg"
+  },
+  "album01": {
+    "fichier": "album-lg-box-garde-meubles-dans-le-finistere-sud.jpg",
+    "origine": "wa_p_albums/p_album_ildwp7rq0/iw40nqx33vqn1c/lg-box-garde-meubles-dans-le-finistere-sud.jpg"
+  },
+  "album02": {
+    "fichier": "album-lg-box-garde-meubles-a-quimper.jpg",
+    "origine": "wa_p_albums/p_album_ildwp7rq0/iw40nqx33vqn1c/lg-box-garde-meubles-a-quimper.jpg"
+  },
+  "album03": {
+    "fichier": "album-box-a-louer-finistere-sud-3.jpg",
+    "origine": "wa_p_albums/p_album_ildwp7rq0/iw40nqx33vqn1c/box-a-louer-finistere-sud%20(3).jpg"
+  },
+  "album04": {
+    "fichier": "album-lg-box-garde-meuble.jpg",
+    "origine": "wa_p_albums/p_album_ildwp7rq0/iw40nqx33vqn1c/lg-box-garde-meuble.jpg"
+  },
+  "album05": {
+    "fichier": "album-box-a-louer-finistere-sud-1.jpg",
+    "origine": "wa_p_albums/p_album_ildwp7rq0/iw40nqx33vqn1c/box-a-louer-finistere-sud%20(1).jpg"
+  },
+  "album06": {
+    "fichier": "album-lg-box-garde-meubles.jpg",
+    "origine": "wa_p_albums/p_album_ildwp7rq0/iw40nqx33vqn1c/lg-box-garde-meubles.jpg"
+  },
+  "album07": {
+    "fichier": "album-lg-box-garde-meubles-finistere-sud.jpg",
+    "origine": "wa_p_albums/p_album_ildwp7rq0/iw40nqx33vqn1c/lg-box-garde-meubles-finistere-sud.jpg"
+  },
+  "album08": {
+    "fichier": "album-lg-box-garde-meuble-29.jpg",
+    "origine": "wa_p_albums/p_album_ildwp7rq0/iw40nqx33vqn1c/lg-box-garde-meuble-29.jpg"
+  },
+  "album09": {
+    "fichier": "album-lg-box-garde-meubles-finistere.jpg",
+    "origine": "wa_p_albums/p_album_ildwp7rq0/iw40nqx33vqn1c/lg-box-garde-meubles-finistere.jpg"
+  },
+  "album10": {
+    "fichier": "album-location-box-quimper-1.jpg",
+    "origine": "wa_p_albums/p_album_ildwp7rq0/iw40nqx33vqn1c/location-box-quimper%20(1).jpg"
+  },
+  "album11": {
+    "fichier": "album-location-box-quimper-3.jpg",
+    "origine": "wa_p_albums/p_album_ildwp7rq0/iw40nqx33vqn1c/location-box-quimper%20(3).jpg"
+  },
+  "album12": {
+    "fichier": "album-location-box-quimper-4.jpg",
+    "origine": "wa_p_albums/p_album_ildwp7rq0/iw40nqx33vqn1c/location-box-quimper%20(4).jpg"
+  },
+  "album13": {
+    "fichier": "album-location-box-quimper-2.jpg",
+    "origine": "wa_p_albums/p_album_ildwp7rq0/iw40nqx33vqn1c/location-box-quimper%20(2).jpg"
+  },
+  "album14": {
+    "fichier": "album-box-a-louer-finistere-sud-2.jpg",
+    "origine": "wa_p_albums/p_album_ildwp7rq0/iw40nqx33vqn1c/box-a-louer-finistere-sud%20(2).jpg"
+  },
+  "album15": {
+    "fichier": "album-box-a-louer-finistere-sud-4.jpg",
+    "origine": "wa_p_albums/p_album_ildwp7rq0/iw40nqx33vqn1c/box-a-louer-finistere-sud%20(4).jpg"
+  },
+  "album16": {
+    "fichier": "album-lg-box-garde-meuble-finistere-1.jpg",
+    "origine": "wa_p_albums/p_album_ildwp7rq0/iw40nqx33vqn1c/lg-box-garde-meuble-finistere_(1).jpg"
+  }
+}

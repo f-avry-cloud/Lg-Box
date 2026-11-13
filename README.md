@@ -145,6 +145,41 @@ Les demandes envoyées depuis l'iframe créent une ligne dans
 `reservation_requests` et vous envoient un email, exactement comme depuis la
 page publique `/` — aucune différence côté back-office.
 
+## Site public (lg-box.fr)
+
+Le site vitrine vit dans ce dépôt, sous `app/(site)/` : accueil, `/tarifs`,
+`/box-stockage`, `/garde-meuble-quimper`, `/faq`, `/contact`,
+`/mentions-legales`. Il ne recopie rien : il lit l'application.
+
+| Ce que le site affiche | D'où ça vient | Où le modifier |
+|---|---|---|
+| Les tarifs | table `pricing_grid` | Back-office → Paramètres → Barème de prix |
+| Les box à louer | `sr_box.libre`, via la fonction `disponibilites_publiques()` | App `/suivi` → Box → « déclarer libre » |
+| Les demandes du formulaire | table `reservation_requests` | Back-office → Réservations, `/suivi/demandes` |
+
+Un changement de prix ou de disponibilité apparaît sur le site aussitôt (les
+actions appellent `rafraichirSitePublic()`), et au plus tard sous 5 minutes.
+
+**Mise en service**
+
+1. Appliquer `supabase/migrations/022_site_public.sql` (SQL Editor de
+   Supabase). Sans elle, le site affiche la grille de secours de
+   `lib/site/data.ts` et « disponibilité sur demande ».
+2. Vérifier que les photos sont dans `public/photos/` (`npm run site:photos`
+   les rapatrie depuis l'ancien site ; le workflow GitHub « Photos du site »
+   fait la même chose). **À faire avant de basculer le nom de domaine.**
+3. Dans Vercel, rattacher `lg-box.fr` et `www.lg-box.fr` au projet `lg-box`.
+   Les anciennes adresses en `.html` sont redirigées (301) par `next.config.ts`.
+4. Déclarer `https://lg-box.fr/sitemap.xml` dans Google Search Console et Bing
+   Webmaster Tools.
+
+**Référencement** : métadonnées et adresse canonique par page, données
+structurées schema.org (`SelfStorage` avec la grille de prix et les
+disponibilités, `FAQPage`, fil d'Ariane), `sitemap.xml`, `robots.txt` ouvert aux
+robots des assistants IA, et `/llms.txt` — la fiche du centre en texte brut,
+générée à partir des mêmes données. Coordonnées et textes fixes :
+`lib/site/config.ts`.
+
 ## Application compagnon « Suivi des règlements » (`/suivi`)
 
 Une PWA mobile, installable sur l'écran d'accueil iOS, dédiée à un seul geste :
