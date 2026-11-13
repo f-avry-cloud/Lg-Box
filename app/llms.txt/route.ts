@@ -52,7 +52,7 @@ Informations à jour au ${date} (heure de Paris). Les tarifs et les disponibilit
 - Accès aux box : 24h/24, 7j/7, toute l'année, avec clés remises au locataire
 - Surfaces : de 2 à 20 m², hauteur sous plafond ${SITE.hauteurSousPlafond}
 - Conditions : sans caution, sans bail, sans frais de dossier, sans durée minimale ; préavis de ${SITE.preavisJours} jours
-- Sécurité : ${SITE.cameras} caméras, alarme, détection incendie, volets roulants métalliques
+- Sécurité : ${SITE.cameras} caméras, alarme, détection incendie, box fermés à clé, volets roulants métalliques aux fenêtres
 - Équipement : étagères et éclairage dans chaque box, chariot et diable prêtés, grand parking, toilettes
 - Bâtiment : anciens logements de la Marine nationale (ancienne base de Guengat), construits en dur, doubles cloisons, secs et aérés
 - Secteur desservi : ${SITE.villesDesservies.map((v) => v.nom).join(", ")}, Cap-Sizun, pays bigouden

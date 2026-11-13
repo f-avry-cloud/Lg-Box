@@ -73,7 +73,7 @@ export default async function GardeMeuble() {
             </p>
           </div>
           <div style={{ display: "grid", gap: "0.85rem" }}>
-            <Photo cle="album02" forme="large" tailles="(max-width: 54rem) 100vw, 48vw" prioritaire />
+            <Photo cle="album15" forme="large" tailles="(max-width: 54rem) 100vw, 48vw" prioritaire />
             <Photo cle="album06" forme="large" tailles="(max-width: 54rem) 100vw, 48vw" />
           </div>
         </div>

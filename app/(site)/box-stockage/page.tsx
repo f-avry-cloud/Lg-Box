@@ -9,7 +9,7 @@ import { ALBUM } from "@/lib/site/photos";
 export const metadata: Metadata = {
   title: "Box de stockage en dur à Guengat, près de Quimper",
   description:
-    "Des box de 2 à 20 m² et 3,20 m de haut, maçonnés, secs et aérés, avec étagères, éclairage et volet roulant. 35 caméras, accès 24h/24. Visite en photos.",
+    "Des box de 2 à 20 m² et 3,20 m de haut, maçonnés, secs et aérés, avec étagères et éclairage. 35 caméras, accès 24h/24. Visite en photos.",
   alternates: { canonical: "/box-stockage" },
 };
 
@@ -54,12 +54,12 @@ export default function LesBox() {
                 <dd>Le box est prêt à ranger le jour de votre arrivée.</dd>
               </div>
               <div>
-                <dt>Volet roulant en aluminium</dt>
-                <dd>Fermé à clé. Les portes font 93 ou 103 cm de large.</dd>
+                <dt>Une porte qui ferme à clé</dt>
+                <dd>Large de 93 ou 103 cm. Les fenêtres ont des volets roulants en aluminium.</dd>
               </div>
             </dl>
           </div>
-          <Photo cle="album01" forme="large" tailles="(max-width: 54rem) 100vw, 48vw" prioritaire />
+          <Photo cle="album07" forme="large" tailles="(max-width: 54rem) 100vw, 48vw" prioritaire />
         </div>
       </section>
 
@@ -117,7 +117,7 @@ export default function LesBox() {
             <h2>Le centre en photos</h2>
           </div>
           <div className="s-galerie">
-            {ALBUM.slice(1).map((cle) => (
+            {ALBUM.map((cle) => (
               <Photo key={cle} cle={cle} tailles="(max-width: 40rem) 100vw, (max-width: 70rem) 50vw, 25vw" />
             ))}
           </div>

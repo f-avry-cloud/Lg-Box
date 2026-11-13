@@ -1,28 +1,4 @@
 {
-  "logo": {
-    "fichier": "logo-lg-box.png",
-    "origine": "wa_images/logo-lg-box_(2).png"
-  },
-  "accueil": {
-    "fichier": "location-garde-meuble-quimper.jpg",
-    "origine": "wa_images/location-garde-meuble-quimper.jpg"
-  },
-  "centre": {
-    "fichier": "garde-meuble-quimper.jpg",
-    "origine": "wa_images/garde-meuble-quimper.jpg"
-  },
-  "tarifs": {
-    "fichier": "tarifs-box-quimper.jpg",
-    "origine": "wa_images/tarifs-box-quimper.jpg"
-  },
-  "faq1": {
-    "fichier": "garde-meubles-a-quimper.jpg",
-    "origine": "wa_images/lg-box-garde-meubles-a-quimper.jpg"
-  },
-  "faq2": {
-    "fichier": "garde-meubles-finistere-sud.jpg",
-    "origine": "wa_images/lg-box-garde-meubles-dans-le-finistere-sud.jpg"
-  },
   "album01": {
     "fichier": "album-lg-box-garde-meubles-dans-le-finistere-sud.jpg",
     "origine": "wa_p_albums/p_album_ildwp7rq0/iw40nqx33vqn1c/lg-box-garde-meubles-dans-le-finistere-sud.jpg"

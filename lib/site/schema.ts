@@ -22,7 +22,7 @@ export function schemaEtablissement(offre: Offre) {
     url: SITE.url,
     telephone: SITE.telephoneE164,
     email: SITE.email,
-    image: [absolu(photo("accueil").src), absolu(photo("centre").src)],
+    image: [absolu(photo("album01").src), absolu(photo("album04").src)],
     foundingDate: String(SITE.anneeCreation),
     address: {
       "@type": "PostalAddress",

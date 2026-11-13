@@ -69,7 +69,7 @@ export default async function Accueil() {
           </ul>
         </div>
         <Photo
-          cle="accueil"
+          cle="album01"
           forme="ouverture"
           tailles="(max-width: 54rem) 100vw, 46vw"
           prioritaire
@@ -82,7 +82,7 @@ export default async function Accueil() {
             <div>
               <h2>Les box à louer aujourd&apos;hui</h2>
               <p>
-                Volet levé, le box est libre. Volet baissé, il est pris : inscrivez-vous, vous
+                Rideau levé, le box est libre. Rideau baissé, il est pris : inscrivez-vous, vous
                 serez prévenu dès qu&apos;il se libère.
               </p>
             </div>
@@ -125,10 +125,10 @@ export default async function Accueil() {
             </p>
           </div>
           <div style={{ display: "grid", gap: "0.85rem" }}>
-            <Photo cle="centre" forme="large" tailles="(max-width: 54rem) 100vw, 48vw" />
+            <Photo cle="album04" forme="large" tailles="(max-width: 54rem) 100vw, 48vw" />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
-              <Photo cle="album03" tailles="(max-width: 54rem) 50vw, 24vw" />
-              <Photo cle="album10" tailles="(max-width: 54rem) 50vw, 24vw" />
+              <Photo cle="album07" tailles="(max-width: 54rem) 50vw, 24vw" />
+              <Photo cle="album15" tailles="(max-width: 54rem) 50vw, 24vw" />
             </div>
           </div>
         </div>

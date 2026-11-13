@@ -68,7 +68,7 @@ export function questions(offre: Offre): Question[] {
     },
     {
       q: "Mes affaires sont-elles en sécurité ?",
-      r: `Le bâtiment est fermé et surveillé en continu par ${SITE.cameras} caméras, à l'intérieur comme sur le parking, avec alarme et détection incendie. Chaque box est fermé par un volet roulant métallique dont vous seul avez la clé.`,
+      r: `Le bâtiment est fermé et surveillé en continu par ${SITE.cameras} caméras, à l'intérieur comme sur le parking, avec alarme et détection incendie. Chaque box est une pièce fermée à clé, dont les fenêtres sont protégées par des volets roulants métalliques.`,
     },
     {
       q: "Les box sont-ils secs et sains ?",

@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     locale: "fr_FR",
     siteName: SITE.nom,
     url: SITE.url,
-    images: [{ url: photo("accueil").src, alt: photo("accueil").alt }],
+    images: [{ url: photo("album01").src, alt: photo("album01").alt }],
   },
   twitter: { card: "summary_large_image" },
   formatDetection: { telephone: true, address: true, email: true },

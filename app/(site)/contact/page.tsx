@@ -104,7 +104,7 @@ export default async function Contact({
               ))}
             </ul>
           </div>
-          <Photo cle="album04" forme="large" tailles="(max-width: 54rem) 100vw, 48vw" />
+          <Photo cle="album02" forme="large" tailles="(max-width: 54rem) 100vw, 48vw" />
         </div>
       </section>
     </>
