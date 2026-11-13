@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { BoutonReserver } from "@/components/site/bouton-reserver";
@@ -12,7 +13,7 @@ export function Entete() {
     <header className="s-entete">
       <div className="s-cadre s-entete__barre">
         <Link href="/" className="s-marque" aria-label="LG BOX, accueil">
-          <b>LG</b>BOX
+          <Image src="/logo/lg-box-compact-blanc.png" alt="LG BOX" width={570} height={160} priority />
         </Link>
         <nav className="s-nav" aria-label="Navigation principale">
           <Liens />
@@ -41,7 +42,13 @@ export function Pied() {
       <div className="s-cadre">
         <div className="s-pied__grille">
           <div>
-            <h2>LG BOX</h2>
+            <Image
+              className="s-pied__logo"
+              src="/logo/lg-box-blanc.png"
+              alt="LG BOX, entreprise de self-stockage"
+              width={947}
+              height={367}
+            />
             <address>
               {SITE.adresse.rue}
               <br />

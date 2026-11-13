@@ -22,6 +22,7 @@ export function schemaEtablissement(offre: Offre) {
     url: SITE.url,
     telephone: SITE.telephoneE164,
     email: SITE.email,
+    logo: `${SITE.url}/logo/lg-box-fond-blanc.png`,
     image: [absolu(photo("album01").src), absolu(photo("album04").src)],
     foundingDate: String(SITE.anneeCreation),
     address: {

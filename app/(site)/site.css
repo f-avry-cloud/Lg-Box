@@ -238,22 +238,22 @@
 
 .s-marque {
   display: inline-flex;
-  align-items: baseline;
-  font-stretch: 70%;
-  font-weight: 900;
-  font-size: 1.7rem;
-  line-height: 1;
-  letter-spacing: 0.01em;
-  text-decoration: none;
+  align-items: center;
+  flex: none;
+  border-radius: 3px;
 }
 
-.s-marque b {
-  margin-right: 0.3rem;
-  padding: 0.18rem 0.4rem 0.14rem;
-  border-radius: 3px;
-  background: var(--jaune);
-  color: var(--marine);
-  font-weight: 900;
+/* Le logo : le cube et le nom, sans la signature, illisible à cette taille.
+   Le logo complet est dans le pied de page. */
+.s-marque img {
+  width: auto;
+  height: 2.6rem;
+}
+
+@media (max-width: 26rem) {
+  .s-marque img {
+    height: 2.1rem;
+  }
 }
 
 .s-nav {
@@ -1209,13 +1209,20 @@
   margin-top: 0.35rem;
 }
 
-.site .s-pied a {
+.site .s-pied a,
+.site .s-pied :is(p, li, dd) a:not(.s-bouton) {
   text-decoration: none;
 }
 
 .s-pied a:hover {
   color: var(--jaune);
   text-decoration: underline;
+}
+
+.s-pied__logo {
+  width: auto;
+  height: 4.5rem;
+  margin-bottom: 1rem;
 }
 
 .s-pied address {
