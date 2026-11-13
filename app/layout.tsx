@@ -11,6 +11,9 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  // Pas de préchargement : le site public (app/(site)) n'utilise pas cette
+  // police et n'a pas à la télécharger avant son propre contenu.
+  preload: false,
 });
 
 // Police de l'application mobile, et d'elle seule : le back-office garde
@@ -21,6 +24,7 @@ const instrumentSans = Instrument_Sans({
   variable: "--font-suivi",
   subsets: ["latin"],
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {

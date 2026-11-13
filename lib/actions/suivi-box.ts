@@ -14,6 +14,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireStaff } from "@/lib/auth";
+import { rafraichirSitePublic } from "@/lib/site/data";
 import { fail, ok, type ActionResult } from "@/lib/actions/result";
 import { createClient } from "@/lib/supabase/server";
 import { contratOccupeOuReserve } from "@/lib/suivi/contrat";
@@ -35,6 +36,8 @@ function verifieSurface(surface: number | null): string | null {
 }
 
 function rafraichit(): void {
+  // Le site public affiche les box à louer : il suit le même geste.
+  rafraichirSitePublic();
   revalidatePath("/suivi/box");
   revalidatePath("/suivi");
   revalidatePath("/suivi/tableau-de-bord");

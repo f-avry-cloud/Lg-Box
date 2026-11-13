@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
+import type { Niveau } from "@/lib/site/config";
+import { rafraichirSitePublic } from "@/lib/site/data";
+import { libelleTarif } from "@/lib/site/offre";
+
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ok, fail, type ActionResult } from "@/lib/actions/result";
@@ -164,19 +168,66 @@ export async function updateSiteSettings(
   return { error: null, success: true };
 }
 
+/**
+ * Ajoute une ligne à la grille tarifaire, ou en change le prix.
+ *
+ * La grille est ce que le site public affiche : une ligne par surface et par
+ * niveau (rez-de-chaussée ou étage). Le libellé est composé à partir des deux
+ * (« 5 m² », « 5 m² à l'étage ») pour rester lisible dans les demandes de
+ * réservation, où il est enregistré tel quel.
+ */
 export async function upsertPricingRow(formData: FormData): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createClient();
 
-  const tailleLibelle = String(formData.get("taille_libelle") ?? "").trim();
-  const prixMensuel = Number(formData.get("prix_mensuel") ?? 0);
-  if (!tailleLibelle) return fail("Taille requise.");
+  const surface = Number(String(formData.get("surface_m2") ?? "").replace(",", "."));
+  const niveau: Niveau = formData.get("niveau") === "etage" ? "etage" : "rdc";
+  const prixMensuel = Number(String(formData.get("prix_mensuel") ?? "").replace(",", "."));
+  const aSurface = Number.isFinite(surface) && surface > 0;
 
-  const { error } = await supabase
-    .from("pricing_grid")
-    .upsert({ taille_libelle: tailleLibelle, prix_mensuel: prixMensuel }, { onConflict: "taille_libelle" });
+  // Ancien formulaire (libellé libre) : toléré tant que la migration 022
+  // n'est pas appliquée.
+  const tailleLibelle = aSurface
+    ? libelleTarif(surface, niveau)
+    : String(formData.get("taille_libelle") ?? "").trim();
+
+  if (!tailleLibelle) return fail("Surface requise.");
+  if (!Number.isFinite(prixMensuel) || prixMensuel <= 0) return fail("Prix mensuel requis.");
+
+  const complet = {
+    taille_libelle: tailleLibelle,
+    prix_mensuel: prixMensuel,
+    niveau,
+    surface_m2: aSurface ? surface : null,
+  };
+  let { error } = await supabase.from("pricing_grid").upsert(complet, { onConflict: "taille_libelle" });
+  if (error && /niveau|surface_m2/.test(error.message)) {
+    // Colonnes absentes : la base n'a pas encore reçu la migration 022.
+    ({ error } = await supabase
+      .from("pricing_grid")
+      .upsert(
+        { taille_libelle: tailleLibelle, prix_mensuel: prixMensuel },
+        { onConflict: "taille_libelle" }
+      ));
+  }
   if (error) return fail(error.message);
   revalidatePath("/admin/settings");
+  rafraichirSitePublic();
+  return ok;
+}
+
+/** Change le prix d'une ligne existante, sans toucher à sa surface. */
+export async function updatePricingPrice(id: string, prixMensuel: number): Promise<ActionResult> {
+  await requireAdmin();
+  if (!Number.isFinite(prixMensuel) || prixMensuel <= 0) return fail("Prix mensuel invalide.");
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("pricing_grid")
+    .update({ prix_mensuel: prixMensuel })
+    .eq("id", id);
+  if (error) return fail(error.message);
+  revalidatePath("/admin/settings");
+  rafraichirSitePublic();
   return ok;
 }
 
@@ -186,6 +237,7 @@ export async function deletePricingRow(id: string): Promise<ActionResult> {
   const { error } = await supabase.from("pricing_grid").delete().eq("id", id);
   if (error) return fail(error.message);
   revalidatePath("/admin/settings");
+  rafraichirSitePublic();
   return ok;
 }
 
